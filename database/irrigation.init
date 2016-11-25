@@ -1,0 +1,251 @@
+-- Initial values for the database, this is for testing purposes. Normally it will be
+-- filled in entirely from the web site.
+--
+-- Nov-2016, Pat Welch, pat@mousebrains.com
+--
+-- The following are for the sqlite3 command line interface
+--
+-- .echo on
+-- .timer off
+
+INSERT OR REPLACE INTO 
+  user(passwd,fullName,displayName,addr,privileges)
+  VALUES('$2y$10$LOzxxx/rfZKUflsZRXD8necG7YPPzySy0SGfBA..KcTyyXdIL03wK',
+         'Pat Welch',
+         'Pat',
+         '6513 SW Janet Way
+Corvallis, OR 97333',
+         1);
+
+INSERT OR REPLACE INTO 
+  userEMail(email,user,qConfirmed) 
+  VALUES('pat@mousebrains.com',
+         (SELECT id FROM user WHERE fullName='Pat Welch'),
+         1);
+
+INSERT OR REPLACE INTO 
+  userNumber(number,user,provider,qSMS,qConfirmed)
+  VALUES(5417529049,
+         (SELECT id FROM user WHERE fullName='Pat Welch'),
+         NULL, 0, 1);
+  
+INSERT OR REPLACE INTO 
+  userNumber(number,user,provider,qSMS,qConfirmed)
+  VALUES(5412207738,
+         (SELECT id FROM user WHERE fullName='Pat Welch'),
+         'vtext.com', 1, 1);
+
+INSERT OR REPLACE INTO org(name) VALUES('Wild Iris');
+
+INSERT OR REPLACE INTO 
+  userEMail(user, qConfirmed)
+  VALUES((SELECT id FROM user WHERE fullName='Pat Welch'), 1);
+
+INSERT OR REPLACE INTO
+  site(org,name,addr,timezone,latitude,longitude,elevation,ETDriver,ETAddr,ETsdate)
+  VALUES((SELECT id FROM org WHERE name='Wild Iris'),
+         'Casa',
+         '6513 SW Janet Way, Corvallis, OR 97333',
+         'US/Pacific',
+         44.495399,-123.33512,
+         100,
+         'agrimet','CRVO','2003-01-01'
+        );
+
+INSERT OR REPLACE INTO
+  siteUser(site,user,priority,privileges)
+  VALUES((SELECT id FROM site WHERE name='Casa'),
+         (SELECT id FROM user WHERE fullName='Pat Welch'),
+         100, 3);
+
+INSERT OR REPLACE INTO
+  controller(name,site,latitude,longitude,driver,addr,maxStations,maxCurrent,delay)
+  VALUES('TWI0',
+         (SELECT id FROM site WHERE name='Casa'),
+         44.495399,-123.33512,
+         'TWI', 'tty0', 8, 100, 9);
+         
+INSERT OR REPLACE INTO
+  poc(site,name,targetFlow,maxFlow,delayOn,delayOff)
+  VALUES((SELECT id FROM site WHERE name='Casa'), 'Irrigation', 12, 13, 10, 60);
+
+INSERT OR REPLACE INTO
+  poc(site,name,targetFlow,maxFlow,delayOn,delayOff)
+  VALUES((SELECT id FROM site WHERE name='Casa'), 'Selva', NULL, NULL, 0, 0);
+
+INSERT OR REPLACE INTO
+  sensor(controller,name,latitude,longitude,driver,addr,make,model)
+  VALUES((SELECT id FROM controller WHERE name='TWI0'),
+         'Flow 0',
+         44.495399,-123.33512,
+         'TWI.flow', 0, 
+         'Creative Sensor Technology', 'FSI-T10-001');
+
+INSERT OR REPLACE INTO
+  pocFlow(sensor,POC,K,offset)
+  VALUES((SELECT id FROM sensor WHERE name='Flow 0'),
+         (SELECT id FROM poc WHERE name='Irrigation'),
+         0.322, 0.200);
+
+INSERT OR REPLACE INTO
+  sensor(controller,name,latitude,longitude,driver,addr,make,model)
+  VALUES((SELECT id FROM controller WHERE name='TWI0'),
+         'MV 0',
+         44.495399,-123.33512,
+         'TWI.station', 'mv0', 
+         'Buckner Superior', '1.5inch 3300150');
+
+INSERT OR REPLACE INTO
+  pocMV(sensor,POC)
+  VALUES((SELECT id FROM sensor WHERE name='MV 0'),
+         (SELECT id FROM poc WHERE name='Irrigation'));
+
+-- Program
+INSERT OR REPLACE INTO program(site,name,maxStations,maxFlow)
+  VALUES((SELECT id FROM site WHERE name='Casa'), 'Selva goteo', 2, 20);
+         
+INSERT OR REPLACE INTO event(site,name,mode,refDate,action,val,startTime,duration)
+  VALUES((SELECT id FROM site WHERE name='Casa'),
+         'Selva, cada 21 días', 1, '2016-04-06', 'CADA', 21, 64800, 10800);
+
+INSERT OR REPLACE INTO waterWindow(event,pgm)
+  VALUES((SELECT id FROM event WHERE name='Selva, cada 21 días'),
+         (SELECT id FROM program WHERE name='Selva goteo'));
+
+-- Program
+INSERT OR REPLACE INTO program(site,name,maxStations,maxFlow)
+  VALUES((SELECT id FROM site WHERE name='Casa'), 'Selva plantas', 3, 10);
+         
+INSERT OR REPLACE INTO event(site,name,mode,action,val,startTime,duration,qCelestial)
+  VALUES((SELECT id FROM site WHERE name='Casa'),
+         'Selva, cada miércoles', 1, 'DOW', 4, 72000, 3600, 1);
+
+INSERT OR REPLACE INTO waterWindow(event,pgm)
+  VALUES((SELECT id FROM event WHERE name='Selva, cada miércoles'),
+         (SELECT id FROM program WHERE name='Selva plantas'));
+
+-- Program
+INSERT OR REPLACE INTO program(site,name,maxStations,maxFlow)
+  VALUES((SELECT id FROM site WHERE name='Casa'), 'Huerto', 4, 5);
+
+INSERT OR REPLACE INTO event(site,name,mode,action,val,refDate,startTime,duration)
+  VALUES((SELECT id FROM site WHERE name='Casa'), 
+         'Cada domingo 6', 1, 
+         'CADA', 7, '2016-10-30', 6*3600, 3*3600);
+         -- 'DOW', 64, 6*3600, 3*3600);
+
+INSERT OR REPLACE INTO waterWindow(event,pgm,priority)
+  VALUES((SELECT id FROM event WHERE name='Cada domingo 6'),
+         (SELECT id FROM program WHERE name='Huerto'),
+         2);
+
+INSERT OR REPLACE INTO event(site,name,mode,action,val,startTime,duration)
+  VALUES((SELECT id FROM site WHERE name='Casa'), 'Cada domingo 12', 1, 'DOW', 64, 12*3600, 3*3600);
+
+INSERT OR REPLACE INTO waterWindow(event,pgm,priority)
+  VALUES((SELECT id FROM event WHERE name='Cada domingo 12'),
+         (SELECT id FROM program WHERE name='Huerto'),
+         1);
+
+-- Program
+INSERT OR REPLACE INTO program(site,name,maxStations,maxFlow)
+  VALUES((SELECT id FROM site WHERE name='Casa'), 'Cesped',1,15);
+         
+INSERT OR REPLACE INTO event(site,name,mode,action,val,startTime,duration,qCelestial)
+  VALUES((SELECT id FROM site WHERE name='Casa'), 
+         'Cada jueves', 1, 'DOW', 8, -3600*9, 0, 5);
+
+INSERT OR REPLACE INTO waterWindow(event,pgm,attractorFrac)
+  VALUES((SELECT id FROM event WHERE name='Cada jueves'),
+         (SELECT id FROM program WHERE name='Cesped'),
+         1);
+
+-------------
+ 
+INSERT OR REPLACE INTO
+  sensor(controller,name,latitude,longitude,driver,addr,make,model)
+  VALUES((SELECT id FROM controller WHERE name='TWI0'),
+         'Huerto S/norte', 44.495399,-123.33512, 'TWI.station', 1, 'Hunter', 'PGV-100A');
+
+INSERT OR REPLACE INTO
+  station(sensor,poc,crop,soil,
+          sortOrder,depletion,
+          precipRate,uniformity,
+          userCycleTime,userSoakTime,
+          measFlow,lowFlow,highFlow,
+          fractionRain, fractionSun,slope,slopeLocation,fractionAdjust)
+  VALUES((SELECT id FROM sensor WHERE name='Huerto S/norte'),
+         (SELECT id FROM poc WHERE name='Irrigation'),
+         (SELECT id FROM crop WHERE name='Broccoli'),
+         (SELECT id FROM soil WHERE name='Peat'),
+         1, 0, 
+         0.4*25.4, 0.75, 
+         30*60, 20*60,
+         1.2, 0.6, 1.8,
+         0.25, 0.9, 0, 0, 1.25);
+ 
+INSERT OR REPLACE INTO
+  stationProgram(station,pgm,mode,runTime,priority)
+  VALUES((SELECT id FROM station WHERE sensor=(SELECT id FROM sensor WHERE name='Huerto S/norte')),
+         (SELECT id FROM program WHERE name='Huerto'),
+         1, 130*60, 2);
+
+-------------
+ 
+INSERT OR REPLACE INTO
+  sensor(controller,name,latitude,longitude,driver,addr,make,model)
+  VALUES((SELECT id FROM controller WHERE name='TWI0'),
+         'Huerto S/oeste', 44.495399,-123.33512, 'TWI.station', 2, 'Hunter', 'PGV-100A');
+
+INSERT OR REPLACE INTO
+  station(sensor,poc,crop,soil,
+          sortOrder,depletion,
+          precipRate,uniformity,
+          userCycleTime,userSoakTime,
+          measFlow,lowFlow,highFlow,
+          fractionRain, fractionSun,slope,slopeLocation,fractionAdjust)
+  VALUES((SELECT id FROM sensor WHERE name='Huerto S/oeste'),
+         (SELECT id FROM poc WHERE name='Irrigation'),
+         (SELECT id FROM crop WHERE name='Hops'),
+         (SELECT id FROM soil WHERE name='Sandy Loam'),
+         2, 0.1, 
+         0.4*25.4, 0.50, 
+         30*60, 20*60,
+         0.8, 0.4, 1.7,
+         0.50, 0.9, 0, 0, 1.0);
+
+INSERT OR REPLACE INTO
+  stationProgram(station,pgm,mode,runTime, priority)
+  VALUES((SELECT id FROM station WHERE sensor=(SELECT id FROM sensor WHERE name='Huerto S/oeste')),
+         (SELECT id FROM program WHERE name='Huerto'),
+         1, 99*60, 3);
+
+-------------
+ 
+INSERT OR REPLACE INTO
+  sensor(controller,name,latitude,longitude,driver,addr,make,model)
+  VALUES((SELECT id FROM controller WHERE name='TWI0'),
+         'Huerto S/centro', 44.495399,-123.33512, 'TWI.station', 3, 'Hunter', 'PGV-100A');
+
+INSERT OR REPLACE INTO
+  station(sensor,poc,crop,soil,
+          sortOrder,depletion,
+          precipRate,uniformity,
+          userCycleTime,userSoakTime,
+          measFlow,lowFlow,highFlow,
+          fractionRain, fractionSun,slope,slopeLocation,fractionAdjust)
+  VALUES((SELECT id FROM sensor WHERE name='Huerto S/centro'),
+         (SELECT id FROM poc WHERE name='Irrigation'),
+         (SELECT id FROM crop WHERE name='Beets'),
+         (SELECT id FROM soil WHERE name='Clay Loam'),
+         3, 0.1, 
+         0.6*25.4, 0.75, 
+         30*60, 20*60,
+         1.9, 1.1, 3.0,
+         1.0, 1.0, 0, 0, 1.0);
+
+INSERT OR REPLACE INTO
+  stationProgram(station,pgm,mode,runTime,priority)
+  VALUES((SELECT id FROM station WHERE sensor=(SELECT id FROM sensor WHERE name='Huerto S/centro')),
+         (SELECT id FROM program WHERE name='Huerto'),
+         1, 77*60, 1);

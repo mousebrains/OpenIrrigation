@@ -1,0 +1,348 @@
+--
+-- irrigation database schema
+--
+-- Nov-2016, Pat Welch, pat@mousebrains.com
+--
+-- The following three lines are for use in sqlite3 command line interface
+--
+-- .headers on
+-- .echo off
+-- .timer off
+
+PRAGMA journal_mode = WALL;
+PRAGMA synchronous = FULL;
+PRAGMA foreign_keys = ON;
+
+-- All Soil types
+CREATE TABLE soil(id INTEGER PRIMARY KEY AUTOINCREMENT, -- soil ID
+                  name TEXT UNIQUE, -- name of the soil, clay, ...
+                  paw REAL, -- Plant available water mm/m
+                  infiltration REAL, -- mm/hour
+                  infiltrationSlope REAL, -- mm/hour/% change as a function of slope
+                  rootNorm REAL DEFAULT 1 -- multiple crop root depth by this value
+                 );
+
+-- All Crops
+-- source: http://www.kimberly.uidaho.edu/water/fao56/fao56.pdf
+CREATE TABLE crop(id INTEGER PRIMARY KEY AUTOINCREMENT, -- plant ID
+                  name TEXT UNIQUE, -- name of the crop
+                  plantDate TEXT, -- roughly when plantted
+                  Lini INTEGER, -- days of initial stage
+                  Ldev INTEGER, -- days of development stage
+                  Lmid INTEGER, -- days of mid-season stage
+                  Llate INTEGER, -- days of final stage
+                  KcInit REAL, -- Kc initial
+                  KcMid REAL, -- Kc mid
+                  KcEnd REAL, -- Kc at end
+                  height REAL, -- height of plant (m)
+                  depth REAL, -- root depth (m)
+                  MAD REAL, -- maximum allowed depletion without stress at 5mm/day ETc
+                  comment TEXT -- Comment on coefficients
+                 );
+
+-- All user accounts
+CREATE TABLE user(id INTEGER PRIMARY KEY AUTOINCREMENT, -- user ID
+                  passwd TEXT, -- MD5 encrypted password
+                  date REAL DEFAULT CURRENT_TIMESTAMP, -- Date of last change
+                  fullName TEXT, -- Full name of the user
+                  displayName TEXT, -- Name of the user to use when displaying
+                  addr TEXT, -- snail mail address
+                  privileges INTEGER DEFAULT 0-- 1->sysadmin
+                 );
+
+-- All email addresses
+CREATE TABLE userEMail(email TEXT PRIMARY KEY, -- email address
+                       user INTEGER REFERENCES user(id) ON DELETE CASCADE, -- user ID
+                       qConfirmed DEFAULT 0 -- Has this email address been confirmed?
+                      );
+
+-- All telephone numbers
+CREATE TABLE userNumber(number TEXT, -- telephone number
+                        user INTEGER REFERENCES user(id) ON DELETE CASCADE, -- user ID
+                        provider TEXT, -- Provider for SMS messages
+                        qSMS INTEGER DEFAULT 0, -- is this number SMS capable?
+                        qConfirmed DEFAULT 0, -- Has this number been confirmed?
+                        PRIMARY KEY (number, user) -- Unique key pair
+                       );
+
+-- All user sessions
+CREATE TABLE userSession(id TEXT PRIMARY KEY, -- session ID
+                         user INTEGER REFERENCES user(id) ON DELETE CASCADE, -- user ID
+                         eDate REAL DEFAULT (datetime('now', '+30 days')), -- when it expires
+                         cDate REAL DEFAULT CURRENT_TIMESTAMP, -- when added
+                         cAddr TEXT, -- IP address of originator
+                         aDate REAL DEFAULT CURRENT_TIMESTAMP, -- when last accessed
+                         aAddr TEXT -- IP address of last accessor
+                        );
+
+-- All Organizations
+CREATE TABLE org(id INTEGER PRIMARY KEY AUTOINCREMENT, -- Organization ID
+                 name TEXT UNIQUE -- Organization name
+                );
+
+-- All user/organization
+CREATE TABLE orgUser(org INTEGER REFERENCES org(id) ON DELETE CASCADE, -- org's ID
+                     user INTEGER REFERENCES user(id) ON DELETE CASCADE, -- user's ID
+                     priority INTEGER, -- Order for contacts
+                     privileges INTEGER DEFAULT 0, -- 1->admin, 2->rw
+                     PRIMARY KEY(org, user) -- Unique key pairs
+                    );
+
+-- Irrigation sites
+CREATE TABLE site(id INTEGER PRIMARY KEY AUTOINCREMENT, -- site ID
+                  org INTEGER REFERENCES org(id) ON DELETE CASCADE, -- org's ID
+                  name TEXT, -- Site's name
+                  addr TEXT, -- Site's street address
+                  timezone TEXT, -- Site's timezone
+                  latitude REAL, -- Site's latitude
+                  longitude REAL, -- Site's longitude
+                  elevation REAL, -- Site's elevation in meters above sealevel
+                  ETdriver TEXT, -- ET device driver
+                  ETaddr TEXT, -- ET address for the driver
+                  ETsdate TEXT DEFAULT '2000-01-01' -- Earliest date ET information is available for
+                 );
+
+-- All user/site relationships
+CREATE TABLE siteUser(site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's ID
+                      user INTEGER REFERENCES user(id) ON DELETE CASCADE, -- user's ID
+                      priority INTEGER, -- Order for contacts
+                      privileges INTEGER DEFAULT 0, -- 1->admin, 2->rw
+                      PRIMARY KEY(site, user) -- Unique key pairs
+                     );
+
+-- If a row is deleted from orgUser, see if still referenced elsewhere
+ CREATE TRIGGER OrgUserDelete AFTER DELETE ON orgUser BEGIN
+   DELETE FROM user WHERE privileges=0 and
+                          id NOT IN (SELECT user FROM orgUser UNION
+                                     SELECT user from siteUser);
+   END;
+ -- If a row is deleted from the siteUser table, see if still referenced elsewhere
+ CREATE TRIGGER SiteUserDelete AFTER DELETE ON siteUser BEGIN
+   DELETE FROM user WHERE privileges=0 and
+                          id NOT IN (SELECT user FROM orgUser UNION
+                                     SELECT user from siteUser);
+   END;
+
+-- ET information
+CREATE TABLE ET(siteID INTEGER REFERENCES site(id) on DELETE CASCADE, -- site's ID
+                date TEXT, -- date of observation
+                ET0 REAL, -- ET0
+                ETr REAL, -- ETref, tall alfalfa for Agrimet
+                precip REAL, -- Precipatation in mm/day
+                PRIMARY KEY (siteID, date)
+               );
+
+-- ET average information
+CREATE TABLE ETannual(siteID INTEGER REFERENCES site(id) on DELETE CASCADE, -- site's ID
+                      dayOfYear INTEGER, -- day of year of median
+                      ET0 REAL, -- ET0 median
+                      ETr REAL, -- ETref median for tall alfalfa for Agrimet
+                      precip REAL, -- Precipatation in mm/day median
+                      n INTEGER, -- # of points in median
+                      PRIMARY KEY (siteID, dayOfYear)
+                     );
+
+-- All controllers
+CREATE TABLE controller(id INTEGER PRIMARY KEY AUTOINCREMENT, -- controller ID
+                        name TEXT, -- Name for controller
+                        site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site ID
+                        latitude REAL, -- Controller's latitude
+                        longitude REAL, -- Controller's longitude
+                        driver TEXT, -- device driver
+                        addr TEXT, -- device address
+                        maxStations INTEGER DEFAULT 1, -- maximum simultaneous stations
+                        maxCurrent INTEGER DEFAULT 10000, -- maximum non-peak current
+                        delay INTEGER DEFAULT 1 -- delay between turning on stations in seconds
+                       );
+
+ -- controller sensors/valves
+ CREATE TABLE sensor(id INTEGER PRIMARY KEY AUTOINCREMENT, -- sensor's DB ID
+                     controller INTEGER REFERENCES controller(id) ON DELETE CASCADE, -- controller ID
+                     name TEXT, -- Name for sensor
+                     latitude REAL, -- Sensor's latitude
+                     longitude REAL, -- Sensor's longitude
+                     driver TEXT, -- sensor's driver
+                     addr TEXT, -- sensor address
+                     make TEXT, -- Who made the sensor
+                     model TEXT, -- sensor model
+                     installed TEXT DEFAULT CURRENT_TIMESTAMP, -- when installed
+                     notes TEXT -- Extra information
+                    );
+
+-- Point of water connection
+CREATE TABLE POC(id INTEGER PRIMARY KEY AUTOINCREMENT, -- POC id
+                 site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site ID
+                 name TEXT, -- description
+                 targetFlow REAL, -- target flow in GPM
+                 maxFlow REAL, -- Maximum allowed flow in GPM
+                 delayOn INTEGER DEFAULT 0, -- Delay between turning on multiple valves
+                 delayOff INTEGER DEFAULT 0 -- Delay between turning off multiple valves
+                );
+
+ -- flow sensor
+ CREATE TABLE pocFlow(id INTEGER PRIMARY KEY AUTOINCREMENT, -- flow sensor's DB ID
+                      sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE, -- sensor info ID
+                      POC INTEGER REFERENCES POC(id) ON DELETE CASCADE,
+                      K REAL DEFAULT 1, -- Hz->GPM
+                      offset REAL DEFAULT 1-- offset of Hz
+                     );
+CREATE VIEW pocFlowInfo AS SELECT * FROM pocFlow INNER JOIN sensor ON pocFlow.sensor=sensor.id;
+CREATE TRIGGER pocFlowDelete AFTER DELETE ON pocFlow BEGIN
+    DELETE FROM sensor WHERE id=old.sensor;
+  END;
+
+ -- master valve sensor
+ CREATE TABLE pocMV(id INTEGER PRIMARY KEY AUTOINCREMENT, -- master valve's DB ID
+                    sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE, -- sensor info ID
+                    POC INTEGER REFERENCES POC(id) ON DELETE CASCADE,
+                    qNormallyOpen INTEGER DEFAULT 1 -- 0->NC 1->NO
+                   );
+ CREATE VIEW pocMVInfo AS SELECT * FROM pocMV INNER JOIN sensor ON pocMV.sensor=sensor.id;
+ CREATE TRIGGER pocMVDelete AFTER DELETE ON pocMV BEGIN
+     DELETE FROM sensor WHERE id=old.sensor;
+   END;
+
+ -- Point of water connection pumps
+ CREATE TABLE pocPump(id INTEGER PRIMARY KEY AUTOINCREMENT, -- POC pump ID
+                      sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE, -- sensor info ID
+                      POC INTEGER REFERENCES POC(id) ON DELETE CASCADE,
+                      minimumFlow REAL, -- minimum flow before turning on this pump
+                      maxFlow REAL, -- maximum flow this pump can sustain
+                      delayOn INTEGER, -- # of seconds to turn on before using
+                      delayOff INTEGER, -- # of seconds to turn off before not needed
+                      priority INTEGER -- Order to turn on, 0 -> first, ...
+                     );
+ CREATE VIEW pocPumpInfo AS SELECT * FROM pocPump INNER JOIN sensor ON pocPump.sensor=sensor.id;
+ CREATE TRIGGER pocPumpDelete AFTER DELETE ON pocPump BEGIN
+     DELETE FROM sensor WHERE id=old.sensor;
+   END;
+
+ -- All stations
+ CREATE TABLE station(id INTEGER PRIMARY KEY AUTOINCREMENT, -- station ID
+                      sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE, -- sensor info ID
+                      poc INTEGER REFERENCES POC(id) ON DELETE SET NULL,
+                      crop INTEGER REFERENCES crop(id) ON DELETE SET NULL, -- crop ID
+                      sDate REAL, -- start date for L initial
+                      eDate REAL, -- end date for L final
+                      soil INTEGER REFERENCES soil(id) ON DELETE SET NULL, -- soil ID
+                      sortOrder INTEGER DEFAULT 1000, -- Sort order 0 first ... last
+                      rootNorm REAL DEFAULT 1, -- root depth normalization
+                      userRootDepth REAL, -- user root depth
+                      userInfiltrationRate, -- user infiltration rate mm/m
+                      depletion REAL, -- depletion fraction
+                      userMAD REAL, -- user's maximum allowed depletion, overrides crop MAD
+                      precipRate REAL, -- mm/hour
+                      uniformity REAL DEFAULT 1, -- how uniform is application rate
+                      ETCycleTime INTEGER, -- ET cycle time in seconds
+                      ETSoakTime INTEGER, -- ET soak time in seconds
+                      userCycleTime INTEGER, -- user cycle time in seconds
+                      userSoakTime INTEGER, -- user soak time in seconds
+                      flowDelay INTEGER DEFAULT 60, -- # of seconds to wait until checking flow
+                      flowDuration INTEGER DEFAULT 60, -- # of seconds flow anamoly must happen before alert
+                      measFlow REAL, -- measured flow rate in GPM
+                      userFlow REAL, -- user entered flow rate in GPM
+                      lowFlow REAL, -- low flow rate in GPM
+                      highFlow REAL, -- high flow rate in GPM
+                      fractionRain REAL, -- fraction of rainfall which reaches the ground
+                      fractionSun REAL, -- fraction of sun which reaches the ground
+                      slope REAL, -- slope in degrees
+                      slopeLocation REAL, -- fraction from top to bottom of slope
+                      fractionAdjust REAL -- fraction to adjust ET values by
+                     );
+CREATE VIEW stationInfo AS SELECT * FROM station INNER JOIN sensor ON station.sensor=sensor.id;
+CREATE TRIGGER stationDelete AFTER DELETE ON station BEGIN
+   DELETE FROM sensor where id=old.sensor;
+  END;
+
+-- event specifier
+CREATE TABLE event(id INTEGER PRIMARY KEY AUTOINCREMENT, --  my unique ID
+                   site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site ID
+                   name TEXT, -- Name for this date/time specifier
+                   mode INTEGER DEFAULT 0, -- Event type, 0->water, 1-> event
+                   refDate TEXT DEFAULT CURRENT_DATE, -- reference date
+                   action TEXT, -- description of action to do, dow, dom, cada, ...
+                   val INTEGER DEFAULT 0, -- value to be used with action
+                   startTime INTEGER DEFAULT 0, -- Seconds into day to start
+                   duration INTEGER DEFAULT 0, -- length of window in seconds
+                   qCelestial DEFAULT 0, -- bit 1-> start relative to sunrise
+                                         -- bit 2-> start relative to sunset
+                                         -- bit 3-> stop relative to sunrise
+                                         -- bit 4-> stop relative to sunset
+                   UNIQUE(site, name, mode, refDate, action, startTime, duration, qCelestial)
+                  );
+
+-- A program is a collection of water events
+CREATE TABLE program(id INTEGER PRIMARY KEY AUTOINCREMENT, -- program ID
+                     site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site ID
+                     name TEXT, -- name for this program
+                     maxStations INTEGER DEFAULT 1, -- maximum simultaneous stations for this program
+                     maxFlow REAL DEFAULT 1e10, -- maximum flow rate for this program
+                     UNIQUE (site, name) -- Unique within an organization
+                    );
+CREATE TRIGGER programDelete AFTER DELETE ON program BEGIN
+    DELETE FROM waterWindow WHERE id=old.id;
+  END;
+
+-- station runtimes for user mode
+
+CREATE TABLE stationProgram(station REFERENCES station(id) ON DELETE CASCADE, -- station to act on
+                            pgm REFERENCES program(id) ON DELETE CASCADE, -- program to water in
+                            mode INTEGER DEFAULT 0, -- 0->Off, 1->user, 2->ET
+                            runTime INTEGER DEFAULT 0, -- # of secconds to run in total
+                            priority INTEGER DEFAULT 1000, -- run order priority
+                            UNIQUE(station, pgm) -- one station/program pair
+                           );
+
+-- Water windows
+CREATE TABLE waterWindow(id INTEGER PRIMARY KEY AUTOINCREMENT, -- water window ID
+                         event INTEGER REFERENCES event(id) ON DELETE CASCADE, -- event ID
+                         pgm INTEGER REFERENCES program(id) ON DELETE CASCADE, -- program ID
+                         attractorFrac REAL DEFAULT 0, -- fraction to gravitate towards [0,1]
+                         priority INTEGER DEFAULT 0, -- sort order for windows within a program
+                         UNIQUE (event, pgm)
+                        );
+CREATE VIEW programEvent AS
+  SELECT program.id as pgm,program.site as site,program.name as name,
+         waterWindow.id as wid,attractorFrac,priority,
+         event.id as event,event.name as eventName,mode,refDate,
+         action,val,startTime,duration,qCelestial
+         FROM program
+         INNER JOIN waterWindow ON program.id=waterWindow.pgm
+         INNER JOIN event ON waterWindow.event=event.id;
+CREATE TRIGGER waterWindowRemove AFTER DELETE ON WaterWindow BEGIN
+    DELETE FROM event WHERE id=old.event;
+  END;
+
+-- Groups of stations
+CREATE TABLE grp(id INTEGER PRIMARY KEY AUTOINCREMENT, -- station ID
+                 org INTEGER REFERENCES org(id) ON DELETE CASCADE, -- org ID
+                 site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site ID
+                 name TEXT -- group name
+                );
+
+-- Station groups
+CREATE TABLE stationGroup(grp INTEGER REFERENCES grp(id) ON DELETE CASCADE, -- Group
+                          station INTEGER REFERENCES station(id) ON DELETE CASCADE, -- Station
+                          PRIMARY KEY (grp, station)
+                         );
+
+-- Station state
+CREATE TABLE stationState(station INTEGER REFERENCES station(id) ON DELETE CASCADE, -- station
+                          sTime REAL, -- start time in unix time
+                          sUser INTEGER REFERENCES user(id) ON DELETE SET NULL, -- who started it
+                          sReason TEXT, -- Why was this station started
+                          eTime REAL, -- start time in unix time
+                          eUser INTEGER REFERENCES user(id) ON DELETE SET NULL, -- who ended it
+                          eReason TEXT -- Why was this station stopped
+                         );
+
+-- Event queue
+CREATE TABLE eventQueue(qTime REAL, -- when should this event be executed
+                        user INTEGER REFERENCES user(id) ON DELETE SET NULL, -- who owns the event
+                        event TEXT -- event to execute
+                       );
+
+-- Process IDs
+CREATE TABLE processID(pid INTEGER PRIMARY KEY, -- unix process ID
+                       process TEXT UNIQUE -- process name
+                      );
