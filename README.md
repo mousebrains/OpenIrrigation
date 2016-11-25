@@ -2,6 +2,27 @@
 
 Enterprise class irrigation control software with a well defined hardware interface layer.
 
+  * The feature set includes:
+ 1. Support for one flow sensor per point of connection, POC, with a known K and offset.
+ 2. Support for multiple booster pumps per point of connect with flow thresholds.
+ 3. Support for for multiple organzations.
+ 4. Support for unlimited sites per organization.
+ 5. Support for unlimited number of users and rolls per site/organization/web interface.
+ 6. Support for unlimited number of  controlers per site.
+ 7. Support for an unlimited number of valves.
+ 8. Support for an unlimited number of programs spanning controllers and POCs.
+ 9. Support for multiple prioritiezed water windows per program.
+ 10. Support for sunrise/sunset relative start/end times in water windows.
+ 11. Support for an unlimited number of valves per program.
+ 12. Support for an unlimited number of POCs per program.
+ 13. Support for an flow constrained number of active valves per POC.
+ 14. Support for a maximum number of active valves per controller.
+ 15. Support for low/high flow alerts.
+ 16. Support for low/high current alerts.
+ 17. GPS coordinates for each asset.
+ 18. A reference evapotranspiration, ETr, source per site.
+ 19. Time dependent root depths and crop coefficients
+
   * This software is written in a mix of:
  1. Pyton 3.x for the backend and CGI processing, 
  2. SQLite 3.x for the database, and
