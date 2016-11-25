@@ -29,3 +29,5 @@ Enterprise class irrigation control software with a well defined hardware interf
  3. a dynamic ET depletion layer invoked by the scheduling enging,
  4. a static ET layer to define available water, root depth, ..., and
  5. an HTML5 interface layer to the database.
+
+## The non-web user visible processing is written entirely in English.
