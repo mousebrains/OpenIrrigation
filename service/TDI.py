@@ -206,7 +206,7 @@ class TDICurrent(TDINoArgs):
             self.prevCurr = b
             self.db.write('INSERT INTO currentLog (timestamp,volts,mAmps) VALUES(?,?,?);', \
                           (math.floor(time.time()), float(a) / 10, b))
-            self.logger.info('{} volts {} mAmps'.format(float(a) / 10, b))
+            self.logger.debug('{} volts {} mAmps'.format(float(a) / 10, b))
 
 class TDIArgs(threading.Thread):
     # For TDI command which has a single argument and maybe a suffix
@@ -273,7 +273,7 @@ class TDISensor(TDIArgs):
             if self.checkPrevious(sensor, value):
                 self.db.write('INSERT INTO sensorLog (timestamp,sensor,val,code) VALUES(?,?,?,?);', \
                         (math.floor(time.time()), sensor, value, code));
-                self.logger.info('{} {} {}'.format(sensor, value, code))
+                self.logger.debug('{} {} {}'.format(sensor, value, code))
 
 class TDITwo(TDIArgs):
     # 02XXZZ -- request

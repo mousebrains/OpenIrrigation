@@ -27,10 +27,11 @@ logger.setLevel(logging.DEBUG)
 
 if args.log is None:
     ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
 else:
     ch = logging.FileHandler(args.log)
+    ch.setLevel(logging.INFO)
 
-ch.setLevel(logging.DEBUG)
 
 formatter = logging.Formatter('%(asctime)s: %(threadName)s:%(levelname)s - %(message)s')
 ch.setFormatter(formatter)

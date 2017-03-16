@@ -15,7 +15,6 @@
 class Params(dict): # Parameters loaded from a database
     def __init__(self, db, grp):
         dict.__init__(self)
-        print('db', db, 'grp', grp)
         for row in db.read('SELECT name,val FROM params WHERE grp=?;', (grp,)):
             val = row[1]
             if ',' in val:
