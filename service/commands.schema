@@ -1,0 +1,137 @@
+--
+-- Commands to execute
+--
+-- Nov-2016, Pat Welch, pat@mousebrains.com
+--
+-- The following three lines are for use in sqlite3 command line interface
+--
+-- .headers on
+-- .echo off
+-- .timer off
+
+PRAGMA journal_mode = WALL;
+PRAGMA synchronous = FULL;
+PRAGMA foreign_keys = ON;
+
+-- Interface parameters
+DROP TABLE IF EXISTS params;
+CREATE TABLE params(grp TEXT, -- name of group this parameter belongs to
+                    name TEXT, -- name of parameter
+                    val TEXT, -- value of parameter
+                    PRIMARY KEY (grp, name) ON CONFLICT REPLACE -- combination must be unique
+                   );
+
+-- Select on group
+DROP INDEX IF EXISTS paramsGroup;
+CREATE INDEX paramsGroup ON params (grp);
+
+-- Command queue
+DROP TABLE IF EXISTS commands;
+CREATE TABLE commands(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+                      timestamp REAL, -- when action should occur
+                      cmd INTEGER, -- on=0, off=1
+                      valve INTEGER -- valve number
+                     );
+
+-- Error message results
+DROP TABLE IF EXISTS errorLog;
+CREATE TABLE errorLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+                      timestamp REAL, -- time code was added
+                      val INTEGER -- Error code
+                     );
+
+-- Version message results
+DROP TABLE IF EXISTS versionLog;
+CREATE TABLE versionLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+                        timestamp REAL, -- time code was added
+                        val TEXT -- Version
+                       );
+
+-- Current message results
+DROP TABLE IF EXISTS currentLog;
+CREATE TABLE currentLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+                        timestamp REAL, -- time code was added
+                        volts REAL, -- voltage in volts
+                        mAmps INTEGER -- current in mAmps
+                       );
+
+-- Sensor message results
+DROP TABLE IF EXISTS sensorLog;
+CREATE TABLE sensorLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+                       timestamp REAL, -- time code was added
+                       sensor INTEGER, -- sensor number
+                       val INTEGER, -- reading, Hertz*10
+                       code INTEGER -- reading code, typically 4
+                       );
+
+-- Two message results
+DROP TABLE IF EXISTS twoLog;
+CREATE TABLE twoLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+                    timestamp REAL, -- time code was added
+                    sensor INTEGER, -- sensor number
+                    val INTEGER -- reading
+                   );
+
+-- Pee message results
+DROP TABLE IF EXISTS peeLog;
+CREATE TABLE peeLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+                    timestamp REAL, -- time code was added
+                    sensor INTEGER, -- sensor number
+                    val INTEGER -- reading
+                   );
+
+-- Tee message results
+DROP TABLE IF EXISTS teeLog;
+CREATE TABLE teeLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+                    timestamp REAL, -- time code was added
+                    valve INTEGER, -- sensor number
+                    preI INTEGER, -- pre on current in mAmps
+                    peakI INTEGER, -- peak on current in mAmps
+                    postI INTEGER -- post on current in mAmps
+                   );
+
+-- On/Off results
+DROP TABLE IF EXISTS onOffLog;
+CREATE TABLE onOffLog(
+	id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+	valve INTEGER, -- valve being worked on
+	onTimeStamp REAL, -- When was this valve turned on
+        offTimeStamp REAL, -- When was this valve turned off
+        preCurrent INTEGER, -- pre-current reported by on command
+        peakCurrent INTEGER, -- peak-current reported by on command
+        postCurrent INTEGER, -- on-current reported by on command
+        onCode INTEGER, -- code returned by on command
+        offCode INTEGER -- code returned by off command
+       );
+
+INSERT INTO params VALUES('TDI', 'port', '/dev/ttyUSB0'); -- serial port name
+INSERT INTO params VALUES('TDI', 'baudrate', 9600); -- serial baudrate
+INSERT INTO params VALUES('TDI', 'timeout', 0.1); -- serial read timeout in seconds
+INSERT INTO params VALUES('TDI', 'cmdPeriod', 1); -- Seconds between command lookups
+INSERT INTO params VALUES('TDI', 'cmdTimeout', 1); -- Seconds to wait for reply
+INSERT INTO params VALUES('TDI', 'errorPeriod', 1); -- Seconds between error requests
+INSERT INTO params VALUES('TDI', 'errorTimeout', 1); -- Seconds to wait for reply
+INSERT INTO params VALUES('TDI', 'currentPeriod', 1); -- Seconds between current requests
+INSERT INTO params VALUES('TDI', 'currentTimeout', 1); -- Seconds to wait for reply
+INSERT INTO params VALUES('TDI', 'numberPeriod', 10); -- Seconds between number requests
+INSERT INTO params VALUES('TDI', 'numberTimeout', 1); -- Seconds to wait for reply
+INSERT INTO params VALUES('TDI', 'numberStations', 96); -- # of stations in the system
+INSERT INTO params VALUES('TDI', 'versionPeriod', 86400); -- Seconds between version requests
+INSERT INTO params VALUES('TDI', 'versionTimeout', 1); -- Seconds to wait for reply
+INSERT INTO params VALUES('TDI', 'sensorPeriod', 10); -- Seconds between sensor requests
+INSERT INTO params VALUES('TDI', 'sensorTimeout', 1); -- Seconds to wait for reply
+INSERT INTO params VALUES('TDI', 'sensors', 0); -- which sensors to get readings for
+INSERT INTO params VALUES('TDI', 'twoPeriod', 8); -- Seconds between two requests
+INSERT INTO params VALUES('TDI', 'twoTimeout', 1); -- Seconds to wait for reply
+INSERT INTO params VALUES('TDI', 'twoChannels', '0,1'); -- values to probe
+INSERT INTO params VALUES('TDI', 'peePeriod', 10); -- Seconds between pee requests
+INSERT INTO params VALUES('TDI', 'peeTimeout', 1); -- Seconds to wait for reply
+INSERT INTO params VALUES('TDI', 'peeChannels', '0,1'); -- values to probe
+INSERT INTO params VALUES('TDI', 'teePeriod', 86400); -- Seconds between tee requests
+INSERT INTO params VALUES('TDI', 'teeTimeout', 1); -- Seconds to wait for reply
+INSERT INTO params VALUES('TDI', 'nPeriod', 10); -- Seconds between N requests
+INSERT INTO params VALUES('TDI', 'nTimeout', 1); -- Seconds to wait for reply
+INSERT INTO params VALUES('TDI', 'nStations', '0,1,2,3,4,5'); -- # of stations in the system
+
+.schema
+SELECT * FROM params;

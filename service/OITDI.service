@@ -1,0 +1,27 @@
+# This file is part of OpenIrrigation
+#
+# this service runs the script which communicates with the
+# Tucor TDI controller.
+#
+# There are basic monitoring tasks, flow, voltage, current, ...
+# The database is queried for on/off commands
+#
+# man systemd.unit for parameters
+# man systemd.service for parameters
+# man systemd.exec for parameters
+
+[Unit]
+Description=OpenIrrigation TDI Serial Interface
+
+[Service]
+# Type=simple # Default
+User=__USER__
+Group=__GROUP__
+SupplementaryGroups=dialout
+WorkingDirectory=__LOGDIR__
+ExecStart=__BINDIR__/TDIserver.py --db=__DBDIR__/commands.db --log=__LOGDIR__/TDI.log
+RestartSec=10 
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
