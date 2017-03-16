@@ -1,0 +1,132 @@
+# The communications to the Tucor TDI expanse port is a 9600 baud serial link.
+#
+# The TDI uses a command/response protocol. The sentence structure is:
+#
+# SYNC (0x16)
+# XX length of remainder of sentence in hex, not including XX or ZZ
+# YY...YY sentence  of length XX
+# ZZ 1 byte sum of ordinal values of XXYY...YY 
+#
+# The other end will then acknowledge the sentence was received correctly with an
+# ACK (0x06) character
+#
+# If there is a transmission problem it will send a NAK (0x15) character
+#
+# If the sentence length and checksum are correct but the sentence content is invalid,
+# improper command, invalid number of arguments, out of range arguments, .. a
+# Z repsonse is sent.
+#
+# Sentences are:
+# --- Curent and voltage information
+# 0U -- Request 
+# 1UVVVVCCCC -- Reply, 
+#   VVVV is voltage*10 in hex, 
+#   CCCC is mAmps in hex
+#
+# -- Errors
+# 0E -- Request
+# 1EXX -- Reply, XX is the error state in hex
+#
+# -- Sensors
+# 0SXX -- Request information for sensor XX in hex
+# 1SXXYYZZZZ -- Reply, 
+#   XX sensor, 
+#   YY state, 
+#   ZZZZ is frequency * 10
+#
+#           XX 00 -> flow sensor 1
+#           XX 01 -> flow sensor 2
+#           XX 02 -> flow sensor 3
+#           XX 03 -> flow sensor 4
+#
+#           YY 00 -> old reading
+#           YY 02 -> no response/never seen
+#           YY 04 -> new reading
+#
+# -- Number of stations
+# 0#XX -- Request, XX so far has only been 60
+# 1#XX -- Reply, 
+#   XX so far has only been 0x60 -> 96 decimal
+#   XX in [1,200] decimal
+#
+# -- 2-wire ??
+# 02XXYY -- Request, XX is 0 or 1, YY is 0, 1, or FF
+# 12XXYY -- Reply, XX is same as request, YY is 0, 1, or 2
+#   XX is 0 or 1
+#   YY is 0, 1, or FF
+#
+# -- Wire Path ??
+# 0PXXYY -- Request
+# 1PXXYYYY -- Reply, so far XX is 0 or 1 and YYYY is 000A
+#   XX is 0 or 1
+#   YY is 0, 1, or FF
+#
+# -- Valve on
+# 0AXXYY -- Request to turn on valve XX in hex
+# 1AXXZZAAAAPPPPBBBB -- Reply, 
+#   XX is in [0,199] decimal, station 1 -> XX=0, ...
+#                             station 200 -> XX=199,
+#                             master valve 1 -> XX=240, ...
+#                             master valve 4 -> XX=243
+#
+#   ZZ 00 -> valid?
+#   ZZ 08 -> failed?
+#   AAAA pre on mAmps, 
+#   PPPP peak mAmps, and 
+#   BBBB post on mAmps
+#
+# N.B. Pumps are just a normal valve
+#
+# -- Valve off
+# 0DXX -- Request 
+# 1DXXYY -- Reply
+#   XX is the valve in [0,199] decimal, master valve [240-243], or 0xFF(255) is all
+#   YY 00 -> normal
+#   YY 02 -> nothing to turn off
+#
+# -- Firmware version
+# 0V -- Request firmware on TDI version
+# 1VYYYYY -- Reply, 
+#   YYYY is 3.0b4
+#
+# -- Improper format --
+# An improperly formated sentence returns a Z reply:
+#
+# 1ZCXXYY
+#
+#   C -- is the command from the improperly formated sentence
+#   XX -- 02 too short 01 too long
+#   YY --
+#
+#   Commands:
+#   A -- Valve On
+#        Request XXYY
+#        Reply XXYYAAAABBBBCCCC
+#              XX station number
+#              YY status 0-Okay, 8-bad
+#              AAAA Pre on mAmps
+#              BBBB Peak on mAmps
+#              CCCC Post on mAmps
+#   D -- Valve Off
+#   E -- Errors
+#   N -- XXYY returns ZZ
+#   P --
+#   S -- Sensor
+#   T -- Testing
+#        Request XX station number
+#        Returns XXYYAAAABBBBCCCC
+#                XX station number
+#                YY status 0-Okay, 1-, 8-bad
+#                AAAA Pre on mAmps
+#                BBBB Peak on mAmps
+#                CCCC Post on mAmps
+#   U -- Current
+#        Returns XXXXYYYY
+#                XXXX volts * 10
+#                YYYY mAmps
+#   V -- firmware version
+#   2 -- 
+#   # -- Number of valves 
+#
+# Nov-2016, Pat Welch, pat@mousebrains.com
+#
