@@ -137,6 +137,7 @@ class TDINoArgs(threading.Thread):
         q = queue.Queue()
         while True:
             self.__tdi.put(sentence, q)
+            stime = time.time()
             try:
                 reply = q.get(self.__timeout)
                 if reply[0:2] == prefix:
@@ -145,7 +146,7 @@ class TDINoArgs(threading.Thread):
                     self.logger.error('Bad reply {} for {}'.format(reply, sentence))
             except Exception as e:
                 self.logger.error('Error getting reply for {}, {}'.format(sentence, e))
-            time.sleep(self.__dt)
+            time.sleep(max(1, self.__dt - (time.time() - stime)))
 
 class TDINumber(TDINoArgs):
     # 0#XX -- request
@@ -241,6 +242,7 @@ class TDIArgs(threading.Thread):
             prefixes.append(bytes('1{}{:02X}'.format(self.letter, sensor), 'UTF-8'))
         q = queue.Queue()
         while True:
+            stime = time.time()
             for i in range(len(sentences)):
                 sentence = sentences[i]
                 prefix = prefixes[i]
@@ -253,7 +255,7 @@ class TDIArgs(threading.Thread):
                         self.logger.error('Bad reply {} for {}'.format(reply, sentence))
                 except Exception as e:
                     self.logger.error('Error getting reply for {}, {}'.format(sentence, e))
-            time.sleep(self.__dt)
+            time.sleep(max(1, self.__dt - (time.time() - stime)))
 
 class TDISensor(TDIArgs):
     # 0SXX -- request
@@ -315,34 +317,6 @@ class TDIPee(TDIArgs):
                         (math.floor(time.time()), sensor, value));
             self.logger.info('{} {}'.format(sensor, value))
 
-class TDITee(TDIArgs):
-    # 0TXXYY -- request
-    # 1TXXYYAAAABBBBCCCC -- reply
-    #   XX -- is sensor number
-    #   YY -- has always been 00
-    #   AAAA -- pre on current
-    #   BBBB -- peak on current
-    #   CCCC -- post on current
-    def __init__(self, params, tdiSerial, db, logger):
-        TDIArgs.__init__(self, tdiSerial, db, logger, 'TDITee', 'T', \
-                params['teePeriod'], params['teeTimeout'], 0)
-        self.suffix = '00'
-        self.sensors = []
-        for i in range(params['numberStations']):
-            self.sensors.append(i)
-        for i in range(240,244): # Master valves
-            self.sensors.append(i)
-
-    def parseReply(self, reply):
-        valve = int(reply[2:4], 16)
-        preI  = int(reply[6:10], 16)
-        peakI = int(reply[10:14], 16)
-        postI = int(reply[14:], 16)
-        if self.checkPrevious(valve, (preI, peakI, postI)):
-            self.db.write('INSERT INTO teeLog (timestamp,valve,preI,peakI,postI) VALUES(?,?,?,?,?);', \
-                        (math.floor(time.time()), valve, preI, peakI, postI));
-            self.logger.info('Stn={} pre={} peak={} post={}'.format(valve, preI, peakI, postI))
-
 class TDICommand(threading.Thread):
     # Receive commands from a database queue, 
     # send out appropriate commands to serial
@@ -356,6 +330,33 @@ class TDICommand(threading.Thread):
         self.dt = params['cmdPeriod']
         self.timeout = params['cmdTimeout']
         self.q = queue.Queue()
+
+    def __teeCmd(self, valve):
+        # 0TXXYY -- request
+        # 1TXXYYAAAABBBBCCCC -- reply
+        #   XX -- is sensor number
+        #   YY -- has always been 00
+        #   AAAA -- pre on current
+        #   BBBB -- peak on current
+        #   CCCC -- post on current
+        sentence = self.tdi.mkSentence('0T{:02X}00'.format(valve))
+        self.tdi.put(sentence, self.q)
+        try:
+            reply = self.q.get(timeout=self.timeout)
+            if reply[0:2] == b'1T' and reply[2:4] == sentence[5:7]:
+                code = int(reply[4:6], 16)
+                pre = int(reply[6:10], 16)
+                peak = int(reply[10:14], 16)
+                post = int(reply[14:], 16)
+                self.db.write('INSERT INTO teeLog (timestamp,valve,preCurrent,peakCurrent,postCurrent) VALUES (?,?,?,?,?);', \
+                        (math.floor(time.time()), valve, pre, peak, post))
+                self.logger.info('T {} on pre {} peak {} post {}'.format( \
+                        valve, pre, peak, post))
+
+            else:
+                self.logger.error('Invalid reply, {}, to {}'.format(reply, sentence))
+        except queue.Empty:
+            self.logger.error('Timed out for {}'.format(sentence))
 
     def __openCmd(self, valve):
         sentence = self.tdi.mkSentence('0A{:02X}00'.format(valve))
@@ -408,16 +409,19 @@ class TDICommand(threading.Thread):
         valve = row[2]
         if cmd == 0: # On
             self.__openCmd(valve)
-        else:
+        elif cmd == 1: # Off
             self.__closeCmd(valve)
+        else: # T command
+            self.__teeCmd(valve)
         self.db.write('DELETE FROM commands WHERE id=?;', (id,))
 
     def run(self):
         self.logger.info('Starting dt={} timeout={}'.format(self.dt, self.timeout))
         while True:
+            stime = time.time()
             rows = self.db.read('SELECT id,cmd,valve FROM commands WHERE timestamp<? ORDER BY timestamp,cmd;', \
                         (math.ceil(time.time() + 0.5),))
             if rows:
                 for row in rows:
                     self.process(row)
-            time.sleep(self.dt)
+            time.sleep(max(1, self.dt - (time.time() - stime)))

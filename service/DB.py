@@ -23,11 +23,8 @@ class DB(sqlite3.Connection):
         self.__lock.release()
 
     def read(self, sql, args):
-        print(sql)
-        print(args)
         self.__lock.acquire()
         self.__curr.execute(sql, args)
         rows = self.__curr.fetchall()
-        print(rows)
         self.__lock.release()
         return rows

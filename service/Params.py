@@ -12,10 +12,13 @@
 #            a float, or 
 #            leading/trailing blanks are stripped off
 
+import sqlite3
+
 class Params(dict): # Parameters loaded from a database
-    def __init__(self, db, grp):
+    def __init__(self, dbfn, grp):
         dict.__init__(self)
-        for row in db.read('SELECT name,val FROM params WHERE grp=?;', (grp,)):
+        db = sqlite3.connect(dbfn)
+        for row in db.execute('SELECT name,val FROM params WHERE grp=?;', (grp,)):
             val = row[1]
             if ',' in val:
                 a = []
@@ -26,6 +29,7 @@ class Params(dict): # Parameters loaded from a database
                 val = self.__toNum(val)
 
             self[row[0]] = val
+        db.close()
 
     def __toNum(self, val):
         try:
