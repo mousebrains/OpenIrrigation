@@ -18,7 +18,7 @@ INSTALL = install --compare --group=$(group) --owner=$(user) --backup -D
 install: install-javascript
 
 install-javascript:
-	$(INSTALL) --target-directory=$(binDir) --mode=0444 jquery-3.2.0.min.js jquery-3.2.0.min.map
+	$(INSTALL) --target-directory=$(jsDir) --mode=0444 jquery-3.2.0.min.js jquery-3.2.0.min.map
 
 clean:
 	$(RM) $(jsDir)/jquery-3.2.0*
