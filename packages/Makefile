@@ -20,7 +20,8 @@ install: install-javascript
 install-javascript:
 	$(INSTALL) --mode=0444 jquery-3.2.0.min.js $(jsDir)/jquery.min.js
 	$(INSTALL) --mode=0444 jquery-3.2.0.min.map $(jsDir)/jquery.min.map
-	$(INSTALL) --target-directory=$(jsDir) --mode=0444 Chart.bundle.min.js
+	$(INSTALL) --target-directory=$(jsDir) --mode=0444 Chart.min.js 
+	$(INSTALL) --target-directory=$(jsDir) --mode=0444 moment.min.js 
 
 clean:
-	$(RM) $(jsDir)/jquery* $(jsDir)/Chart.bundle.*
+	$(RM) $(jsDir)/jquery.min.* $(jsDir)/Chart.min.js $(jsDir)/moment.min.js
