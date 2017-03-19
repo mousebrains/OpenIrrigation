@@ -28,6 +28,8 @@ CREATE TABLE errorLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                       timestamp REAL, -- time code was added
                       val INTEGER -- Error code
                      );
+DROP INDEX IF EXISTS errorTS;
+CREATE INDEX errorTS on errorLog (timestamp);
 
 -- Version message results
 DROP TABLE IF EXISTS versionLog;
@@ -35,6 +37,8 @@ CREATE TABLE versionLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record I
                         timestamp REAL, -- time code was added
                         val TEXT -- Version
                        );
+DROP INDEX IF EXISTS versionTS;
+CREATE INDEX versionTS on versionLog (timestamp);
 
 -- Current message results
 DROP TABLE IF EXISTS currentLog;
@@ -43,6 +47,8 @@ CREATE TABLE currentLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record I
                         volts REAL, -- voltage in volts
                         mAmps INTEGER -- current in mAmps
                        );
+DROP INDEX IF EXISTS currentTS;
+CREATE INDEX currentTS on currentLog (timestamp);
 
 -- Sensor message results
 DROP TABLE IF EXISTS sensorLog;
@@ -50,8 +56,11 @@ CREATE TABLE sensorLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                        timestamp REAL, -- time code was added
                        sensor INTEGER, -- sensor number
                        val INTEGER, -- reading, Hertz*10
-                       code INTEGER -- reading code, typically 4
+                       code INTEGER, -- reading code, typically 4
+		       flow REAL -- val processed into a physical value
                        );
+DROP INDEX IF EXISTS sensorTS;
+CREATE INDEX sensorTS on sensorLog (timestamp);
 
 -- Two message results
 DROP TABLE IF EXISTS twoLog;
@@ -78,6 +87,8 @@ CREATE TABLE teeLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                     peakCurrent INTEGER, -- peak on current in mAmps
                     postCurrent INTEGER -- post on current in mAmps
                    );
+DROP INDEX IF EXISTS teeTS;
+CREATE INDEX teeTS on teeLog (timestamp,valve);
 
 -- On/Off results
 DROP TABLE IF EXISTS onOffLog;
@@ -92,5 +103,7 @@ CREATE TABLE onOffLog(
         onCode INTEGER, -- code returned by on command
         offCode INTEGER -- code returned by off command
        );
+DROP INDEX IF EXISTS onOffTS;
+CREATE INDEX onOffTS on onOffLog (onTimeStamp,offTimeStamp,valve);
 
 .schema

@@ -18,8 +18,14 @@
  9. Upgrade packages, "sudo apt-get upgrade"
  1. Install VIM if you use it for syntax highlighting. "sudo apt-get install vim"
  1. Install git. "sudo apt-get install git"
- 2. Insatall SQLite, "sudo apt-get sqlite3"
- 2. Insatall Python3, "sudo apt-get python3"
- # 2. Insatall NumPy, "sudo apt-get python3-numpy"
- # 2. Insatall Nose if using NumPy benchmarking, "sudo apt-get python3-nose"
+ 2. Insatall SQLite, "sudo apt-get install sqlite3"
+ 2. Insatall Python3, "sudo apt-get install python3"
+ 3. Install pyserial, "sudo apt-get install python3-serial"
+ # 2. Insatall NumPy, "sudo apt-get install python3-numpy"
+ # 2. Insatall Nose if using NumPy benchmarking, "sudo apt-get install python3-nose"
  8. sudo adduser irrigation and set appropriate options
+ 9. Install the webserver:
+   9. Install NGINX, "sudo apt-get install nginx"
+   9. Install PHP7.0-FPM, "sudo apt-get install php7.0-fpm"
+   9. Follow instructions at "https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-nginx-in-ubuntu-16-04" for setting up NGINX for SSL. Please note the perfect forwarding key generating can take a long time on a Pi. I used a faster computer. I also changed all my key lengths to 4096.
+   9. Uncomment lines in /etc/nginx/sites-enabled/default for php-fpm setup
