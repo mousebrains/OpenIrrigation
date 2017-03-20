@@ -2,22 +2,18 @@
 # Install scripts into appropriate directories for a Raspbian Stretch system
 # with a user irrigation
 #
-# Where to install the .service files
-serviceDir = /etc/systemd/system
 
-user = irrigation
-group = $(user)
-userDir = /home/$(user)
-webDir = $(userDir)/public_html
+include ../Makefile.params
 
-INSTALL = install --compare --group=$(group) --owner=$(user) --backup -D
+.PHONY: install clean
 
-.PHONY: install
+SRC = index.php status.php
+DEST = $(SRC:%=$(WEBDIR)/%)
 
 install: 
-	$(INSTALL) --target-directory=$(webDir) index.php status.php
+	$(INSTALL) --target-directory=$(WEBDIR) $(SRC)
 	$(MAKE) -C js $@
 
 clean:
-	$(RM) $(webDir)/index.php $(webDir)/status.php
+	$(RM) $(DEST)
 	$(MAKE) -C js $@

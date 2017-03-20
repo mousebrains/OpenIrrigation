@@ -2,27 +2,15 @@
 # Install scripts into appropriate directories for a Raspbian Stretch system
 # with a user irrigation
 #
-# Where to install the .service files
-serviceDir = /etc/systemd/system
 
-user = irrigation
-group = $(user)
-userDir = /home/$(user)
-webDir = $(userDir)/public_html
-jsDir = $(webDir)/js
+include ../Makefile.params
 
-INSTALL = install --compare --group=$(group) --owner=$(user) --backup -D
+.PHONY: install clean
 
-.PHONY: install install-javascript
-
-install: install-javascript
-
-install-javascript:
-	$(INSTALL) --mode=0444 jquery-3.2.0.min.js $(jsDir)/jquery.min.js
-	$(INSTALL) --mode=0444 jquery-3.2.0.min.map $(jsDir)/jquery.min.map
-	chown -R $(user):$(group) $(jsDir)
-	# $(INSTALL) --target-directory=$(jsDir) --mode=0444 Chart.min.js 
-	# $(INSTALL) --target-directory=$(jsDir) --mode=0444 moment.min.js 
+install:
+	$(INSTALL) --mode=0444 jquery-3.2.0.min.js $(JSDIR)/jquery.min.js
+	$(INSTALL) --mode=0444 jquery-3.2.0.min.map $(JSDIR)/jquery.min.map
+	chown -R $(USER):$(GROUP) $(JSDIR)
 
 clean:
-	$(RM) $(jsDir)/jquery.min.* # $(jsDir)/Chart.min.js $(jsDir)/moment.min.js
+	$(RM) $(JSDIR)/jquery.min.*

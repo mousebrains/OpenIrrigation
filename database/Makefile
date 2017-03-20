@@ -2,27 +2,21 @@
 # Install scripts into appropriate directories for a Raspbian Stretch system
 # with a user irrigation
 #
-user = irrigation
-group = $(user)
-userDir = /home/$(user)
-dbDir = $(userDir)/database
 
-INSTALL = install --compare --group=$(group) --owner=$(user) --backup -D
+include ../Makefile.params
 
-.PHONY: install 
+SCHEMA = commands.schema params.schema
+SRC = $(SCHEMA:%.schema=%.db)
+DEST = $(SRC:%=$(DBDIR)/%)
 
-install: $(dbDir)/commands.db $(dbDir)/params.db
+.PHONY: install clean
+
+install: $(DEST)
 
 clean:
-	$(RM) $(dbDir)/commands.db
-	$(RM) $(dbDir)/params.db
+	$(RM) $(DEST)
 
-$(dbDir)/commands.db: commands.schema
+$(DBDIR)/%.db: %.schema %.init
 	$(INSTALL) --directory $(@D)
-	sqlite3 $@ < $<
-	chown -R $(user):$(group) $@
-
-$(dbDir)/params.db: params.schema
-	$(INSTALL) --directory $(@D)
-	sqlite3 $@ < $<
-	chown -R $(user):$(group) $@
+	cat $^ | sqlite3 $@ < /dev/null
+	chown -R $(user):$(group) $(@D)

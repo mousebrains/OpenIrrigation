@@ -1,0 +1,10 @@
+USER = irrigation
+GROUP = $(USER)
+USERDIR = /home/$(USER)
+LOGDIR = $(USERDIR)/logs
+BINDIR = $(USERDIR)/bin
+DBDIR = $(USERDIR)/database
+WEBDIR = $(USERDIR)/public_html
+JSDIR = $(WEBDIR)/js
+
+INSTALL = install --compare --group=$(GROUP) --owner=$(USER) --backup -D
