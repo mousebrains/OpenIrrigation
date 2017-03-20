@@ -18,5 +18,5 @@ clean:
 
 $(DBDIR)/%.db: %.schema %.init
 	$(INSTALL) --directory $(@D)
-	cat $^ | sqlite3 $@ < /dev/null
+	for i in $(^); do sqlite3 $@ <$$i; done
 	chown -R $(user):$(group) $(@D)

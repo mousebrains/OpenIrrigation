@@ -20,34 +20,171 @@ CREATE TABLE params(grp TEXT, -- name of group this parameter belongs to
                     val TEXT, -- value of parameter
                     PRIMARY KEY (grp, name) ON CONFLICT REPLACE -- combination must be unique
                    );
-
--- Select on group
 DROP INDEX IF EXISTS paramsGroup;
 CREATE INDEX paramsGroup ON params (grp);
 
-INSERT INTO params VALUES('TDI', 'port', '/dev/ttyUSB0'); -- serial port name
-INSERT INTO params VALUES('TDI', 'baudrate', 9600); -- serial baudrate
-INSERT INTO params VALUES('TDI', 'timeout', 0.1); -- serial read timeout in seconds
-INSERT INTO params VALUES('TDI', 'cmdPeriod', 1); -- Seconds between command lookups
-INSERT INTO params VALUES('TDI', 'cmdTimeout', 1); -- Seconds to wait for reply
-INSERT INTO params VALUES('TDI', 'errorPeriod', 1); -- Seconds between error requests
-INSERT INTO params VALUES('TDI', 'errorTimeout', 1); -- Seconds to wait for reply
-INSERT INTO params VALUES('TDI', 'currentPeriod', 1); -- Seconds between current requests
-INSERT INTO params VALUES('TDI', 'currentTimeout', 1); -- Seconds to wait for reply
-INSERT INTO params VALUES('TDI', 'numberPeriod', 10); -- Seconds between number requests
-INSERT INTO params VALUES('TDI', 'numberTimeout', 1); -- Seconds to wait for reply
-INSERT INTO params VALUES('TDI', 'numberStations', 96); -- # of stations in the system
-INSERT INTO params VALUES('TDI', 'versionPeriod', 86400); -- Seconds between version requests
-INSERT INTO params VALUES('TDI', 'versionTimeout', 1); -- Seconds to wait for reply
-INSERT INTO params VALUES('TDI', 'sensorPeriod', 10); -- Seconds between sensor requests
-INSERT INTO params VALUES('TDI', 'sensorTimeout', 1); -- Seconds to wait for reply
-INSERT INTO params VALUES('TDI', 'sensors', 0); -- which sensors to get readings for
-INSERT INTO params VALUES('TDI', 'twoPeriod', 8); -- Seconds between two requests
-INSERT INTO params VALUES('TDI', 'twoTimeout', 1); -- Seconds to wait for reply
-INSERT INTO params VALUES('TDI', 'twoChannels', '0,1'); -- values to probe
-INSERT INTO params VALUES('TDI', 'peePeriod', 10); -- Seconds between pee requests
-INSERT INTO params VALUES('TDI', 'peeTimeout', 1); -- Seconds to wait for reply
-INSERT INTO params VALUES('TDI', 'peeChannels', '0,1'); -- values to probe
+-- Site information
+DROP TABLE IF EXISTS site;
+CREATE TABLE site(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                  name TEXT, -- descriptive name 
+                  addr TEXT, -- street address 
+                  timezone TEXT, -- timezone
+                  latitude REAL, -- latitude in decimal degrees
+                  longitude REAL, -- longitude in decimal degrees
+                  elevation REAL -- elevation above MSL in feet
+                 );
 
-.schema
-SELECT * FROM params;
+-- Controler information
+DROP TABLE IF EXISTS controller;
+CREATE TABLE controller(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                        site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
+                        name TEXT, -- descriptive name
+                        latitude REAL, -- latitude in decimal degrees
+                        longitude REAL, -- longitude in decimal degrees
+                        driver TEXT, -- device driver
+                        maxStations INTEGER DEFAULT 1, -- max # of stations on at a time
+                        maxCurrent INTEGER DEFAULT 9990, -- max mAmps
+                        delay INTEGER DEFAULT 1, -- delay between truning on stations in s
+                        make TEXT, -- manufacturer
+                        model TEXT, -- model
+                        installed INTEGER, -- date installed in UTC
+                        notes TEXT -- Extra information
+                       );
+
+-- sensors/valves
+DROP TABLE IF EXISTS sensor;
+CREATE TABLE sensor(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                    controller INTEGER REFERENCES controller(id) ON DELETE CASCADE, -- ctl's id
+                    name TEXT, -- descriptive name
+                    latitude REAL, -- latitude in decimal degrees
+                    longitude REAL, -- longitude in decimal degrees
+                    passiveCurrent REAL DEFAULT 0.5, -- current when not activated in mAmps
+                    activeCurrent REAL DEFAULT 0.5, -- current when activated in mAmps
+                    devType INTEGER DEFAULT 0, -- device type, 0=solenoid, 1=sensor, ...
+                    driver TEXT, -- device driver
+                    addr INTEGER, -- device address in controller space
+                    make TEXT, -- manufacturer
+                    model TEXT, -- model
+                    installed INTEGER, -- date installed in UTC
+                    notes TEXT -- Extra information
+                   );
+
+-- Point of connect
+DROP TABLE IF EXISTS poc;
+CREATE TABLE poc(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                 site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
+                 name TEXT, -- descriptive name
+                 targetFlow REAL, -- target flow in GPM
+                 maxFlow REAL, -- maximum allowed flow in GPM
+                 delayOn INTEGER DEFAULT 0, -- delay between turning on multiple stations
+                 delayOff INTEGER DEFAULT 0 -- delay between turning off multiple stations
+                );
+
+-- Point of connect flow
+DROP TABLE IF EXISTS pocFlow;
+CREATE TABLE pocFlow(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                     poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- poc's id
+                     sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE, -- sensor's id
+                     name TEXT, -- descriptive name
+                     make TEXT, -- manufacturer
+                     model TEXT, -- model
+                     toHertz REAL DEFAULT 1, -- reading to Hertz
+                     K REAL DEFAULT 1, -- Hertz -> GPM (reading * toHertz + offset) * K 
+                     offset REAL DEFAULT 1 -- offset of Hertz
+                    );
+
+-- Point of connect master valve
+DROP TABLE IF EXISTS pocMV;
+CREATE TABLE pocMV(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                   poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- poc's id
+                   sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE, -- sensor's id
+                   name TEXT, -- descriptive name
+                   make TEXT, -- manufacturer
+                   model TEXT, -- model
+                   qNormallyOpen INTEGER DEFAULT 1 -- 0->NC, 1->NO
+                  );
+                  
+-- Point of connect pump
+DROP TABLE IF EXISTS pocPump;
+CREATE TABLE pocPump(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                     poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- poc's id
+                     sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE, -- sensor's id
+                     name TEXT, -- descriptive name
+                     make TEXT, -- manufacturer
+                     model TEXT, -- model
+                     minFlow REAL, -- minimum flow before turning on this pump
+                     maxFlow REAL, -- maximum flow this pump can sustain
+                     delayOn INTEGER, -- # of seconds to turn on before using
+                     delayOff INTEGER, -- # of seconds to turn off before not needed
+                     priority INTEGER -- Order to turn on, 0->first, ...
+                    );
+
+-- Station 
+DROP TABLE IF EXISTS station;
+CREATE TABLE station(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                     poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- poc's id
+                     sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE, -- sensor's id
+                     name TEXT, -- descriptive name
+                     station INTEGER DEFAULT id, -- user visible station number
+                     make TEXT, -- manufacturer
+                     model TEXT, -- model
+                     sortOrder INTEGER, -- display sorting order
+                     cycleTime INTEGER, -- maximum cycle time in sec
+                     soakTime INTEGER, -- minimum soak time in sec
+		     measuredFlow REAL, -- measured flow in GPM
+		     userFlow REAL, -- user input in GPM
+                     lowFlowFrac REAL DEFAULT 0, -- frac of meas/user flow for alert
+                     highFlowFrac REAL DEFAULT 3, -- frac of meas/user flow for alert
+                     onDelay INTEGER DEFAULT 60, -- delay after on before flow alerts
+                     offDelay INTEGER DEFAULT 60 -- delay after off before flow alerts
+		    );
+
+-- progams, a collection of water events
+DROP TABLE IF EXISTS program;
+CREATE TABLE program(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                     site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
+                     name TEXT UNIQUE, -- descriptive name
+                     mode INTEGER DEFAULT 1, -- 0->off, 1->active
+                     maxStations INTEGER, -- max # simultaneous stations
+                     maxFlow REAL -- max flow target flow
+                    );	
+
+-- stations in each program
+DROP TABLE IF EXISTS programStations;
+CREATE TABLE programStations(pgm REFERENCES program(id) ON DELETE CASCADE, -- program's id
+                             stn REFERENCES station(id) ON DELETE CASCADE, -- station's id
+                             mode INTEGER, -- operating mode, 0=off, 1=user, 2=ET
+                             runTime INTEGER, -- total runtime in sec
+                             priority INTEGER, -- run priority
+                             UNIQUE (pgm, stn) -- one station/program pair
+                            );
+
+-- event specifier
+DROP TABLE IF EXISTS event;
+CREATE TABLE event(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                   site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
+                   name TEXT, -- descriptive name
+                   mode INTEGER DEFAULT 0, -- 0=water, 1=event
+                   action INTEGER, -- action to take: 0=day-of-week, 1=n-days
+                   val INTEGER, -- value to be used with action,
+                                -- For dow, val is a bitmask, 1-Sun, 2-M, 4=Tu, ...
+                   refDate INTEGER, -- reference date for action
+                   startTime INTEGER, -- seconds into day to start
+                   duration INTEGER, -- duration of window in seconds
+                   qCelestial INTEGER DEFAULT 0, -- bit 1-> start relative to sunrise
+                                                 -- bit 2-> start relative to sunset
+                                                 -- bit 3-> stop relative to sunrise
+                                                 -- bit 4-> stop relative to sunset
+                   UNIQUE(site,name,mode,refDate,action,startTime,duration,qCelestial)
+                  );
+
+-- water windows
+DROP TABLE IF EXISTS programEvent;
+CREATE TABLE programEvent(pgm REFERENCES program(id) ON DELETE CASCADE, -- program's id
+                          event REFERENCES event(id) ON DELETE CASCADE, -- event's id
+                          attractorFrac REAL DEFAULT 0, -- fraction to gravitate towards [0,1]
+                          priority INTEGER DEFAULT 0, -- sort order for windows within a program
+                          UNIQUE (event,pgm) -- Only one entry per event/program combination
+                         );
+
+-- .schema

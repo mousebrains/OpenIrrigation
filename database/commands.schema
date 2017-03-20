@@ -106,4 +106,4 @@ CREATE TABLE onOffLog(
 DROP INDEX IF EXISTS onOffTS;
 CREATE INDEX onOffTS on onOffLog (onTimeStamp,offTimeStamp,valve);
 
-.schema
+-- .schema
