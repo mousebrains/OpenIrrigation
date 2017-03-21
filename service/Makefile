@@ -10,7 +10,7 @@ SERVICEDIR = /etc/systemd/system
 SRC = OITDI.service
 DEST = $(SRC:%=$(SERVICEDIR)/%)
 
-.PHONY: install install-services install-logs clean retart status
+.PHONY: install install-services install-logs clean start stop retart status
 
 install: install-services install-logs
 
@@ -36,5 +36,5 @@ restart:
 	systemctl daemon-reload
 	for i in $(SRC); do systemctl restart $$i; done
 
-status:
-	for i in $(SRC); do systemctl status $$i; done
+start stop status:
+	for i in $(SRC); do systemctl $@ $$i; done

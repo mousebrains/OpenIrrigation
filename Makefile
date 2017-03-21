@@ -1,4 +1,4 @@
-.phony: all install clean restart status
+.phony: all install clean start stop restart status
 
 all: install
 
@@ -9,5 +9,5 @@ install clean:
 	$(MAKE) -C public_html $@
 	$(MAKE) -C service $@
 
-restart status:
+start stop restart status:
 	$(MAKE) -C service $@
