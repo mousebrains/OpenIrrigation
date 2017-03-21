@@ -5,23 +5,20 @@
 
 include ../Makefile.params
 
-SCHEMA = commands.schema params.schema
-SRC = $(SCHEMA:%.schema=%.db)
+SRC = commands.db params.db
 DEST = $(SRC:%=$(DBDIR)/%)
 
 .PHONY: install clean
 
-install: $(DEST)
+install: $(SRC)
+	$(INSTALL) --target-directory=$(DBDIR) $(SRC)
+	chown -R $(USER):$(GROUP) $(DBDIR)
 
 clean:
-	$(RM) $(DEST)
+	$(RM) $(SRC) $(DEST)
 
-$(DBDIR)/commands.db: commands.schema
-	$(INSTALL) --directory $(@D)
+commands.db: commands.schema
 	sqlite3 $@ <$<
-	chown -R $(user):$(group) $(@D)
 
-$(DBDIR)/params.db: params.schema params.init params.soil params.crop params.site
-	$(INSTALL) --directory $(@D)
+params.db: params.schema params.init params.soil params.crop params.site
 	for i in $^; do sqlite3 $@ <$$i; done
-	chown -R $(user):$(group) $(@D)
