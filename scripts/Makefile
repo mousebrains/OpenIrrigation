@@ -1,6 +1,6 @@
 #
 # Install scripts into appropriate directories for a Raspbian Stretch system
-# with a user irrigation
+# with a user/group
 #
 
 include ../Makefile.params
