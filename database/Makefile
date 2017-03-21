@@ -16,7 +16,12 @@ install: $(DEST)
 clean:
 	$(RM) $(DEST)
 
-$(DBDIR)/%.db: %.schema %.init
+$(DBDIR)/commands.db: commands.schema
 	$(INSTALL) --directory $(@D)
-	for i in $(^); do sqlite3 $@ <$$i; done
+	sqlite3 $@ <$<
+	chown -R $(user):$(group) $(@D)
+
+$(DBDIR)/params.db: params.schema params.init params.soil params.crop params.site
+	$(INSTALL) --directory $(@D)
+	for i in $^; do sqlite3 $@ <$$i; done
 	chown -R $(user):$(group) $(@D)

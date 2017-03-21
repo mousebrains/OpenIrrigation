@@ -23,6 +23,51 @@ CREATE TABLE params(grp TEXT, -- name of group this parameter belongs to
 DROP INDEX IF EXISTS paramsGroup;
 CREATE INDEX paramsGroup ON params (grp);
 
+-- Soil types
+DROP TABLE IF EXISTS soil;
+CREATE TABLE soil(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                  name TEXT UNIQUE, -- name of the soil, clay, ...
+                  paw REAL, -- plant available water mm/m
+                  infiltration REAL, -- mm/hour
+                  infiltrationSlope REAL, -- mm/hour/% change as a function of slope
+                  rootNorm REAL DEFAULT 1 -- multiple crop root depth by this value
+                 );
+
+-- All Crops
+-- source: http://www.kimberly.uidaho.edu/water/fao56/fao56.pdf
+DROP TABLE IF EXISTS crop;
+CREATE TABLE crop(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                  name TEXT UNIQUE, -- name of the crop
+                  plantDate TEXT, -- roughly when plantted
+                  Lini INTEGER, -- days of initial stage
+                  Ldev INTEGER, -- days of development stage
+                  Lmid INTEGER, -- days of mid-season stage
+                  Llate INTEGER, -- days of final stage
+                  KcInit REAL, -- Kc initial
+                  KcMid REAL, -- Kc mid
+                  KcEnd REAL, -- Kc at end
+                  height REAL, -- height of plant (m)
+                  depth REAL, -- root depth (m)
+                  MAD REAL, -- maximum allowed depletion without stress at 5mm/day ETc
+                  comment TEXT -- Comment on coefficients
+                 );
+
+-- All user accounts
+DROP TABLE IF EXISTS user;
+CREATE TABLE user(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                  name TEXT -- Name of the user to use when displaying
+                 );
+
+-- All email addresses
+DROP TABLE IF EXISTS userEMail;
+CREATE TABLE userEMail(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                       user INTEGER REFERENCES user(id) ON DELETE CASCADE, -- user ID
+                       email TEXT UNIQUE, -- email address
+                       alerts INTEGER DEFAULT 0xFFFFFFFF, -- bit mask 1=DEBUG, 2=INFO, 4=WARNING, ...
+                       qSMS INTEGER DEFAULT 0, -- format for SMS
+                       qHTML INTEGER DEFAULT 1 -- format for HTML
+                      );
+
 -- Site information
 DROP TABLE IF EXISTS site;
 CREATE TABLE site(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
