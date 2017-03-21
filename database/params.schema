@@ -55,7 +55,8 @@ CREATE TABLE crop(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
 -- All user accounts
 DROP TABLE IF EXISTS user;
 CREATE TABLE user(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
-                  name TEXT -- Name of the user to use when displaying
+                  name TEXT UNIQUE, -- Name of the user to use when displaying
+                  passwd TEXT -- Hashed password 
                  );
 
 -- All email addresses
