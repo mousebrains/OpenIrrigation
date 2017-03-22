@@ -33,8 +33,8 @@ $(SERVICEDIR)/%: %
 	chown -R $(USER):$(GROUP) $(@D)
 
 restart:
-	systemctl daemon-reload
-	for i in $(SRC); do systemctl restart $$i; done
+	systemctl --no-pager daemon-reload
+	for i in $(SRC); do systemctl --no-pager restart $$i; done
 
 start stop status:
-	for i in $(SRC); do systemctl $@ $$i; done
+	for i in $(SRC); do systemctl --no-pager $@ $$i; done

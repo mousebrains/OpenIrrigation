@@ -1,0 +1,4 @@
+<?php
+require_once 'MyDB.php';
+$cmdDB = new MyDB('__DBDIR__/commands.db')
+?>

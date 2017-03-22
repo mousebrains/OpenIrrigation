@@ -7,13 +7,17 @@ include ../Makefile.params
 
 .PHONY: install clean
 
-SRC = index.php status.php
+SRC = index.php status.php site.php user.php userEMail.php
 DEST = $(SRC:%=$(WEBDIR)/%)
 
-install: 
+install:: 
 	$(INSTALL) --target-directory=$(WEBDIR) $(SRC)
-	$(MAKE) -C js $@
+	chown -R $(USER):$(GROUP) $(WEBDIR)
 
-clean:
+clean::
 	$(RM) $(DEST)
+
+install clean::
 	$(MAKE) -C js $@
+	$(MAKE) -C css $@
+	$(MAKE) -C php $@

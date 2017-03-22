@@ -1,0 +1,4 @@
+<?php
+require_once 'MyDB.php';
+$parDB = new MyDB('__DBDIR__/params.db')
+?>

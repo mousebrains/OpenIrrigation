@@ -5,14 +5,14 @@
 
 include ../../Makefile.params
 
-SRC = status.js
-DEST = $(SRC:%=$(JSDIR)/%)
+SRC = irrigation.css
+DEST = $(SRC:%=$(CSSDIR)/%)
 
 .PHONY: install clean
 
-install: 
-	$(INSTALL) --target-directory=$(JSDIR) $(SRC)
-	chown -R $(USER):$(GROUP) $(JSDIR)
+install: $(SRC)
+	$(INSTALL) --target-directory=$(CSSDIR) $(SRC)
+	chown -R $(USER):$(GROUP) $(CSSDIR)
 
 clean:
 	$(RM) $(DEST)

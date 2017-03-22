@@ -5,6 +5,8 @@ LOGDIR = $(USERDIR)/logs
 BINDIR = $(USERDIR)/bin
 DBDIR = $(USERDIR)/database
 WEBDIR = $(USERDIR)/public_html
+PHPDIR = $(WEBDIR)/php
+CSSDIR = $(WEBDIR)/css
 JSDIR = $(WEBDIR)/js
 
 INSTALL = install --compare --group=$(GROUP) --owner=$(USER) --backup -D
