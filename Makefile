@@ -3,7 +3,6 @@
 all: install
 
 install clean:
-	$(MAKE) -C packages $@
 	$(MAKE) -C database $@
 	$(MAKE) -C scripts $@
 	$(MAKE) -C public_html $@

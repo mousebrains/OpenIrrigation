@@ -18,6 +18,7 @@ clean::
 	$(RM) $(DEST)
 
 install clean::
+	$(MAKE) -C packages $@
 	$(MAKE) -C js $@
 	$(MAKE) -C css $@
 	$(MAKE) -C php $@
