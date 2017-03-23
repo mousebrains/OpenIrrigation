@@ -87,7 +87,7 @@ myForm(array(
 	'timezone' => '', 
 	'latitude' => '', 
 	'longitude' => '', 
-	'elevation' => ''), 'Add');
+	'elevation' => ''), 'Create');
 ?>
 </body>
 </html>

@@ -2,15 +2,11 @@
 INSERT INTO user (name) VALUES ('Pat');
 INSERT INTO user (name) VALUES ('Teresa');
 
--- userEMail information
-INSERT INTO userEMail (user,email,qSMS,qHTML) VALUES (
-  (SELECT id FROM user WHERE name == 'Pat'), 'pat@mousebrains.com', 0, 1);
-INSERT INTO userEMail (user,email,qSMS,qHTML) VALUES (
-  (SELECT id FROM user WHERE name == 'Pat'), '5412207738@vtext.com', 1, 0);
-INSERT INTO userEMail (user,email,qSMS,qHTML) VALUES (
-  (SELECT id FROM user WHERE name == 'Teresa'), 'welch.teresa@gmail.com', 0, 1);
-INSERT INTO userEMail (user,email,qSMS,qHTML) VALUES (
-  (SELECT id FROM user WHERE name == 'Teresa'), '5412078955@vtext.com', 1, 0);
+-- email information
+INSERT INTO email (email,qSMS,qHTML) VALUES ('pat@mousebrains.com', 0, 1);
+INSERT INTO email (email,qSMS,qHTML) VALUES ('5412207738@vtext.com', 1, 0);
+INSERT INTO email (email,qSMS,qHTML) VALUES ('welch.teresa@gmail.com', 0, 1);
+INSERT INTO email (email,qSMS,qHTML) VALUES ('5412078955@vtext.com', 1, 0);
 
 -- report/alerts
 INSERT INTO reports (name,label) VALUES ('lowFlow', 'Low Flow Alerts');
@@ -21,10 +17,10 @@ INSERT INTO reports (name,label) VALUES ('daily', 'Daily Summary Report');
 
 -- which reports/alerts each email receives
 INSERT into emailReports VALUES (
- (SELECT id FROM userEMail WHERE email=='pat@mousebrains.com'),
+ (SELECT id FROM email WHERE email=='pat@mousebrains.com'),
  (SELECT id FROM reports WHERE name=='lowFlow'));
 INSERT into emailReports VALUES (
- (SELECT id FROM userEMail WHERE email=='pat@mousebrains.com'),
+ (SELECT id FROM email WHERE email=='pat@mousebrains.com'),
  (SELECT id FROM reports WHERE name=='electrical'));
 
 -- site information

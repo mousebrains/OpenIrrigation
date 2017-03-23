@@ -73,7 +73,7 @@ while ($row = $results->fetchArray()) {
 	myForm($row, 'Update');
 }
 
-myForm(array('id' => '', 'name' => '', 'passwd' => ''), 'Add');
+myForm(array('id' => '', 'name' => '', 'passwd' => ''), 'Create');
 ?>
 </body>
 </html>
