@@ -64,10 +64,22 @@ DROP TABLE IF EXISTS userEMail;
 CREATE TABLE userEMail(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                        user INTEGER REFERENCES user(id) ON DELETE CASCADE, -- user ID
                        email TEXT UNIQUE, -- email address
-                       alerts INTEGER DEFAULT 0xFFFFFFFF, -- bit mask 1=DEBUG, 2=INFO, 4=WARNING, ...
                        qSMS INTEGER DEFAULT 0, -- format for SMS
                        qHTML INTEGER DEFAULT 1 -- format for HTML
                       );
+
+-- report/alert categories
+DROP TABLE IF EXISTS reports;
+CREATE TABLE reports(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                     name TEXT UNIQUE, -- short name of the report
+                     label TEXT -- descriptive label
+                    );
+
+-- Which reports to send to which emails
+DROP TABLE IF EXISTS emailReports;
+CREATE TABLE emailReports(email INTEGER REFERENCES userEMail(id) ON DELETE CASCADE, -- email id
+                          report INTEGER REFERENCES reports(id) ON DELETE CASCADE -- which report
+                         );
 
 -- Site information
 DROP TABLE IF EXISTS site;

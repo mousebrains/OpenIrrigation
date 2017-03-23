@@ -12,7 +12,20 @@ INSERT INTO userEMail (user,email,qSMS,qHTML) VALUES (
 INSERT INTO userEMail (user,email,qSMS,qHTML) VALUES (
   (SELECT id FROM user WHERE name == 'Teresa'), '5412078955@vtext.com', 1, 0);
 
-UPDATE userEMail SET alerts=alerts & ~0x3 WHERE qSMS == 1; -- Only import stuff to SMS
+-- report/alerts
+INSERT INTO reports (name,label) VALUES ('lowFlow', 'Low Flow Alerts');
+INSERT INTO reports (name,label) VALUES ('highFlow', 'High Flow Alerts');
+INSERT INTO reports (name,label) VALUES ('electrical', 'Electrical Alerts');
+INSERT INTO reports (name,label) VALUES ('controller', 'Controller Alerts');
+INSERT INTO reports (name,label) VALUES ('daily', 'Daily Summary Report');
+
+-- which reports/alerts each email receives
+INSERT into emailReports VALUES (
+ (SELECT id FROM userEMail WHERE email=='pat@mousebrains.com'),
+ (SELECT id FROM reports WHERE name=='lowFlow'));
+INSERT into emailReports VALUES (
+ (SELECT id FROM userEMail WHERE email=='pat@mousebrains.com'),
+ (SELECT id FROM reports WHERE name=='electrical'));
 
 -- site information
 INSERT INTO site (name,addr,timezone,latitude,longitude,elevation) VALUES (
