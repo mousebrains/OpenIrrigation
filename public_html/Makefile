@@ -7,7 +7,7 @@ include ../Makefile.params
 
 .PHONY: install clean
 
-SRC = index.php status.php site.php user.php email.php
+SRC = index.php status.php site.php user.php email.php report.php
 DEST = $(SRC:%=$(WEBDIR)/%)
 
 install:: 
