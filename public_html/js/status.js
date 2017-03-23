@@ -14,15 +14,7 @@ if (typeof(EventSource) != "undefined") {
 			console.log(t);
 			msg += ", " + t.toTimeString().substr(0,9) + " sensor(" + a[i][1] + ")=" + a[i][2];
 		}
-		a = data["onOff"];
-		for (var i = 0; i < a.length; ++i) {
-			var t1 = new Date(a[i][1] * 1000);
-			var t2 = new Date(a[i][2] * 1000);
-			msg += "<br>stn(" + a[i][0] + ") " 
-				+ t1.toTimeString().substr(0,9) 
-				+ " to " 
-				+ t2.toTimeString().substr(0,9); 
-		}
+                msg += ", nOn=" + data["nOn"];
 		$("#statusBlock").html(msg);
 	};
 }

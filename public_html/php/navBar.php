@@ -18,9 +18,10 @@ echo "
       <a href='controller.php'>Controller Edit</a>
       <a href='sensor.php'>Decoder/Sensor Edit</a>
       <a href='poc.php'>Point-of-connect Edit</a>
-      <a href='pocFlow.php'>Flow sensor Edit</a>
-      <a href='pocMV.php'>Master valve Edit</a>
+      <a href='pocFlow.php'>Flow Sensor Edit</a>
+      <a href='pocMV.php'>Master Valve Edit</a>
       <a href='pocPump.php'>Booster Pump Edit</a>
+      <a href='report.php'>Report Name Edit</a>
     </div>
   </li>
  </ul>

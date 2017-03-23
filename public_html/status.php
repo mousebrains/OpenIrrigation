@@ -22,16 +22,15 @@ while ($row = $a->fetchArray()) {
 	$msg .= '[' . $row[0] . ',' . $row[1] . ',' . $row[2] . ']';
 }
 
-$msg .= '],"onOff":[';
+$msg .= '],"nOn":';
 
 # Get on valves and finish time
-$a = $cmdDB->query('SELECT onOffLog.valve,onTimeStamp,min(timestamp) FROM onOffLog INNER JOIN commands ON cmd==1 and offTimeStamp is NULL and onOffLog.valve==commands.valve GROUP BY onOffLog.valve;');
-$cnt = 0;
+$a = $cmdDB->query('SELECT count(*) FROM onOffLog WHERE offTimeStamp is NULL;');
 while ($row = $a->fetchArray()) {
-	if ($cnt++ != 0) { $msg .= ','; }
-	$msg .= '[' . $row[0] . ',' . $row[1] . ',' . $row[2] . ']';
+	$msg .= $row[0];
+	break;
 }
 
-echo $msg . "]}\n\n";
+echo $msg . "}\n\n";
 flush();
 ?>
