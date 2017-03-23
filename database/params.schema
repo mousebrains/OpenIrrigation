@@ -62,6 +62,7 @@ CREATE TABLE user(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
 -- All email addresses
 DROP TABLE IF EXISTS email;
 CREATE TABLE email(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                   user INTEGER REFERENCES user(id) ON DELETE CASCADE, -- user association 
                    email TEXT UNIQUE, -- email address
                    qSMS INTEGER DEFAULT 0, -- format for SMS
                    qHTML INTEGER DEFAULT 1 -- format for HTML

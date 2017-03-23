@@ -14,7 +14,7 @@ echo "
       <a href='station.php'>Stations</a>
       <a href='site.php'>Site Edit</a>
       <a href='user.php'>User Edit</a>
-      <a href='userEMail.php'>EMail Edit</a>
+      <a href='email.php'>EMail Edit</a>
       <a href='controller.php'>Controller Edit</a>
       <a href='sensor.php'>Decoder/Sensor Edit</a>
       <a href='poc.php'>Point-of-connect Edit</a>

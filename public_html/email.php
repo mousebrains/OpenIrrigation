@@ -21,7 +21,8 @@ if (!empty($_POST)) {
 	} else {
 		if ($_POST['id'] < 0) { // A new entry
 			$stmt = $parDB->prepare('INSERT OR REPLACE INTO email ' .
-				'(email,qSMS,qHTML) VALUES(:email,:qSMS,:qHTML);');
+				'(user,email,qSMS,qHTML) VALUES(:user,:email,:qSMS,:qHTML);');
+			$stmt->bindValue(':user', $_POST['user']);
 			$stmt->bindValue(':email', $_POST['email']);
 			$stmt->bindValue(':qSMS', $_POST['qFormat'] == 'qSMS');
 			$stmt->bindValue(':qHTML', $_POST['qFormat'] == 'qHTML');
@@ -36,14 +37,16 @@ if (!empty($_POST)) {
 			}
 		} else { // An existing entry
 			$stmt = $parDB->prepare('UPDATE email SET ' .
+				'user=:user,' .
 				'email=:email,' .
 				'qSMS=:qSMS,' .
 				'qHTML=:qHTML' .
 				' WHERE id==:id;');
-			$stmt->bindValue(':id', $_POST['id']);
+			$stmt->bindValue(':user', $_POST['user']);
 			$stmt->bindValue(':email', $_POST['email']);
 			$stmt->bindValue(':qSMS', $_POST['qFormat'] == 'qSMS');
 			$stmt->bindValue(':qHTML', $_POST['qFormat'] == 'qHTML');
+			$stmt->bindValue(':id', $_POST['id']);
 			$stmt->execute();
 			$stmt->close();
 		} // Wrote an existing entry
@@ -81,12 +84,21 @@ function myRadio($label, $name, $value, $qChecked) {
 	echo "></td></tr>\n";
 }
 
-function myForm(array $row, array $reports, array $emailReports, string $submit) {
+function myForm(array $row, array $users, array $reports, array $emailReports, string $submit) {
 	echo "<hr>\n";
 	echo "<center>\n";
 	echo "<form method='post'>\n";
 	echo "<input type='hidden' name='id' value='" . $row['id'] . "'>\n";
 	echo "<table>\n";
+	echo "<tr><th>User Name</th><td>\n";
+	echo "<select name='user'>\n";
+        foreach ($users as $key => $value) {
+		echo "<option value='" . $key . "'";
+                if ($key == $row['user']) {echo " selected";}
+                echo ">" . $value . "</option>\n";
+        }
+        echo "</select>\n";
+        echo "</td></tr>\n";
 	echo "<tr><th>email</th><td>\n";
 	echo "<input type='email' name='email' value='" . $row['email'] . 
 		"' placeholder='email'>\n";
@@ -106,6 +118,12 @@ function myForm(array $row, array $reports, array $emailReports, string $submit)
 	echo "</center>\n";
 }
 
+$users = [];
+$results = $parDB->query('SELECT id,name FROM user ORDER BY name;');
+while ($row = $results->fetchArray()) {
+	$users[$row['id']] = $row['name'];
+}
+
 $reports = [];
 $results = $parDB->query('SELECT id,label FROM reports ORDER BY label;');
 while ($row = $results->fetchArray()) {
@@ -120,9 +138,10 @@ while ($row = $results->fetchArray()) {
 
 $results = $parDB->query('SELECT * FROM email ORDER BY email;');
 while ($row = $results->fetchArray()) {
-	myForm($row, $reports, $emailReports, 'Update');
+	myForm($row, $users, $reports, $emailReports, 'Update');
 }
-myForm(['id'=>-1,'email'=>'','qSMS'=>0,'qHTML'=>0], $reports, $emailReports, 'Create');
+myForm(['id'=>-1,'user'=>-1,'email'=>'','qSMS'=>0,'qHTML'=>0], 
+       $users, $reports, $emailReports, 'Create');
 ?>
 </body>
 </html>
