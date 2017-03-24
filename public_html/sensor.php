@@ -44,9 +44,9 @@ function myForm(array $row, array $controllers, string $submit) {
 	inputRow('Latitude (deg)', 'latitude', $row['latitude'], 'latlon', '-45.6');
 	inputRow('Longitude (deg)', 'longitude', $row['longitude'], 'latlon', '-45.6');
 	inputRow('Passive Current (mAmps)', 'passiveCurrent', $row['passiveCurrent'], 
-			'number', '0.5', true, 0.5, 0, 100);
+			'number', '0.5', false, 0.5, 0, 100);
 	inputRow('Active Current (mAmps)', 'activeCurrent', $row['activeCurrent'], 
-			'number', '0.5', true, 0.5, 0, 100);
+			'number', '0.5', false, 0.5, 0, 100);
 	selectFromList('Device Type', 'devType', $devTypes, $row['devType']);
 	inputRow('Device Driver', 'driver', $row['driver'], 'text', 'TDI');
 	inputRow('Device Address', 'addr', $row['addr'], 'number', '0');
