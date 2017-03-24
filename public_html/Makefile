@@ -9,6 +9,7 @@ include ../Makefile.params
 
 SRC = index.php status.php site.php user.php email.php report.php
 SRC+= controller.php sensor.php
+SRC+= poc.php
 
 DEST = $(SRC:%=$(WEBDIR)/%)
 
