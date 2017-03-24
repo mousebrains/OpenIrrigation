@@ -12,17 +12,15 @@
 require_once 'php/navBar.php';
 require_once 'php/ParDB.php';
 
-function myUpdate($id, $name, $prev, $field) {
+function myUpdate($table, $id, $name, $prev, $field) {
+	global $parDB;
 	if ($name != $prev) {
-		$stmt = $parDB->prepare('UPDATE reports SET ' . $field . '=:n WHERE id=:i;');
-		$stmt->bindValue(':n', $name);
-		$stmt->bindValue(':i', $id);
-		$stmt->execute();
-		$stmt->close();
+		$parDB->update($table, $field, $name, $id);
 	}
 }
 
 if (!empty($_POST)) {
+	$table = 'reports';
 	$ids = $_POST['id'];
 	$names = $_POST['name'];
 	$oldnames = $_POST['oldname'];
@@ -30,23 +28,20 @@ if (!empty($_POST)) {
 	$oldlabels = $_POST['oldlabel'];
 	for ($i = 0; $i < count($ids); ++$i) {
 		if ($ids[$i] > 0) {
-			myUpdate($ids[$i], $names[$i], $oldnames[$i], 'name');
-			myUpdate($ids[$i], $labels[$i], $oldlabels[$i], 'label');
+			myUpdate($table, $ids[$i], $names[$i], $oldnames[$i], 'name');
+			myUpdate($table, $ids[$i], $labels[$i], $oldlabels[$i], 'label');
 		} elseif (!empty($names[$i]) and !empty($labels[$i])) {
-			$stmt = $parDB->prepare('INSERT INTO reports (name,label) VALUES (:n,:l);');
-			$stmt->bindValue(':n', $names[$i]);
-			$stmt->bindValue(':l', $labels[$i]);
-			$stmt->execute();
-			$stmt->close();
+			$parDB->insertIntoTable($table, ['name', 'label'], 
+						['name'=>addslashes($names[$i]), 
+						 'oldname'=>NULL,
+						 'label'=>addslashes($labels[$i]),
+						 'oldlabel'=>NULL]);
 		}
 	}
 	if (!empty($_POST['delete'])) { // Delete the entry (Do 2nd so updates are overridden
 		foreach ($_POST['delete'] as $id) {
 			if ($id >= 0) {
-				$stmt = $parDB->prepare('DELETE FROM reports WHERE id==:id;');
-				$stmt->bindValue(':id', $id);
-				$stmt->execute();
-				$stmt->close();
+				$parDB->deleteFromTable($table, 'id', $id);
 			}
 		}
 	}

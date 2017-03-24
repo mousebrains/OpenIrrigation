@@ -11,51 +11,23 @@
 <?php
 require_once 'php/navBar.php';
 require_once 'php/ParDB.php';
+require_once 'php/webForm.php';
 
 if (!empty($_POST)) {
+	$table = 'email';
 	if (!empty($_POST['delete'])) { // Delete the entry
-		$stmt = $parDB->prepare('DELETE FROM email WHERE id=:id;');
-		$stmt->bindValue(':id', $_POST['id']);
-		$stmt->execute();
-		$stmt->close();
+		$parDB->deleteFromTable($table, 'id', $_POST['id']);
 	} else {
+		$fields = ['user', 'email', 'qSMS', 'qHTML'];
+		$_POST['qSMS'] = $_POST['qFormat'] == 'qSMS';
+		$_POST['qHTML'] = $_POST['qFormat'] == 'qHTML';
 		if ($_POST['id'] < 0) { // A new entry
-			$stmt = $parDB->prepare('INSERT OR REPLACE INTO email ' .
-				'(user,email,qSMS,qHTML) VALUES(:user,:email,:qSMS,:qHTML);');
-			$stmt->bindValue(':user', $_POST['user']);
-			$stmt->bindValue(':email', $_POST['email']);
-			$stmt->bindValue(':qSMS', $_POST['qFormat'] == 'qSMS');
-			$stmt->bindValue(':qHTML', $_POST['qFormat'] == 'qHTML');
-			$stmt->execute();
-			$stmt->close();
-			$stmt = $parDB->prepare('SELECT id FROM email WHERE email==:email;');
-			$stmt->bindValue(':email', $_POST['email']);
-			$result = $stmt->execute();
-			while ($row = $result->fetchArray()) {
-				$_POST['id'] = $row['id'];
-				break;
-			}
+			$parDB->insertIntoTable($table, $fields, $_POST);
+			$_POST['id'] = $parDB->getID($table, 'id', 'email', $_POST['email']);
 		} else { // An existing entry
-			$stmt = $parDB->prepare('UPDATE email SET ' .
-				'user=:user,' .
-				'email=:email,' .
-				'qSMS=:qSMS,' .
-				'qHTML=:qHTML' .
-				' WHERE id==:id;');
-			$stmt->bindValue(':user', $_POST['user']);
-			$stmt->bindValue(':email', $_POST['email']);
-			$stmt->bindValue(':qSMS', $_POST['qFormat'] == 'qSMS');
-			$stmt->bindValue(':qHTML', $_POST['qFormat'] == 'qHTML');
-			$stmt->bindValue(':id', $_POST['id']);
-			$stmt->execute();
-			$stmt->close();
+			$parDB->maybeUpdate($table, $fields, $_POST);
 		} // Wrote an existing entry
-		{ // Delete existing entries
-			$stmt = $parDB->prepare('DELETE FROM emailReports WHERE email==:email;');
-			$stmt->bindValue(':email', $_POST['id']);
-			$stmt->execute();
-			$stmt->close();
-		}
+		$parDB->deleteFromTable('emailReports', 'email', $_POST['id']);
 		$stmt = $parDB->prepare('INSERT INTO emailReports VALUES(:email,:report);');
 		foreach ($_POST['report'] as $key) { // Create new entries
 			$stmt->bindValue(':email', $_POST['id']);
@@ -68,52 +40,28 @@ if (!empty($_POST)) {
 	}
 }
 
-function myReport(int $id, int $key, string $value, array $emailReports) {
-	echo "<tr><th>" . $value . "</th><td>\n";
-	echo "<input type='checkbox', name='report[]', value='" . $key . "'";
-	if (!empty($emailReports[$id][$key])) {
-		echo " checked";
-	}
-	echo ">\n</td></tr>\n";
-}
-
-function myRadio($label, $name, $value, $qChecked) {
-	echo "<tr><th>" . $label . "</th><td>\n";
-	echo "<input type='radio' name='" . $name . "' value='" . $value . "'";
-	if ($qChecked) {echo " checked";}
-	echo "></td></tr>\n";
-}
-
 function myForm(array $row, array $users, array $reports, array $emailReports, string $submit) {
 	echo "<hr>\n";
 	echo "<center>\n";
 	echo "<form method='post'>\n";
 	echo "<input type='hidden' name='id' value='" . $row['id'] . "'>\n";
 	echo "<table>\n";
-	echo "<tr><th>User Name</th><td>\n";
-	echo "<select name='user'>\n";
-        foreach ($users as $key => $value) {
-		echo "<option value='" . $key . "'";
-                if ($key == $row['user']) {echo " selected";}
-                echo ">" . $value . "</option>\n";
-        }
-        echo "</select>\n";
-        echo "</td></tr>\n";
-	echo "<tr><th>email</th><td>\n";
-	echo "<input type='email' name='email' value='" . $row['email'] . 
-		"' placeholder='email'>\n";
-	echo "</td></tr>\n";
-	myRadio('Format as text', 'qFormat', 'qText', !$row['qSMS'] & !$row['qHTML']);
-	myRadio('Format as SMS', 'qFormat', 'qSMS', $row['qSMS']);
-	myRadio('Format as HTML', 'qFormat', 'qHTML', $row['qHTML']);
+	selectFromList('User Name', 'user', $users, $row['user']);
+	inputRow('email', 'email', $row['email'], 'email', 'george@spam.com');
+	echo "<input type='hidden' name='oldqSMS' value='" . $row['qSMS'] . "'>\n";
+	echo "<input type='hidden' name='oldqHTML' value='" . $row['qHTML'] . "'>\n";
+	inputRow('Format as text', 'qFormat', 'qText', 'radio', NULL, false, NULL, NULL, NULL, 
+		!$row['qSMS'] & !$row['qHTML']);
+	inputRow('Format as SMS', 'qFormat', 'qSMS', 'radio', NULL, false, NULL, NULL, NULL, 
+		$row['qSMS']);
+	inputRow('Format as HTML', 'qFormat', 'qHTML', 'radio', NULL, false, NULL, NULL, NULL, 
+		$row['qHTML']);
 	foreach ($reports as $key => $value) {
-		myReport($row['id'], $key, $value, $emailReports);
+		inputRow($value, 'report[]', $key, 'checkbox', NULL, false, NULL, NULL, NULL, 
+			 !empty($emailReports[$row['id']][$key]));
 	}
 	echo "</table>\n";
-	echo "<input type='submit' value='" . $submit . "'>\n";
-	if (!empty($row['email'])) {
-		echo "<input type='submit' value='Delete' name='delete'>\n";
-	}
+	submitDelete($submit, !empty($row['email']));
 	echo "</form>\n";
 	echo "</center>\n";
 }
@@ -136,12 +84,15 @@ while ($row = $results->fetchArray()) {
 	$emailReports[$row['email']][$row['report']] = 1;
 }
 
+$blankRow = [];
 $results = $parDB->query('SELECT * FROM email ORDER BY email;');
 while ($row = $results->fetchArray()) {
+	foreach ($row as $key => $value) {$blankRow[$key] = '';}
 	myForm($row, $users, $reports, $emailReports, 'Update');
 }
-myForm(['id'=>-1,'user'=>-1,'email'=>'','qSMS'=>0,'qHTML'=>0], 
-       $users, $reports, $emailReports, 'Create');
+
+$blankRow['id'] = -1;
+myForm($blankRow, $users, $reports, $emailReports, 'Create');
 ?>
 </body>
 </html>

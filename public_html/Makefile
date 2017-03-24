@@ -8,6 +8,8 @@ include ../Makefile.params
 .PHONY: install clean
 
 SRC = index.php status.php site.php user.php email.php report.php
+SRC+= controller.php
+
 DEST = $(SRC:%=$(WEBDIR)/%)
 
 install:: 

@@ -11,47 +11,20 @@
 <?php
 require_once 'php/navBar.php';
 require_once 'php/ParDB.php';
+require_once 'php/webForm.php';
 
 if (!empty($_POST)) {
+	$table = 'site';
 	if (!empty($_POST['delete'])) { // Delete the entry
-		$stmt = $parDB->prepare('DELETE FROM site WHERE id=:id;');
-		$stmt->bindValue(':id', $_POST['id']);
-		$stmt->execute();
-		$stmt->close();
+		$parDB->deleteFromTable($table, 'id', $_POST['id']);
 	} else {
+		$fields = ['name', 'addr', 'timezone', 'latitude', 'longitude', 'elevation'];
 		if ($_POST['id'] == '') {
-			$stmt = $parDB->prepare('INSERT INTO site (name,addr,timezone,latitude,longitude,elevation) VALUES(:name,:addr,:tz,:lat,:lon,:elev);');
+			$parDB->insertIntoTable($table, $fields, $_POST);
 		} else {
-			$stmt = $parDB->prepare('INSERT OR REPLACE INTO site VALUES(:id,:name,:addr,:tz,:lat,:lon,:elev);');
-			$stmt->bindValue(':id', $_POST['id']);
+			$parDB->maybeUpdate($table, $fields, $_POST);
 		}
-		$stmt->bindValue(':name', $_POST['name']);
-		$stmt->bindValue(':addr', $_POST['addr']);
-		$stmt->bindValue(':tz', $_POST['timezone']);
-		$stmt->bindValue(':lat', $_POST['latitude']);
-		$stmt->bindValue(':lon', $_POST['longitude']);
-		$stmt->bindValue(':elev', $_POST['elevation']);
-		$stmt->execute();
-		$stmt->close();
 	}
-}
-
-function myRow(string $label, string $name, $value, $qRequired) {
-	$msg = "<tr><th>" 
-		. $label 
-		. "</th><td>"
-		. "<input type='text' name='" 
-		. $name
-		. "' value='" 
-		. $value
-		. "' placeholder='"
-		. $label
-		. "'";
-	if ($qRequired) {
-		$msg .= " required";
-	}
-	$msg .= "></td></tr>\n";
-	return $msg;
 }
 
 function myForm(array $row, string $submit) {
@@ -60,34 +33,26 @@ function myForm(array $row, string $submit) {
 	echo "<form method='post'>\n";
 	echo "<input type='hidden' name='id' value='" . $row['id'] . "'>\n";
 	echo "<table>\n";
-	echo myRow('Site Name', 'name', $row['name'], true);
-	echo myRow('Address', 'addr', $row['addr'], false);
-	echo myRow('Timezone', 'timezone', $row['timezone'], false);
-	echo myRow('Latitude (deg)', 'latitude', $row['latitude'], false);
-	echo myRow('Longitude (deg)', 'longitude', $row['longitude'], false);
-	echo myRow('Elevation (ft)', 'elevation', $row['elevation'], false);
+	inputRow('Site Name', 'name', $row['name'], 'text', 'Site Name', true);
+	inputRow('Address', 'addr', $row['addr'], 'text', '1600 Penn Ave, Washington, D.C.');
+	inputRow('Timezone', 'timezone', $row['timezone'], 'text', 'US/Eastern');
+	inputRow('Latitude (deg)', 'latitude', $row['latitude'], 'latlon', '23.45');
+	inputRow('Longitude (deg)', 'longitude', $row['longitude'], 'latlon', '123.45');
+	inputRow('Elevation (ft)', 'elevation', $row['elevation'], 'number', '14500');
 	echo "</table>\n";
-	echo "<input type='submit' value='" . $submit . "'>\n";
-	if (!empty($row['name'])) {
-		echo "<input type='submit' value='Delete' name='delete'>\n";
-	}
+	submitDelete($submit, !empty($row['name']));
 	echo "</form>\n";
 	echo "</center>\n";
 }
 
+$blankRow = [];
 $results = $parDB->query('SELECT * FROM site ORDER BY name;');
 while ($row = $results->fetchArray()) {
+	foreach ($row as $key => $value) {$blankRow[$key] = '';}
 	myForm($row, 'Update');
 }
 
-myForm(array(
-	'id' => '', 
-	'name' => '', 
-	'addr' => '', 
-	'timezone' => '', 
-	'latitude' => '', 
-	'longitude' => '', 
-	'elevation' => ''), 'Create');
+myForm($blankRow, 'Create')
 ?>
 </body>
 </html>

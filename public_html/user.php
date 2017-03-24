@@ -11,44 +11,23 @@
 <?php
 require_once 'php/navBar.php';
 require_once 'php/ParDB.php';
+require_once 'php/webForm.php';
 
 if (!empty($_POST)) {
+	$table = 'user';
 	if (!empty($_POST['delete'])) { // Delete the entry
-		$stmt = $parDB->prepare('DELETE FROM user WHERE id=:id;');
-		$stmt->bindValue(':id', $_POST['id']);
-		$stmt->execute();
-		$stmt->close();
+		$parDB->deleteFromTable($table, 'id', $_POST['id']);
 	} else {
-		if ($_POST['id'] == '') {
-			$stmt = $parDB->prepare('INSERT INTO user (name,passwd) VALUES(:name,:passwd);');
-		} else {
-			$stmt = $parDB->prepare('INSERT OR REPLACE INTO user VALUES(:id,:name,:passwd);');
-			$stmt->bindValue(':id', $_POST['id']);
+		$fields = ['name', 'passwd'];
+		if (!empty($_POST['passwd'])) { // Hash it
+			$_POST['passwd'] = password_hash($_POST['passwd'], PASSWORD_DEFAULT); 
 		}
-		$stmt->bindValue(':name', $_POST['name']);
-		$hash = password_hash($_POST['passwd'], PASSWORD_DEFAULT);
-		$stmt->bindValue(':passwd', $hash);
-		$stmt->execute();
-		$stmt->close();
+		if ($_POST['id'] == '') {
+			$parDB->insertIntoTable($table, $fields, $_POST);	
+		} else {
+			$parDB->maybeUpdate($table, $fields, $_POST);	
+		}
 	}
-}
-
-function myRow(string $label, string $name, $value, string $type, $qRequired) {
-	$msg = "<tr><th>" 
-		. $label 
-		. "</th><td>"
-		. "<input type='" . $type . "' name='" 
-		. $name
-		. "' value='" 
-		. $value
-		. "' placeholder='"
-		. $label
-		. "'";
-	if ($qRequired) {
-		$msg .= " required";
-	}
-	$msg .= "></td></tr>\n";
-	return $msg;
 }
 
 function myForm(array $row, string $submit) {
@@ -57,23 +36,22 @@ function myForm(array $row, string $submit) {
 	echo "<form method='post'>\n";
 	echo "<input type='hidden' name='id' value='" . $row['id'] . "'>\n";
 	echo "<table>\n";
-	echo myRow('User Name', 'name', $row['name'], 'text', true);
-	echo myRow('Password', 'passwd', '', 'password', true);
+	inputRow('User Name', 'name', $row['name'], 'text', 'Joe Smith', true);
+	inputRow('Password', 'passwd', '', 'password', '1234567890');
 	echo "</table>\n";
-	echo "<input type='submit' value='" . $submit . "'>\n";
-	if (!empty($row['name'])) {
-		echo "<input type='submit' value='Delete' name='delete'>\n";
-	}
+	submitDelete($submit, !empty($row['name']));
 	echo "</form>\n";
 	echo "</center>\n";
 }
 
+$blankRow = [];
 $results = $parDB->query('SELECT * FROM user ORDER BY name;');
 while ($row = $results->fetchArray()) {
+	foreach ($row as $key => $value) {$blankRow[$key] = '';}
 	myForm($row, 'Update');
 }
 
-myForm(array('id' => '', 'name' => '', 'passwd' => ''), 'Create');
+myForm($blankRow, 'Create');
 ?>
 </body>
 </html>

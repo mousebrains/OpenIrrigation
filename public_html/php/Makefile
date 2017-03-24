@@ -6,7 +6,11 @@
 include ../../Makefile.params
 
 PRE = CmdDB.php.pre ParDB.php.pre
-SRC = $(PRE:%.pre=%) MyDB.php statusBlock.php navBar.php
+
+SRC = $(PRE:%.pre=%) 
+SRC+= MyDB.php statusBlock.php navBar.php
+SRC+= webForm.php
+
 DEST = $(SRC:%=$(PHPDIR)/%)
 
 .PHONY: install clean
