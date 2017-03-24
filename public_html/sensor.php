@@ -13,14 +13,15 @@ require_once 'php/navBar.php';
 require_once 'php/ParDB.php';
 require_once 'php/webForm.php';
 
+$table = 'sensor';
+$fields = ['controller', 'name', 'latitude', 'longitude', 'passiveCurrent',
+	'activeCurrent', 'devType', 'driver', 'addr', 'make', 'model', 
+	'installed', 'notes'];
+
 if (!empty($_POST)) {
-	$table = 'sensor';
 	if (!empty($_POST['delete'])) { // Delete the entry
 		$parDB->deleteFromTable($table, 'id', $_POST['id']);
 	} else {
-		$fields = ['controller', 'name', 'latitude', 'longitude', 'passiveCurrent',
-			'activeCurrent', 'devType', 'driver', 'addr', 'make', 'model', 
-			'installed', 'notes'];
 		$_POST['installed'] = strtotime($_POST['installed']);
 		$_POST['oldinstalled'] = strtotime($_POST['oldinstalled']);
 		if ($_POST['id'] == '') {
@@ -31,8 +32,7 @@ if (!empty($_POST)) {
 	}
 }
 
-function myForm(array $row, array $controllers, string $submit) {
-	$devTypes = [0 => 'solenoid', 1 => 'sensor'];
+function myForm(array $row, array $controllers, array $devTypes, string $submit) {
 	$row['installed'] = date('Y-m-d', intval($row['installed']));
 	echo "<hr>\n";
 	echo "<center>\n";
@@ -61,15 +61,16 @@ function myForm(array $row, array $controllers, string $submit) {
 }
 
 $controllers = $parDB->loadTable('controller', 'id', 'name', 'name');
+$devTypes = $parDB->loadTable('sensorDevTypes', 'id', 'label', 'label');
 
-$blankRow = [];
-$results = $parDB->query('SELECT * FROM sensor ORDER BY name;');
+$results = $parDB->query('SELECT * FROM ' . $table . ' ORDER BY name;');
 while ($row = $results->fetchArray()) {
-	foreach ($row as $key => $value) {$blankRow[$key] = '';}
-	myForm($row, $controllers, 'Update');
+	myForm($row, $controllers, $devTypes, 'Update');
 }
 
-myForm($blankRow, $controllers, 'Create');
+$blankRow = ['id'=>''];
+foreach ($fields as $key) {$blankRow[$key] = '';}
+myForm($blankRow, $controllers, $devTypes, 'Create');
 ?>
 </body>
 </html>

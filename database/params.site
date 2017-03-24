@@ -189,15 +189,40 @@ INSERT INTO programStations (pgm,stn,mode,runTime) VALUES (
 -- SELECT * FROM programStations;
 
 -- event/water windows
-INSERT INTO event(site,name,action,val,startTime,duration) VALUES (
- (SELECT id FROM site WHERE name=='Casa'),'Wed evening',0,8,20,3);
-INSERT INTO event(site,name,action,val,refDate,startTime,duration) VALUES (
- (SELECT id FROM site WHERE name=='Casa'),'Selva goteo',1,21,strftime('%s','2017-03-15'), 18,5);
-INSERT INTO event(site,name,action,val,startTime,duration) VALUES (
- (SELECT id FROM site WHERE name=='Casa'),'Selva rocio',0,255, 20,3);
-
-UPDATE event SET startTime=startTime*3600 WHERE startTime IS NOT NULL;
-UPDATE event SET duration=duration*3600 WHERE duration IS NOT NULL;
+INSERT INTO event(site,mode,action,startMode,stopMode,name,val,startTime,duration) VALUES (
+ (SELECT id FROM site WHERE name=='Casa'),
+ (SELECT id FROM eventMode WHERE name=='water'),
+ (SELECT id FROM eventAction WHERE name=='dow'),
+ (SELECT id FROM eventCelestial WHERE name=='clock'),
+ (SELECT id FROM eventCelestial WHERE name=='clock'),
+ 'Selva Wed evening',
+ (SELECT 1<<id FROM eventDaysOfWeek WHERE name=='wed'),
+ (SELECT 20*3600),
+ (SELECT 2*3600)
+);
+INSERT INTO event(site,mode,action,startMode,stopMode,name,val,startTime,duration,refDate) VALUES (
+ (SELECT id FROM site WHERE name=='Casa'),
+ (SELECT id FROM eventMode WHERE name=='water'),
+ (SELECT id FROM eventAction WHERE name=='nDays'),
+ (SELECT id FROM eventCelestial WHERE name=='clock'),
+ (SELECT id FROM eventCelestial WHERE name=='clock'),
+ 'Selva goteo',
+ 21,
+ (SELECT 18*3600),
+ (SELECT 5*3600),
+ (SELECT strftime('%s', '2017-03-15'))
+);
+INSERT INTO event(site,mode,action,startMode,stopMode,name,val,startTime,duration) VALUES (
+ (SELECT id FROM site WHERE name=='Casa'),
+ (SELECT id FROM eventMode WHERE name=='water'),
+ (SELECT id FROM eventAction WHERE name=='dow'),
+ (SELECT id FROM eventCelestial WHERE name=='clock'),
+ (SELECT id FROM eventCelestial WHERE name=='clock'),
+ 'Selva rocio',
+ -1,
+ (SELECT 20*3600),
+ (SELECT 2*3600)
+);
 
 -- SELECT * FROM event;
 

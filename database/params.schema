@@ -109,6 +109,15 @@ CREATE TABLE controller(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                         notes TEXT -- Extra information
                        );
 
+-- Sensor/Valve device type
+DROP TABLE IF EXISTS sensorDevType;
+CREATE TABLE sensorDevType(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                           name TEXT UNIQUE, -- device name
+                           label TEXT UNIQUE -- descriptive label
+                          );
+INSERT INTO sensorDevType(name, label) VALUES('solenoid', 'Solenoid');
+INSERT INTO sensorDevType(name, label) VALUES('flow', 'Flow Sensor');
+
 -- sensors/valves
 DROP TABLE IF EXISTS sensor;
 CREATE TABLE sensor(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
@@ -118,7 +127,7 @@ CREATE TABLE sensor(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                     longitude REAL, -- longitude in decimal degrees
                     passiveCurrent REAL DEFAULT 0.5, -- current when not activated in mAmps
                     activeCurrent REAL DEFAULT 0.5, -- current when activated in mAmps
-                    devType INTEGER DEFAULT 0, -- device type, 0=solenoid, 1=sensor, ...
+                    devType INTEGER REFERENCES sensorDevType(id) ON DELETE SET NULL, -- dev type
                     driver TEXT, -- device driver
                     addr INTEGER, -- device address in controller space
                     make TEXT, -- manufacturer
@@ -197,12 +206,22 @@ CREATE TABLE station(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      offDelay INTEGER DEFAULT 60 -- delay after off before flow alerts
 		    );
 
+-- Modes for program
+DROP TABLE IF EXISTS programMode;
+CREATE TABLE programMode(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                         name TEXT UNIQUE, -- Descriptive name
+                         label TEXT -- Descriptive name
+                        );
+INSERT INTO programMode (name,label) VALUES ('off', 'Off');
+INSERT INTO programMode (name,label) VALUES ('on', 'On non-ET');
+-- INSERT INTO programMode (name,label) VALUES ('ET', 'On ET');
+
 -- progams, a collection of water events
 DROP TABLE IF EXISTS program;
 CREATE TABLE program(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
+                     mode INTEGER REFERENCES programMode(id) ON DELETE SET NULL,
                      name TEXT UNIQUE, -- descriptive name
-                     mode INTEGER DEFAULT 1, -- 0->off, 1->active
                      maxStations INTEGER, -- max # simultaneous stations
                      maxFlow REAL -- max flow target flow
                     );	
@@ -216,24 +235,64 @@ CREATE TABLE programStations(pgm REFERENCES program(id) ON DELETE CASCADE, -- pr
                              priority INTEGER, -- run priority
                              UNIQUE (pgm, stn) -- one station/program pair
                             );
+-- Modes for events
+DROP TABLE IF EXISTS eventMode;
+CREATE TABLE eventMode(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                       name TEXT UNIQUE, -- short name
+                       label TEXT -- Descriptive name
+                      );
+INSERT INTO eventMode (name,label) VALUES('water', 'Watering event');
+INSERT INTO eventMode (name,label) VALUES('event', 'Non-Water event');
+
+-- Event actions
+DROP TABLE IF EXISTS eventAction;
+CREATE TABLE eventAction(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                         name TEXT UNIQUE, -- short name
+                         label TEXT -- Descriptive name
+                        );
+INSERT INTO eventAction (name,label) VALUES('dow', 'Day(s) of week');
+INSERT INTO eventAction (name,label) VALUES('nDays', 'Every n days');
+-- INSERT INTO eventAction (name,label) VALUES('dom', 'Day(s) of month');
+
+-- Event celestial
+DROP TABLE IF EXISTS eventCelestial;
+CREATE TABLE eventCelestial(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                            name TEXT UNIQUE, -- short name
+                            label TEXT -- Descriptive name
+                           );
+INSERT INTO eventCelestial (name,label) VALUES('clock', 'Wall Clock');
+INSERT INTO eventCelestial (name,label) VALUES('sunrise', 'Sunrise');
+INSERT INTO eventCelestial (name,label) VALUES('sunset', 'Sunset');
+
+-- Event days of week
+DROP TABLE IF EXISTS eventDaysOfWeek;
+CREATE TABLE eventDaysOfWeek(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                             name TEXT UNIQUE, -- short name
+                             label TEXT -- Descriptive name
+                            );
+INSERT INTO eventDaysOfWeek (name,label) VALUES('sun', 'Sunday');
+INSERT INTO eventDaysOfWeek (name,label) VALUES('mon', 'Monday');
+INSERT INTO eventDaysOfWeek (name,label) VALUES('tue', 'Tuesday');
+INSERT INTO eventDaysOfWeek (name,label) VALUES('wed', 'Wednesday');
+INSERT INTO eventDaysOfWeek (name,label) VALUES('thur', 'Thursday');
+INSERT INTO eventDaysOfWeek (name,label) VALUES('fri', 'Friday');
+INSERT INTO eventDaysOfWeek (name,label) VALUES('sat', 'Saturday');
 
 -- event specifier
 DROP TABLE IF EXISTS event;
 CREATE TABLE event(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                    site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
                    name TEXT, -- descriptive name
-                   mode INTEGER DEFAULT 0, -- 0=water, 1=event
-                   action INTEGER, -- action to take: 0=day-of-week, 1=n-days
+                   mode INTEGER REFERENCES eventMode(id) ON DELETE SET NULL, -- water, non-water...
+                   action INTEGER REFERENCES eventAction(id) ON DELETE SET NULL, -- action 
                    val INTEGER, -- value to be used with action,
-                                -- For dow, val is a bitmask, 1-Sun, 2-M, 4=Tu, ...
+                                -- For dow see eventDaysOfWeek for bitmask
                    refDate INTEGER, -- reference date for action
                    startTime INTEGER, -- seconds into day to start
                    duration INTEGER, -- duration of window in seconds
-                   qCelestial INTEGER DEFAULT 0, -- bit 1-> start relative to sunrise
-                                                 -- bit 2-> start relative to sunset
-                                                 -- bit 3-> stop relative to sunrise
-                                                 -- bit 4-> stop relative to sunset
-                   UNIQUE(site,name,mode,refDate,action,startTime,duration,qCelestial)
+                   startMode INTEGER REFERENCES eventCelestial(id) ON DELETE SET NULL, -- starting
+                   stopMode INTEGER REFERENCES eventCelestial(id) ON DELETE SET NULL, -- stoping
+                   UNIQUE(site,name,mode,refDate,action,startTime,duration,startMode,stopMode)
                   );
 
 -- water windows

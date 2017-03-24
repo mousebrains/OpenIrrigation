@@ -7,7 +7,8 @@ function inputRow(string $label, string $name, $value,
 		  float $min = NULL,
 		  float $max = NULL,
 		  bool $qChecked = NULL
-		) {
+		) 
+{
 	if ($type == 'latlon') {
 		$type = 'number';
 		$step = 1e-7; // ~1/100 of an arc second
@@ -32,7 +33,10 @@ function inputRow(string $label, string $name, $value,
 	echo ">\n</td><tr>\n";
 }
 
-function selectFromList(string $label, string $name, array $items, $active) {
+function selectFromList(string $label, string $name, array $items, $active)
+{
+	$qMultiple = substr($name,-2) == '[]'; // A bit masked value collection
+
 	if (count($items) <= 1) {
 		echo "<input type='hidden' name='old" . $name . "' value='" . $active . "'>\n";
 		echo "<input type='hidden' name='" . $name . "' value='" . $active . "'>\n";
@@ -40,10 +44,15 @@ function selectFromList(string $label, string $name, array $items, $active) {
 	}
 	echo "<tr><th>" . $label . "</th><td>\n";
 	echo "<input type='hidden' name='old" . $name . "' value='" . $active . "'>\n";
-	echo "<select name='" . $name . "'>\n";
+	echo "<select name='" . $name . "'";
+	if ($qMultiple) {echo " multiple";}
+        echo ">\n";
         foreach ($items as $key => $value) {
 		echo "<option value='" . $key . "'";
-                if ($key == $active) {echo " selected";}
+		if ((!$qMultiple && ($key == $active)) || 
+			($qMultiple && ((1 << $key) & $active))) {
+		  echo " selected";
+		}
                 echo ">" . $value . "</option>\n";
         }
         echo "</select>\n";
