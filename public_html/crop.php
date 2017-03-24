@@ -13,13 +13,14 @@ require_once 'php/navBar.php';
 require_once 'php/ParDB.php';
 require_once 'php/webForm.php';
 
+$table = 'crop';
+$fields = ['name', 'plantDate', 'Lini', 'Ldev', 'Lmid', 'Llate',
+	'KcInit', 'KcMid', 'KcEnd', 'height', 'depth', 'MAD', 'comment'];
+
 if (!empty($_POST)) {
-	$table = 'crop';
 	if (!empty($_POST['delete'])) { // Delete the entry
 		$parDB->deleteFromTable($table, 'id', $_POST['id']);
 	} else {
-		$fields = ['name', 'plantDate', 'Lini', 'Ldev', 'Lmid', 'Llate',
-			'KcInit', 'KcMid', 'KcEnd', 'height', 'depth', 'MAD', 'comment'];
 		if ($_POST['id'] == '') {
 			$parDB->insertIntoTable($table, $fields, $_POST);	
 		} else {
@@ -63,13 +64,13 @@ function myForm(array $row, string $submit) {
 	echo "</center>\n";
 }
 
-$blankRow = [];
-$results = $parDB->query('SELECT * FROM crop ORDER BY name;');
+$results = $parDB->query("SELECT * FROM $table ORDER BY name;");
 while ($row = $results->fetchArray()) {
-	foreach ($row as $key => $value) {$blankRow[$key] = '';}
 	myForm($row, 'Update');
 }
 
+$blankRow = array_fill_keys($fields, '');
+$blankRow['id'] = '';
 myForm($blankRow, 'Create');
 ?>
 </body>

@@ -50,13 +50,13 @@ function myForm(array $row, array $sites, array $modes, string $submit) {
 $sites = $parDB->loadTable('site', 'id', 'name', 'name');
 $modes = $parDB->loadTable('programMode', 'id', 'label', 'label');
 
-$results = $parDB->query('SELECT * FROM ' . $table . ' ORDER BY name;');
+$results = $parDB->query("SELECT * FROM $table ORDER BY name;");
 while ($row = $results->fetchArray()) {
 	myForm($row, $sites, $modes, 'Update');
 }
 
-$blankRow = ['id'=>''];
-foreach ($fields as $field) {$blankRow[$field] = '';}
+$blankRow = array_fill_keys($fields, '');
+$blankRow['id'] = '';
 myForm($blankRow, $sites, $modes, 'Create');
 ?>
 </body>

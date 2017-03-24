@@ -13,14 +13,15 @@ require_once 'php/navBar.php';
 require_once 'php/ParDB.php';
 require_once 'php/webForm.php';
 
+$table = 'controller';
+$fields = ['site', 'name', 'latitude', 'longitude', 'driver', 
+	'maxStations', 'maxCurrent', 'delay', 'make', 'model',
+	'installed', 'notes'];
+
 if (!empty($_POST)) {
-	$table = 'controller';
 	if (!empty($_POST['delete'])) { // Delete the entry
 		$parDB->deleteFromTable($table, 'id', $_POST['id']);
 	} else {
-		$fields = ['site', 'name', 'latitude', 'longitude', 'driver', 
-			'maxStations', 'maxCurrent', 'delay', 'make', 'model',
-			'installed', 'notes'];
 		if ($_POST['id'] < 0) { // A new entry
 			$parDB->insertIntoTable($table, $fields, $_POST);
 		} else { // An existing entry
@@ -64,13 +65,12 @@ while ($row = $results->fetchArray()) {
 	$sites[$siteNum] = $row['name'];
 }
 
-$blankRow = [];
-$results = $parDB->query('SELECT * FROM controller ORDER BY name;');
+$results = $parDB->query("SELECT * FROM $table ORDER BY name;");
 while ($row = $results->fetchArray()) {
-	foreach ($row as $key => $value) {$blankRow[$key] = '';}
 	myForm($row, $sites, 'Update');
 }
 
+$blankRow = array_fill_keys($fields, '');
 $blankRow['id'] = -1;
 $blankRow['site'] = $siteNum;
 myForm($blankRow, $sites, 'Create');

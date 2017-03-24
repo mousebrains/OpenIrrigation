@@ -13,12 +13,13 @@ require_once 'php/navBar.php';
 require_once 'php/ParDB.php';
 require_once 'php/webForm.php';
 
+$table = 'email';
+$fields = ['user', 'email', 'qSMS', 'qHTML'];
+
 if (!empty($_POST)) {
-	$table = 'email';
 	if (!empty($_POST['delete'])) { // Delete the entry
 		$parDB->deleteFromTable($table, 'id', $_POST['id']);
 	} else {
-		$fields = ['user', 'email', 'qSMS', 'qHTML'];
 		$_POST['qSMS'] = $_POST['qFormat'] == 'qSMS';
 		$_POST['qHTML'] = $_POST['qFormat'] == 'qHTML';
 		if ($_POST['id'] < 0) { // A new entry
@@ -78,13 +79,12 @@ while ($row = $results->fetchArray()) {
 	$emailReports[$row['email']][$row['report']] = 1;
 }
 
-$blankRow = [];
-$results = $parDB->query('SELECT * FROM email ORDER BY email;');
+$results = $parDB->query("SELECT * FROM $table ORDER BY email;");
 while ($row = $results->fetchArray()) {
-	foreach ($row as $key => $value) {$blankRow[$key] = '';}
 	myForm($row, $users, $reports, $emailReports, 'Update');
 }
 
+$blankRow = array_fill_keys($fields, '');
 $blankRow['id'] = -1;
 myForm($blankRow, $users, $reports, $emailReports, 'Create');
 ?>

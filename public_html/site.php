@@ -13,12 +13,13 @@ require_once 'php/navBar.php';
 require_once 'php/ParDB.php';
 require_once 'php/webForm.php';
 
+$table = 'site';
+$fields = ['name', 'addr', 'timezone', 'latitude', 'longitude', 'elevation'];
+
 if (!empty($_POST)) {
-	$table = 'site';
 	if (!empty($_POST['delete'])) { // Delete the entry
 		$parDB->deleteFromTable($table, 'id', $_POST['id']);
 	} else {
-		$fields = ['name', 'addr', 'timezone', 'latitude', 'longitude', 'elevation'];
 		if ($_POST['id'] == '') {
 			$parDB->insertIntoTable($table, $fields, $_POST);
 		} else {
@@ -45,13 +46,13 @@ function myForm(array $row, string $submit) {
 	echo "</center>\n";
 }
 
-$blankRow = [];
-$results = $parDB->query('SELECT * FROM site ORDER BY name;');
+$results = $parDB->query("SELECT * FROM $table ORDER BY name;");
 while ($row = $results->fetchArray()) {
-	foreach ($row as $key => $value) {$blankRow[$key] = '';}
 	myForm($row, 'Update');
 }
 
+$blankRow = array_fill_keys($fields, '');
+$blankRow['id'] = '';
 myForm($blankRow, 'Create')
 ?>
 </body>

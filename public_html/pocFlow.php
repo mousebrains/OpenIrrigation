@@ -13,12 +13,13 @@ require_once 'php/navBar.php';
 require_once 'php/ParDB.php';
 require_once 'php/webForm.php';
 
+$table = 'pocFlow';
+$fields = ['poc', 'sensor', 'name', 'make', 'model', 'toHertz', 'K', 'offset'];
+
 if (!empty($_POST)) {
-	$table = 'pocFlow';
 	if (!empty($_POST['delete'])) { // Delete the entry
 		$parDB->deleteFromTable($table, 'id', $_POST['id']);
 	} else {
-		$fields = ['poc', 'sensor', 'name', 'make', 'model', 'toHertz', 'K', 'offset'];
 		if ($_POST['id'] == '') {
 			$parDB->insertIntoTable($table, $fields, $_POST);	
 		} else {
@@ -53,13 +54,13 @@ function myForm(array $row, array $poc, array $sensors, string $submit) {
 $poc = $parDB->loadTable('poc', 'id', 'name', 'name');
 $sensors = $parDB->loadTable('sensor', 'id', 'name', 'addr');
 
-$blankRow = [];
-$results = $parDB->query('SELECT * FROM pocFlow ORDER BY name;');
+$results = $parDB->query("SELECT * FROM $table ORDER BY name;");
 while ($row = $results->fetchArray()) {
-	foreach ($row as $key => $value) {$blankRow[$key] = '';}
 	myForm($row, $poc, $sensors, 'Update');
 }
 
+$blankRow = array_fill_keys($fields, '');
+$blankRow['id'] = '';
 myForm($blankRow, $poc, $sensors, 'Create');
 ?>
 </body>

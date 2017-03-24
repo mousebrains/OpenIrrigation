@@ -97,7 +97,7 @@ $actions = $parDB->loadTable('eventAction', 'id', 'label', 'label');
 $celestial = $parDB->loadTable('eventCelestial', 'id', 'label', 'label');
 $dayOfWeek = $parDB->loadTable('eventDaysOfWeek', 'id', 'label', 'id');
 
-$results = $parDB->query('SELECT * FROM ' . $table . ' ORDER BY name;');
+$results = $parDB->query("SELECT * FROM $table ORDER BY name;");
 while ($row = $results->fetchArray()) {
 	myForm($row, $sites, $modes, $actions, $celestial, $dayOfWeek, 'Update');
 }

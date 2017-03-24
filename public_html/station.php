@@ -65,13 +65,13 @@ function myForm(array $row, array $poc, array $sensors, string $submit) {
 $poc = $parDB->loadTable('poc', 'id', 'name', 'name');
 $sensors = $parDB->loadTable('sensor', 'id', 'name', 'addr');
 
-$results = $parDB->query('SELECT * FROM ' . $table . ' ORDER BY sortOrder;');
+$results = $parDB->query("SELECT * FROM $table ORDER BY sortOrder;");
 while ($row = $results->fetchArray()) {
 	myForm($row, $poc, $sensors, 'Update');
 }
 
-$blankRow = ['id'=>''];
-foreach ($fields as $field) {$blankRow[$field] = '';}
+$blankRow = array_fill_keys($fields, '');
+$blankRow['id'] = '';
 myForm($blankRow, $poc, $sensors, 'Create');
 ?>
 </body>
