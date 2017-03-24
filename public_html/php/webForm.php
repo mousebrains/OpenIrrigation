@@ -33,7 +33,7 @@ function inputRow(string $label, string $name, $value,
 }
 
 function selectFromList(string $label, string $name, array $items, $active) {
-	if (count($items)) {
+	if (count($items) <= 1) {
 		echo "<input type='hidden' name='old" . $name . "' value='" . $active . "'>\n";
 		echo "<input type='hidden' name='" . $name . "' value='" . $active . "'>\n";
 		return;
