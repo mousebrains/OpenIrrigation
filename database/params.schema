@@ -38,7 +38,7 @@ CREATE TABLE soil(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
 DROP TABLE IF EXISTS crop;
 CREATE TABLE crop(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                   name TEXT UNIQUE, -- name of the crop
-                  plantDate TEXT, -- roughly when plantted
+                  plantDate text, -- roughly when plantted
                   Lini INTEGER, -- days of initial stage
                   Ldev INTEGER, -- days of development stage
                   Lmid INTEGER, -- days of mid-season stage

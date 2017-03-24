@@ -22,6 +22,8 @@ echo "
       <a href='pocMV.php'>Master Valve Edit</a>
       <a href='pocPump.php'>Booster Pump Edit</a>
       <a href='report.php'>Report Name Edit</a>
+      <a href='soil.php'>Soil Edit</a>
+      <a href='crop.php'>Crop Edit</a>
     </div>
   </li>
  </ul>
