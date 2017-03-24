@@ -62,6 +62,15 @@ class ParDB extends SQLite3 {
                 	}
         	}
 	}
+
+	function loadTable(string $table, string $key, string $value, string $orderBy=NULL) {
+		$sql = "SELECT " . $key . "," . $value . " FROM " . $table;
+		if (!is_null($orderBy)) {$sql .= " ORDER BY " . $orderBy;}
+                $results = $this->query($sql . ";");
+		$rows = [];
+		while ($row = $results->fetchArray()) {$rows[$row[0]] = $row[1];}
+		return $rows;
+	}
 }
 
 $parDB = new ParDB();

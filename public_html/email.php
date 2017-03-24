@@ -67,19 +67,13 @@ function myForm(array $row, array $users, array $reports, array $emailReports, s
 }
 
 $users = [];
-$results = $parDB->query('SELECT id,name FROM user ORDER BY name;');
-while ($row = $results->fetchArray()) {
-	$users[$row['id']] = $row['name'];
-}
+$results = $parDB->loadTable('user', 'id', 'name', 'name');
 
 $reports = [];
-$results = $parDB->query('SELECT id,label FROM reports ORDER BY label;');
-while ($row = $results->fetchArray()) {
-	$reports[$row['id']] = $row['label'];
-}
+$results = $parDB->loadTable('reports', 'id', 'label', 'label');
 
 $emailReports = [];
-$results = $parDB->query('SELECT * FROM emailReports;');
+$results = $parDB->query('SELECT email,report FROM emailReports;');
 while ($row = $results->fetchArray()) {
 	$emailReports[$row['email']][$row['report']] = 1;
 }
