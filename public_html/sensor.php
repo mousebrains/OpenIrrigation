@@ -61,7 +61,7 @@ function myForm(array $row, array $controllers, array $devTypes, string $submit)
 }
 
 $controllers = $parDB->loadTable('controller', 'id', 'name', 'name');
-$devTypes = $parDB->loadTable('sensorDevTypes', 'id', 'label', 'label');
+$devTypes = $parDB->loadTable('sensorDevType', 'id', 'label', 'label');
 
 $results = $parDB->query("SELECT * FROM $table ORDER BY name;");
 while ($row = $results->fetchArray()) {

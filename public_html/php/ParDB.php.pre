@@ -11,8 +11,7 @@ class ParDB extends SQLite3 {
 	}
 
 	function getID(string $table, string $id, string $field, $value) {
-	        $stmt = $this->prepare('SELECT ' . $id . ' FROM ' . $table . ' WHERE ' . $field . 
-					'==:val;');
+	        $stmt = $this->prepare("SELECT $id FROM $table WHERE $field ==:val;");
         	$stmt->bindValue(':val', $value);
         	$result = $stmt->execute();
         	$rval = NULL;
@@ -25,8 +24,7 @@ class ParDB extends SQLite3 {
 	}	
 
 	function deleteFromTable(string $table, string $field, $value) {
-        	$stmt = $this->prepare('DELETE FROM ' . $table . ' WHERE ' 
-			. $field . '=:value;');
+        	$stmt = $this->prepare("DELETE FROM $table WHERE $field =:value;");
         	$stmt->bindValue(':value', $value);
         	$stmt->execute();
         	$stmt->close();
@@ -35,10 +33,10 @@ class ParDB extends SQLite3 {
 	function insertIntoTable(string $table, array $fields, array $post) {
         	$toSave = [];
         	foreach ($fields as $field) {
-                	if ($post[$field] != $post['old' . $field]) {array_push($toSave, $field);}
+                	if ($post[$field] != $post["old$field"]) {array_push($toSave, $field);}
         	}
         	if (empty($toSave)) { return; }
-        	$sql = 'INSERT INTO ' . $table . ' (' . implode(',', $toSave) . ') VALUES (:' .
+        	$sql = "INSERT INTO $table (" . implode(',', $toSave) . ') VALUES (:' .
                 	implode(',:', $toSave) . ');';
         	$stmt = $this->prepare($sql);
         	foreach ($toSave as $field) { $stmt->bindValue(':' . $field, $post[$field]); }
@@ -47,25 +45,29 @@ class ParDB extends SQLite3 {
 	}
 
 	function update(string $table, string $field, $value, $id) {
-		$stmt = $this->prepare('UPDATE ' . $table . ' SET ' . $field . 
-					'=:val WHERE id==:id;');
+		$stmt = $this->prepare("UPDATE $table SET $field =:val WHERE id==:id;");
 		$stmt->bindValue(':val', $value);
                 $stmt->bindValue(':id', $id);
                 $stmt->execute();
                 $stmt->close();
 	}
 
+	function maybeUpdateField(string $table, string $field, $val, $old, $id) {
+                if ($val != $old) {
+			$this->update($table, $field, $val, $id);
+        	}
+	}
+
 	function maybeUpdate(string $table, array $fields, array $post) {
         	foreach ($fields as $field) {
-                	if ($post[$field] != $post['old' . $field]) {
-				$this->update($table, $field, $post[$field], $post['id']);
-                	}
+			$this->maybeUpdateField($table, $field, $post[$field],
+					$post["old$field"], $post['id']);
         	}
 	}
 
 	function loadTable(string $table, string $key, string $value, string $orderBy=NULL) {
-		$sql = "SELECT " . $key . "," . $value . " FROM " . $table;
-		if (!is_null($orderBy)) {$sql .= " ORDER BY " . $orderBy;}
+		$sql = "SELECT $key,$value FROM $table";
+		if (!is_null($orderBy)) {$sql .= " ORDER BY $orderBy";}
                 $results = $this->query($sql . ";");
 		$rows = [];
 		while ($row = $results->fetchArray()) {$rows[$row[0]] = $row[1];}

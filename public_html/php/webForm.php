@@ -33,29 +33,32 @@ function inputRow(string $label, string $name, $value,
 	echo ">\n</td><tr>\n";
 }
 
+function selectCellList(string $name, array $items, string $active, bool $qMultiple = false) {
+	echo "<td><input type='hidden' name='old$name' value='$active'>\n";
+	echo "<select name='$name'";
+	if ($qMultiple) {echo " multiple";}
+	echo ">\n";
+	foreach ($items as $key => $value) {
+		echo "<option value='$key'";
+		if ((!$qMultiple && ($key == $active)) || ($qMultiple & ((1 << $key) & $active))) {
+			echo " selected";
+		}
+		echo ">$value</option>\n";
+	}
+	echo "</select></td>\n";
+}
+
 function selectFromList(string $label, string $name, array $items, $active)
 {
 	$qMultiple = substr($name,-2) == '[]'; // A bit masked value collection
 
 	if (count($items) <= 1) {
-		echo "<input type='hidden' name='old" . $name . "' value='" . $active . "'>\n";
-		echo "<input type='hidden' name='" . $name . "' value='" . $active . "'>\n";
+		echo "<input type='hidden' name='old$name' value='$active'>\n";
+		echo "<input type='hidden' name='$name' value='$active'>\n";
 		return;
 	}
-	echo "<tr><th>" . $label . "</th><td>\n";
-	echo "<input type='hidden' name='old" . $name . "' value='" . $active . "'>\n";
-	echo "<select name='" . $name . "'";
-	if ($qMultiple) {echo " multiple";}
-        echo ">\n";
-        foreach ($items as $key => $value) {
-		echo "<option value='" . $key . "'";
-		if ((!$qMultiple && ($key == $active)) || 
-			($qMultiple && ((1 << $key) & $active))) {
-		  echo " selected";
-		}
-                echo ">" . $value . "</option>\n";
-        }
-        echo "</select>\n";
+	echo "<tr><th>$label</th>\n";
+	selectCellList($name, $items, $active, $qMultiple);
 }
 
 function submitDelete(string $submit, $qDelete) {

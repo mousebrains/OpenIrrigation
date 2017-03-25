@@ -9,7 +9,7 @@ echo "
       <a href='index.php'>Manual Operations</a>
       <a href='monitor.php'>Monitor Operations</a>
       <a href='program.php'>Programs</a>
-      <a href='programStations.php'>Program Stations</a>
+      <a href='programStation.php'>Program Station</a>
       <a href='event.php'>Events</a>
       <a href='programEvent.php'>Program Events</a>
       <a href='station.php'>Stations</a>

@@ -179,14 +179,14 @@ INSERT INTO program (site,name,mode) VALUES((SELECT id FROM site WHERE name=='Ca
 -- SELECT * FROM program;
 
 -- program stations association
-INSERT INTO programStations (pgm,stn,mode,runTime) VALUES (
+INSERT INTO programStation (pgm,stn,mode,runTime) VALUES (
  (SELECT id FROM program WHERE name='Selva plantas'), (SELECT id FROM station WHERE station==71),1,4);
-INSERT INTO programStations (pgm,stn,mode,runTime) VALUES (
+INSERT INTO programStation (pgm,stn,mode,runTime) VALUES (
  (SELECT id FROM program WHERE name='Selva goteo'), (SELECT id FROM station WHERE station==72),1,150);
-INSERT INTO programStations (pgm,stn,mode,runTime) VALUES (
+INSERT INTO programStation (pgm,stn,mode,runTime) VALUES (
  (SELECT id FROM program WHERE name='Selva rocio'), (SELECT id FROM station WHERE station==73),1,2);
 
--- SELECT * FROM programStations;
+-- SELECT * FROM programStation;
 
 -- event/water windows
 INSERT INTO event(site,mode,action,startMode,stopMode,name,val,startTime,duration) VALUES (
