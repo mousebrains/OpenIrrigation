@@ -48,8 +48,8 @@ INSERT INTO controller(site,name,latitude,longitude,driver,maxStations,
 -- SELECT * FROM controller;
 
 -- sensor information, valves, sensors, ...
-INSERT INTO sensor(name,passiveCurrent,activeCurrent,devType,addr,make,model) VALUES(
- 'Flow 0', 0.5, 0.5, 1, 0, 'WeatherTrak', 'WT2W-FD');
+INSERT INTO sensor(name,devType,addr,model) VALUES(
+ 'Flow 0', (SELECT id FROM sensorDevType WHERE name=='flow'), 0, 'WT2W-FD');
 
 INSERT INTO sensor(addr) VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9);
 INSERT INTO sensor(addr) VALUES (12),(13),(14),(15),(16),(17),(18),(19),(20),(21),(22),(23);
@@ -59,10 +59,13 @@ INSERT INTO sensor(addr) VALUES (43),(44),(45),(46),(47);
 INSERT INTO sensor(addr) VALUES (51),(52),(53);
 INSERT INTO sensor(addr) VALUES (57),(58),(59),(60),(61),(62),(63),(64),(65),(65);
 INSERT INTO sensor(addr) VALUES (70),(71),(72);
+
 -- Master Valve
 INSERT INTO sensor(name,addr,activeCurrent,make,model) VALUES (
   'MasterValve 0', 240, 30, 'Superior', 3300150);
 
+UPDATE sensor SET devType=(SELECT id FROM sensorDevType WHERE name=='solenoid') 
+		WHERE devType IS NULL;
 UPDATE sensor SET controller=(SELECT id FROM controller WHERE name=='Casa');
 UPDATE sensor SET latitude=(SELECT latitude FROM controller WHERE name=='Casa');
 UPDATE sensor SET longitude=(SELECT longitude FROM controller WHERE name=='Casa');
@@ -72,7 +75,7 @@ UPDATE sensor SET installed=strftime('%s', '2012-10-01') WHERE installed IS NULL
 UPDATE sensor SET activeCurrent=25 WHERE activeCurrent IS NULL;
 UPDATE sensor SET make='WeatherTrak'WHERE make IS NULL;
 UPDATE sensor SET model='WT2W-SVD-11' WHERE model IS NULL;
-UPDATE sensor SET name=printf('Station %d', addr+1) WHERE name is NULL;
+-- UPDATE sensor SET name=printf('Station %d', addr+1) WHERE name is NULL;
 
 -- .schema sensor
 -- SELECT * FROM sensor;

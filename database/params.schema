@@ -84,7 +84,7 @@ CREATE TABLE emailReports(email INTEGER REFERENCES email(id) ON DELETE CASCADE, 
 -- Site information
 DROP TABLE IF EXISTS site;
 CREATE TABLE site(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
-                  name TEXT, -- descriptive name 
+                  name TEXT UNIQUE, -- descriptive name 
                   addr TEXT, -- street address 
                   timezone TEXT, -- timezone
                   latitude REAL, -- latitude in decimal degrees
@@ -106,7 +106,8 @@ CREATE TABLE controller(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                         make TEXT, -- manufacturer
                         model TEXT, -- model
                         installed INTEGER, -- date installed in UTC
-                        notes TEXT -- Extra information
+                        notes TEXT, -- Extra information
+			UNIQUE (site, name)
                        );
 
 -- Sensor/Valve device type
@@ -133,7 +134,8 @@ CREATE TABLE sensor(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                     make TEXT, -- manufacturer
                     model TEXT, -- model
                     installed INTEGER, -- date installed in UTC
-                    notes TEXT -- Extra information
+                    notes TEXT, -- Extra information
+		    UNIQUE (controller, name) ON CONFLICT REPLACE
                    );
 
 -- Point of connect
@@ -144,38 +146,41 @@ CREATE TABLE poc(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                  targetFlow REAL, -- target flow in GPM
                  maxFlow REAL, -- maximum allowed flow in GPM
                  delayOn INTEGER DEFAULT 0, -- delay between turning on multiple stations
-                 delayOff INTEGER DEFAULT 0 -- delay between turning off multiple stations
+                 delayOff INTEGER DEFAULT 0, -- delay between turning off multiple stations
+		 UNIQUE (site, name)
                 );
 
 -- Point of connect flow
 DROP TABLE IF EXISTS pocFlow;
 CREATE TABLE pocFlow(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- poc's id
-                     sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE, -- sensor's id
+                     sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE UNIQUE, -- sensor's id
                      name TEXT, -- descriptive name
                      make TEXT, -- manufacturer
                      model TEXT, -- model
                      toHertz REAL DEFAULT 1, -- reading to Hertz
                      K REAL DEFAULT 1, -- Hertz -> GPM (reading * toHertz + offset) * K 
-                     offset REAL DEFAULT 1 -- offset of Hertz
+                     offset REAL DEFAULT 1, -- offset of Hertz
+		     UNIQUE (poc, name)
                     );
 
 -- Point of connect master valve
 DROP TABLE IF EXISTS pocMV;
 CREATE TABLE pocMV(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                    poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- poc's id
-                   sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE, -- sensor's id
+                   sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE UNIQUE, -- sensor's id
                    name TEXT, -- descriptive name
                    make TEXT, -- manufacturer
                    model TEXT, -- model
-                   qNormallyOpen INTEGER DEFAULT 1 -- 0->NC, 1->NO
+                   qNormallyOpen INTEGER DEFAULT 1, -- 0->NC, 1->NO
+		   UNIQUE (poc, name)
                   );
                   
 -- Point of connect pump
 DROP TABLE IF EXISTS pocPump;
 CREATE TABLE pocPump(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- poc's id
-                     sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE, -- sensor's id
+                     sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE UNIQUE, -- sensor's id
                      name TEXT, -- descriptive name
                      make TEXT, -- manufacturer
                      model TEXT, -- model
@@ -183,14 +188,15 @@ CREATE TABLE pocPump(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      maxFlow REAL, -- maximum flow this pump can sustain
                      delayOn INTEGER, -- # of seconds to turn on before using
                      delayOff INTEGER, -- # of seconds to turn off before not needed
-                     priority INTEGER DEFAULT 0 -- Order to turn on, 0->first, ...
+                     priority INTEGER DEFAULT 0, -- Order to turn on, 0->first, ...
+		     UNIQUE (poc, name)
                     );
 
 -- Station 
 DROP TABLE IF EXISTS station;
 CREATE TABLE station(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- poc's id
-                     sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE, -- sensor's id
+                     sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE UNIQUE, -- sensor's id
                      name TEXT, -- descriptive name
                      station INTEGER DEFAULT id, -- user visible station number
                      make TEXT, -- manufacturer
@@ -203,7 +209,9 @@ CREATE TABLE station(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      lowFlowFrac REAL DEFAULT 0, -- frac of meas/user flow for alert
                      highFlowFrac REAL DEFAULT 3, -- frac of meas/user flow for alert
                      onDelay INTEGER DEFAULT 60, -- delay after on before flow alerts
-                     offDelay INTEGER DEFAULT 60 -- delay after off before flow alerts
+                     offDelay INTEGER DEFAULT 60, -- delay after off before flow alerts
+		     UNIQUE (poc, name),
+		     UNIQUE (poc, station)
 		    );
 
 -- Modes for program
@@ -221,9 +229,10 @@ DROP TABLE IF EXISTS program;
 CREATE TABLE program(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
                      mode INTEGER REFERENCES programMode(id) ON DELETE SET NULL,
-                     name TEXT UNIQUE, -- descriptive name
+                     name TEXT, -- descriptive name
                      maxStations INTEGER, -- max # simultaneous stations
-                     maxFlow REAL -- max flow target flow
+                     maxFlow REAL, -- max flow target flow
+		     UNIQUE (site, name)
                     );	
 
 -- stations in each program
@@ -240,7 +249,7 @@ CREATE TABLE programStation(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
 DROP TABLE IF EXISTS eventMode;
 CREATE TABLE eventMode(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                        name TEXT UNIQUE, -- short name
-                       label TEXT -- Descriptive name
+                       label TEXT UNIQUE -- Descriptive name
                       );
 INSERT INTO eventMode (name,label) VALUES('water', 'Watering event');
 INSERT INTO eventMode (name,label) VALUES('event', 'Non-Water event');
@@ -249,7 +258,7 @@ INSERT INTO eventMode (name,label) VALUES('event', 'Non-Water event');
 DROP TABLE IF EXISTS eventAction;
 CREATE TABLE eventAction(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                          name TEXT UNIQUE, -- short name
-                         label TEXT -- Descriptive name
+                         label TEXT UNIQUE -- Descriptive name
                         );
 INSERT INTO eventAction (name,label) VALUES('dow', 'Day(s) of week');
 INSERT INTO eventAction (name,label) VALUES('nDays', 'Every n days');
@@ -259,7 +268,7 @@ INSERT INTO eventAction (name,label) VALUES('nDays', 'Every n days');
 DROP TABLE IF EXISTS eventCelestial;
 CREATE TABLE eventCelestial(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                             name TEXT UNIQUE, -- short name
-                            label TEXT -- Descriptive name
+                            label TEXT UNIQUE -- Descriptive name
                            );
 INSERT INTO eventCelestial (name,label) VALUES('clock', 'Wall Clock');
 INSERT INTO eventCelestial (name,label) VALUES('sunrise', 'Sunrise');
@@ -269,7 +278,7 @@ INSERT INTO eventCelestial (name,label) VALUES('sunset', 'Sunset');
 DROP TABLE IF EXISTS eventDaysOfWeek;
 CREATE TABLE eventDaysOfWeek(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                              name TEXT UNIQUE, -- short name
-                             label TEXT -- Descriptive name
+                             label TEXT UNQUE -- Descriptive name
                             );
 INSERT INTO eventDaysOfWeek (name,label) VALUES('sun', 'Sunday');
 INSERT INTO eventDaysOfWeek (name,label) VALUES('mon', 'Monday');
@@ -293,7 +302,7 @@ CREATE TABLE event(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                    duration INTEGER, -- duration of window in seconds
                    startMode INTEGER REFERENCES eventCelestial(id) ON DELETE SET NULL, -- starting
                    stopMode INTEGER REFERENCES eventCelestial(id) ON DELETE SET NULL, -- stoping
-                   UNIQUE(site,name,mode,refDate,action,startTime,duration,startMode,stopMode)
+		   UNIQUE(site, name)
                   );
 
 -- water windows
