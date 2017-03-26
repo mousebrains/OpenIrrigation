@@ -8,7 +8,7 @@ include ../../Makefile.params
 PRE = CmdDB.php.pre ParDB.php.pre
 
 SRC = $(PRE:%.pre=%) 
-SRC+= MyDB.php statusBlock.php navBar.php
+SRC+= statusBlock.php navBar.php
 SRC+= webForm.php
 
 DEST = $(SRC:%=$(PHPDIR)/%)

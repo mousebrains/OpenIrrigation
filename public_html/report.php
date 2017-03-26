@@ -19,8 +19,9 @@ function myUpdate($table, $id, $name, $prev, $field) {
 	}
 }
 
+$table = 'reports';
+
 if (!empty($_POST)) {
-	$table = 'reports';
 	$ids = $_POST['id'];
 	$names = $_POST['name'];
 	$oldnames = $_POST['oldname'];

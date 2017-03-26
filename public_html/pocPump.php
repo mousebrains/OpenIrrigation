@@ -17,17 +17,7 @@ $table = 'pocPump';
 $fields = ['poc', 'sensor', 'name', 'make', 'model', 
 	'minFlow', 'maxFlow', 'delayOn', 'delayOff', 'priority'];
 
-if (!empty($_POST)) {
-	if (!empty($_POST['delete'])) { // Delete the entry
-		$parDB->deleteFromTable($table, 'id', $_POST['id']);
-	} else {
-		if ($_POST['id'] == '') {
-			$parDB->insertIntoTable($table, $fields, $_POST);	
-		} else {
-			$parDB->maybeUpdate($table, $fields, $_POST);	
-		}
-	}
-}
+if (!empty($_POST)) {postUp($_POST, $table, $fields, $parDB);}
 
 function myForm(array $row, array $poc, array $sensors, string $submit) {
 	$NONC = [0 => 'Normally Closed', 1 => 'Normally Open'];
@@ -65,9 +55,8 @@ while ($row = $results->fetchArray()) {
 	myForm($row, $poc, $sensors, 'Update');
 }
 
-$blankRow = array_fill_keys($fields, '');
-$blankRow['id'] = '';
-myForm($blankRow, $poc, $sensors, 'Create');
+myForm(mkBlankRow($fields, ['id'=>'','poc'=key($poc),'sensor'=>key($sensors)]), 
+       $poc, $sensors, 'Create');
 ?>
 </body>
 </html>

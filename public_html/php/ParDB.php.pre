@@ -1,55 +1,124 @@
 <?php
 class ParDB extends SQLite3 {
+	private $qForeign = false;
+	public $filename = '__DBDIR__/params.db';
+
+	function errMsg(Exception $e, string $msg) : bool {
+		echo "<br><h1>Error $msg for " . $this->filename . "</h1>\n";
+		echo "<pre>\n";
+		echo $e->getMessage();
+		echo "</pre>\n";
+		return false;
+	}
+		
 	function __construct() {
-		parent::__construct('__DBDIR__/params.db', SQLITE3_OPEN_READWRITE);
-                $this->busyTimeout(2000);
-		$this->exec('PRAGMA foreign_keys=on;');
+		try {
+			parent::__construct($this->filename, SQLITE3_OPEN_READWRITE);
+			$this->enableExceptions(true);
+                	$this->busyTimeout(2000);
+		} catch (Exception $e) {
+			$this->errMsg($e, "opening");
+		}
         }
 
 	function __destruct() {
-                $this->close();
+		try {
+                	$this->close();
+		} catch (Exception $e) {
+			$this->errMsg($e, "closing");
+		}
 	}
 
-	function getID(string $table, string $id, string $field, $value) {
-	        $stmt = $this->prepare("SELECT $id FROM $table WHERE $field ==:val;");
-        	$stmt->bindValue(':val', $value);
-        	$result = $stmt->execute();
-        	$rval = NULL;
-        	while ($row = $result->fetchArray()) {
-                	$rval = $row[0];
-                	break;
-        	}
-        	$stmt->close();
-        	return $rval;
+	function foreignKeys() : bool {
+		if (!$this->qForeign) {
+			$this->qForeign = true;
+			try { // turn foreign key handling on
+				$this->exec('PRAGMA foreign_keys=on;');
+			} catch (Exception $e) {
+				return $this->errMsg($e, "enabling foreign key support");
+			}
+		}
+		return true;
+	}
+
+	function getID(string $table, string $id, string $field, $value) : int {
+		try {
+	        	$stmt = $this->prepare("SELECT $id FROM $table WHERE $field ==:val;");
+        		$stmt->bindValue(':val', $value);
+        		$result = $stmt->execute();
+        		$rval = NULL;
+        		while ($row = $result->fetchArray()) {
+                		$rval = $row[0];
+                		break;
+        		}
+        		$stmt->close();
+        		return $rval;
+		} catch (Exception $e) {
+			$this->errMsg($e, "getting ID");
+			return -1;
+		}
 	}	
 
-	function deleteFromTable(string $table, string $field, $value) {
-        	$stmt = $this->prepare("DELETE FROM $table WHERE $field =:value;");
-        	$stmt->bindValue(':value', $value);
-        	$stmt->execute();
-        	$stmt->close();
+	function deleteFromTable(string $table, string $field, $value) : bool {
+		try {
+			$this->foreignKeys();
+        		$stmt = $this->prepare("DELETE FROM $table WHERE $field =:value;");
+        		$stmt->bindValue(':value', $value);
+        		$stmt->execute();
+        		$stmt->close();
+			return true;
+		} catch (Exception $e) {
+			return $this->errMsg($e, "deleting from table($table), $field, $value");
+		}
+
 	}
 
-	function insertIntoTable(string $table, array $fields, array $post) {
-        	$toSave = [];
-        	foreach ($fields as $field) {
-                	if ($post[$field] != $post["old$field"]) {array_push($toSave, $field);}
-        	}
-        	if (empty($toSave)) { return; }
-        	$sql = "INSERT INTO $table (" . implode(',', $toSave) . ') VALUES (:' .
-                	implode(',:', $toSave) . ');';
-        	$stmt = $this->prepare($sql);
-        	foreach ($toSave as $field) { $stmt->bindValue(':' . $field, $post[$field]); }
-        	$stmt->execute();
-        	$stmt->close();
+	function insertIntoTable(string $table, array $fields, array $post) : bool {
+		try {
+			$this->foreignKeys();
+			$qInsert = false;
+			$toSave = [];
+        		foreach ($fields as $field) {
+                		if ($post[$field] != $post["old$field"]) {
+					$qInsert = true;
+				}
+				if (!empty($post[$field])) {
+					array_push($toSave, $field);
+				}
+        		}
+        		if ($qInsert) {
+        			$sql = "INSERT INTO $table (" . implode(',', $toSave) . ') VALUES (:' .
+                			implode(',:', $toSave) . ');';
+				echo "<pre>$sql\n";
+        			$stmt = $this->prepare($sql);
+        			foreach ($toSave as $field) {
+					$stmt->bindValue(':' . $field, $post[$field]);
+					echo " $field=" . $post[$field] . "\n";
+				}
+        			$stmt->execute();
+        			$stmt->close();
+				echo "</pre>\n";
+			}
+			return true;
+		} catch (Exception $e) {
+			return $this->errMsg($e, "inserting into($table)");
+		}
 	}
 
-	function update(string $table, string $field, $value, $id) {
-		$stmt = $this->prepare("UPDATE $table SET $field =:val WHERE id==:id;");
-		$stmt->bindValue(':val', $value);
-                $stmt->bindValue(':id', $id);
-                $stmt->execute();
-                $stmt->close();
+	function update(string $table, string $field, $value, $id) : bool {
+		try {
+			$this->foreignKeys();
+			$sql = "UPDATE $table SET $field=:val WHERE id==:id;";
+			echo "<pre>$sql id='$id' $field='$value'\n</pre>\n";
+			$stmt = $this->prepare($sql);
+			$stmt->bindValue(':val', $value);
+                	$stmt->bindValue(':id', $id);
+                	$stmt->execute();
+                	$stmt->close();
+			return true;
+		} catch (Exception $e) {
+			return $this->errMsg($e, "updating $table, $field, $value, $id");
+		}
 	}
 
 	function maybeUpdateField(string $table, string $field, $val, $old, $id) {
@@ -65,13 +134,33 @@ class ParDB extends SQLite3 {
         	}
 	}
 
-	function loadTable(string $table, string $key, string $value, string $orderBy=NULL) {
-		$sql = "SELECT $key,$value FROM $table";
-		if (!is_null($orderBy)) {$sql .= " ORDER BY $orderBy";}
-                $results = $this->query($sql . ";");
-		$rows = [];
-		while ($row = $results->fetchArray()) {$rows[$row[0]] = $row[1];}
-		return $rows;
+	function loadTable(string $table, string $key, string $value, 
+			string $orderBy=NULL) : array {
+		try {
+			$sql = "SELECT $key,$value FROM $table";
+			if (!is_null($orderBy)) {$sql .= " ORDER BY $orderBy";}
+                	$results = $this->query($sql . ";");
+			$rows = [];
+			while ($row = $results->fetchArray()) {$rows[$row[0]] = $row[1];}
+			return $rows;
+		} catch (Exception $e) {
+			$this->errMsg($e, "loading table($table) $key, $value, $orderBy");
+			return [];
+		}
+	}
+
+	function loadTableKeyValue(string $table, string $key, string $value, $defVal=1) : array {
+		try {
+			$aa = [];
+			$results = $this->query("SELECT $key,$value FROM $table;");
+			while ($row = $results->fetchArray()) {
+				$aa[$row[$key]][$row[$value]] = $defVal;
+			}
+			return $aa;
+		} catch (Exception $e) {
+			$this->errMsg($e, "loadTableKeyValue $table $key $value $defVal");
+			return [];
+		}
 	}
 }
 

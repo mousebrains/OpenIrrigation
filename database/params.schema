@@ -135,7 +135,7 @@ CREATE TABLE sensor(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                     model TEXT, -- model
                     installed INTEGER, -- date installed in UTC
                     notes TEXT, -- Extra information
-		    UNIQUE (controller, name) ON CONFLICT REPLACE
+		    UNIQUE (controller, name)
                    );
 
 -- Point of connect

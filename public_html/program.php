@@ -16,17 +16,7 @@ require_once 'php/webForm.php';
 $table = 'program';
 $fields = ['site', 'name', 'mode', 'maxStations', 'maxFlow'];
 
-if (!empty($_POST)) {
-	if (!empty($_POST['delete'])) { // Delete the entry
-		$parDB->deleteFromTable($table, 'id', $_POST['id']);
-	} else {
-		if ($_POST['id'] == '') {
-			$parDB->insertIntoTable($table, $fields, $_POST);	
-		} else {
-			$parDB->maybeUpdate($table, $fields, $_POST);	
-		}
-	}
-}
+if (!empty($_POST)) {postUp($_POST, $table, $fields, $parDB);}
 
 function myForm(array $row, array $sites, array $modes, string $submit) {
 	echo "<hr>\n";
@@ -55,9 +45,8 @@ while ($row = $results->fetchArray()) {
 	myForm($row, $sites, $modes, 'Update');
 }
 
-$blankRow = array_fill_keys($fields, '');
-$blankRow['id'] = '';
-myForm($blankRow, $sites, $modes, 'Create');
+myForm(mkBlankRow($fields, ['id'=>'','site'=>key($sites),'mode'=>key($modes)]), 
+       $sites, $modes, 'Create');
 ?>
 </body>
 </html>

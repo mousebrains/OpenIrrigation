@@ -67,26 +67,17 @@ function myForm(array $row, array $users, array $reports, array $emailReports, s
 	echo "</center>\n";
 }
 
-$users = [];
-$results = $parDB->loadTable('user', 'id', 'name', 'name');
-
-$reports = [];
-$results = $parDB->loadTable('reports', 'id', 'label', 'label');
-
-$emailReports = [];
-$results = $parDB->query('SELECT email,report FROM emailReports;');
-while ($row = $results->fetchArray()) {
-	$emailReports[$row['email']][$row['report']] = 1;
-}
+$users = $parDB->loadTable('user', 'id', 'name', 'name');
+$reports = $parDB->loadTable('reports', 'id', 'label', 'label');
+$emailReports = $parDB->loadTableKeyValue('emailReports', 'email', 'report');
 
 $results = $parDB->query("SELECT * FROM $table ORDER BY email;");
 while ($row = $results->fetchArray()) {
 	myForm($row, $users, $reports, $emailReports, 'Update');
 }
 
-$blankRow = array_fill_keys($fields, '');
-$blankRow['id'] = -1;
-myForm($blankRow, $users, $reports, $emailReports, 'Create');
+myForm(mkBlankRow($fields, ['id'=>-1,'user'=>key($users)]), 
+	$users, $reports, $emailReports, 'Create');
 ?>
 </body>
 </html>

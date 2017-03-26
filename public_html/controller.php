@@ -18,17 +18,7 @@ $fields = ['site', 'name', 'latitude', 'longitude', 'driver',
 	'maxStations', 'maxCurrent', 'delay', 'make', 'model',
 	'installed', 'notes'];
 
-if (!empty($_POST)) {
-	if (!empty($_POST['delete'])) { // Delete the entry
-		$parDB->deleteFromTable($table, 'id', $_POST['id']);
-	} else {
-		if ($_POST['id'] < 0) { // A new entry
-			$parDB->insertIntoTable($table, $fields, $_POST);
-		} else { // An existing entry
-			$parDB->maybeUpdate($table, $fields, $_POST);
-		}
-	}
-}
+if (!empty($_POST)) {postUp($_POST, $table, $fields, $parDB);}
 
 function myForm(array $row, array $sites, string $submit) {
 	echo "<hr>\n";
@@ -57,23 +47,14 @@ function myForm(array $row, array $sites, string $submit) {
 	echo "</center>\n";
 }
 
-$sites = [];
-$siteNum = 0;
-$results = $parDB->query('SELECT id,name FROM site ORDER BY name;');
-while ($row = $results->fetchArray()) {
-	$siteNum = $row['id']; // Used latter
-	$sites[$siteNum] = $row['name'];
-}
+$sites = $parDB->loadTable('site', 'id', 'name', 'name');
 
 $results = $parDB->query("SELECT * FROM $table ORDER BY name;");
 while ($row = $results->fetchArray()) {
 	myForm($row, $sites, 'Update');
 }
 
-$blankRow = array_fill_keys($fields, '');
-$blankRow['id'] = -1;
-$blankRow['site'] = $siteNum;
-myForm($blankRow, $sites, 'Create');
+myForm(mkBlankRow($fields, ['id'=>'','site'=>key($sites)]), $sites, 'Create');
 ?>
 </body>
 </html>

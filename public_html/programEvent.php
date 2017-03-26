@@ -89,11 +89,9 @@ $results = $parDB->query($sql);
 while ($row = $results->fetchArray()) {
 	myRow($row, $programs, $events);
 }
-$blankRow = array_fill_keys($fields, '');
-$blankRow['id'] = -1;
-$blankRow['pgm'] = key($programs);
-$blankRow['event'] = key($events);
-myRow($blankRow, $programs, $events);
+
+myRow(mkBlankRow($fields, ['id'=-1,'pgm'=>key($programs),'event'=>key($events)]), 
+	$programs, $events);
 echo "</table>\n";
 echo "<input type='submit' value='Update'>\n";
 echo "</form>\n";

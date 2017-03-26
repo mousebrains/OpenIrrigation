@@ -17,18 +17,10 @@ $table = 'user';
 $fields = ['name', 'passwd'];
 
 if (!empty($_POST)) {
-	if (!empty($_POST['delete'])) { // Delete the entry
-		$parDB->deleteFromTable($table, 'id', $_POST['id']);
-	} else {
-		if (!empty($_POST['passwd'])) { // Hash it
-			$_POST['passwd'] = password_hash($_POST['passwd'], PASSWORD_DEFAULT); 
-		}
-		if ($_POST['id'] == '') {
-			$parDB->insertIntoTable($table, $fields, $_POST);	
-		} else {
-			$parDB->maybeUpdate($table, $fields, $_POST);	
-		}
+	if (!empty($_POST['passwd'])) { // Hash it
+		$_POST['passwd'] = password_hash($_POST['passwd'], PASSWORD_DEFAULT); 
 	}
+	postUp($_POST, $table, $fields, $parDB);
 }
 
 function myForm(array $row, string $submit) {
@@ -50,9 +42,7 @@ while ($row = $results->fetchArray()) {
 	myForm($row, 'Update');
 }
 
-$blankRow = array_fill_keys($fields, '');
-$blankRow['id'] = '';
-myForm($blankRow, 'Create');
+myForm(mkBlankRow($fields, ['id'=>'']), 'Create');
 ?>
 </body>
 </html>

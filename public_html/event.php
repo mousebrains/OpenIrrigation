@@ -102,9 +102,10 @@ while ($row = $results->fetchArray()) {
 	myForm($row, $sites, $modes, $actions, $celestial, $dayOfWeek, 'Update');
 }
 
-$blankRow = array_fill_keys($fields, '');
-$blankRow['id'] = '';
-myForm($blankRow, $sites, $modes, $actions, $celestial, $dayOfWeek, 'Create');
+myForm(mkBlankRow($fields, ['id'=>'','site'=>key($sites),'mode'=key($modes),
+			'action'=>key($actions),
+			'startMode'=key($celestial),'stopMode'=key($celestial)]),
+	$sites, $modes, $actions, $celestial, $dayOfWeek, 'Create');
 ?>
 </body>
 </html>
