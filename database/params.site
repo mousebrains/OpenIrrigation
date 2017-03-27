@@ -64,12 +64,15 @@ INSERT INTO sensor(addr) VALUES (51),(52),(53);
 INSERT INTO sensor(addr) VALUES (57),(58),(59),(60),(61),(62),(63),(64),(65),(66);
 INSERT INTO sensor(addr) VALUES (70),(71),(72);
 
-UPDATE sensor SET controller=(SELECT id FROM controller WHERE name=='Casa');
+UPDATE sensor SET controller=(SELECT controller.id FROM controller WHERE controller.name=='Casa');
 UPDATE sensor SET name=printf('Station %d', addr+1) WHERE name is NULL;
-UPDATE sensor SET devType=(SELECT id FROM sensorDevType WHERE name=='solenoid') 
-		WHERE devType IS NULL;
-UPDATE sensor SET latitude=(SELECT latitude FROM controller WHERE name=='Casa');
-UPDATE sensor SET longitude=(SELECT longitude FROM controller WHERE name=='Casa');
+UPDATE sensor SET devType=(
+	SELECT sensorDevType.id FROM sensorDevType WHERE sensorDevType.name=='solenoid') 
+	WHERE devType IS NULL;
+UPDATE sensor SET latitude=(
+	SELECT controller.latitude FROM controller WHERE controller.name=='Casa');
+UPDATE sensor SET longitude=(
+	SELECT controller.longitude FROM controller WHERE controller.name=='Casa');
 UPDATE sensor SET driver='TDI' WHERE driver IS NULL;
 UPDATE sensor SET installed=strftime('%s', '2012-10-01') WHERE installed IS NULL;
 
@@ -164,9 +167,14 @@ INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (71,'Selva 
 INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (72,'Selva goteo', 2.0,300, 30);
 INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (73,'Selva rocio', 0.1, 2, 2);
 
-UPDATE station SET poc=(SELECT id FROM poc WHERE name='Outside') WHERE station < 71;
-UPDATE station SET poc=(SELECT id FROM poc WHERE name='Selva') WHERE station > 70;
-UPDATE station SET sensor=(SELECT sensor.id FROM station INNER JOIN sensor ON station==addr+1 AND devtype==0);
+UPDATE station SET poc=(SELECT poc.id FROM poc WHERE poc.name='Outside') WHERE station < 71;
+UPDATE station SET poc=(SELECT poc.id FROM poc WHERE poc.name='Selva') WHERE station > 70;
+UPDATE station SET sensor=(
+	SELECT sensor.id FROM sensor 
+	INNER JOIN sensorDevType 
+	ON sensorDevType.id==sensor.devType AND sensorDevType.name=='solenoid' 
+	WHERE station.station==(sensor.addr+1)) 
+	WHERE sensor IS NULL;
 UPDATE station SET make='Hunter',model='PGV-100A';
 UPDATE station SET sortOrder=id;
 UPDATE station SET soakTime=soakTime*60; -- minutes to seconds
@@ -177,17 +185,28 @@ UPDATE station SET cycleTime=cycleTime*60; -- minutes to seconds
 -- programs
 INSERT INTO program (site,name) VALUES((SELECT id FROM site WHERE name=='Casa'), 'Selva plantas');
 INSERT INTO program (site,name) VALUES((SELECT id FROM site WHERE name=='Casa'), 'Selva goteo');
-INSERT INTO program (site,name,mode) VALUES((SELECT id FROM site WHERE name=='Casa'), 'Selva rocio', 0);
+INSERT INTO program (site,name) VALUES((SELECT id FROM site WHERE name=='Casa'), 'Selva rocio');
+
+UPDATE program SET mode=(SELECT programMode.id FROM programMode WHERE programMode.name='on');
 
 -- SELECT * FROM program;
 
 -- program stations association
 INSERT INTO programStation (pgm,stn,mode,runTime) VALUES (
- (SELECT id FROM program WHERE name='Selva plantas'), (SELECT id FROM station WHERE station==71),1,4);
+ (SELECT id FROM program WHERE name='Selva plantas'), 
+ (SELECT id FROM station WHERE station==71),
+ 1,4*60
+);
 INSERT INTO programStation (pgm,stn,mode,runTime) VALUES (
- (SELECT id FROM program WHERE name='Selva goteo'), (SELECT id FROM station WHERE station==72),1,150);
+ (SELECT id FROM program WHERE name='Selva goteo'), 
+ (SELECT id FROM station WHERE station==72),
+ 1,150*60
+);
 INSERT INTO programStation (pgm,stn,mode,runTime) VALUES (
- (SELECT id FROM program WHERE name='Selva rocio'), (SELECT id FROM station WHERE station==73),1,2);
+ (SELECT id FROM program WHERE name='Selva rocio'), 
+ (SELECT id FROM station WHERE station==73),
+ 1,2*60
+);
 
 -- SELECT * FROM programStation;
 

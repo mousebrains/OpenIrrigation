@@ -230,8 +230,8 @@ CREATE TABLE program(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
                      mode INTEGER REFERENCES programMode(id) ON DELETE SET NULL,
                      name TEXT, -- descriptive name
-                     maxStations INTEGER, -- max # simultaneous stations
-                     maxFlow REAL, -- max flow target flow
+                     maxStations INTEGER DEFAULT 1, -- max # simultaneous stations
+                     maxFlow REAL DEFAULT 100, -- max flow target flow
 		     UNIQUE (site, name)
                     );	
 
