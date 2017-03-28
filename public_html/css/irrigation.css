@@ -56,3 +56,4 @@ body {margin:0;}
 table { border-collapse: collapse; }
 
 table, th, td { border: 1px solid black; }
+th, td { text-align:right; vertical-align:center;}
