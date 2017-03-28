@@ -18,34 +18,46 @@ $fields = ['poc', 'sensor', 'name', 'station', 'make', 'model',
 	'sortOrder', 'cycleTime', 'soakTime', 
 	'measuredFlow', 'userFlow', 'lowFlowFrac', 'highFlowFrac', 
 	'onDelay', 'offDelay'];
+$adjust = ['cycleTime'=>60, 'soakTime'=>60];
 
-if (!empty($_POST)) {postUp($_POST, $table, $fields, $parDB);}
+if (!empty($_POST)) {$parDB->postUp($table, $fields, $_POST, $adjust);}
 
 function myForm(array $row, array $poc, array $sensors, string $submit) {
+	global $parDB;
+	global $adjust;
 	echo "<hr>\n";
 	echo "<center>\n";
 	echo "<form method='post'>\n";
-	echo "<input type='hidden' name='id' value='" . $row['id'] . "'>\n";
+	inputHidden($row['id']);
 	echo "<table>\n";
 	selectFromList('POC', 'poc', $poc, $row['poc']);
 	selectFromList('Sensor', 'sensor', $sensors, $row['sensor']);
-	inputRow('Name', 'name', $row['name'], 'text', 'Sensor Name', true);
-	inputRow('Station', 'station', $row['station'], 'number', '1', true, 1, 1, 200);
-	inputRow('Make', 'make', $row['make'], 'text', 'Tucor');
-	inputRow('Model', 'model', $row['model'], 'text', 'TDI');
-	inputRow('Sort Order', 'sortOrder', $row['sortOrder'], 'number', '1', false, 1, 1, 200);
-	inputRow('Maximum Cycle Time (s)', 'cycleTime', $row['cycleTime'], 'number', '1', false, 1, 60, 100000);
-	inputRow('Minimum Soak Time (s)', 'soakTime', $row['soakTime'], 'number', '1', false, 1, 60, 100000);
-	inputRow('On Delay (s)', 'onDelay', $row['onDelay'], 'number', '1', false, 1, 1, 900);
-	inputRow('Off Delay (s)', 'offDelay', $row['offDelay'], 'number', '1', false, 1, 1, 900);
-	inputRow('Measured Flow (GPM)', 'measuredFlow', $row['measuredFlow'], 
-			'number', '5.1', false, 0.01, 0, 100);
-	inputRow('User Flow (GPM)', 'userFlow', $row['userFlow'], 
-			'number', '5.1', false, 0.01, 0, 100);
-	inputRow('Low flow fraction', 'lowFlowFrac', $row['lowFlowFrac'], 
-			'number', '0.1', false, 0.1, 0, 10);
-	inputRow('High flow fraction', 'highFlowFrac', $row['highFlowFrac'], 
-			'number', '0.1', false, 0.1, 0, 10);
+	inputRow('Name', 'name', $row['name'], 'text', 
+		['placeholder'=>'Sensor Name', 'required'=>NULL]);
+	inputRow('Station', 'station', $row['station'], 'number', 
+		['placeholder'=>1, 'required'=>true, 'min'=>1, 'max'=>200]);
+	inputRow('Make', 'make', $row['make'], 'text', ['placeholder'=>'Tucor']);
+	inputRow('Model', 'model', $row['model'], 'text', ['placeholder'=>'TDI']);
+	inputRow('Sort Order', 'sortOrder', $row['sortOrder'], 'number', 
+		['placeholder'=>1, 'min'=>1, 'max'=>200]);
+	inputRow('Maximum Cycle Time (min)', 'cycleTime', 
+		$parDB->unadjust('cycleTime', $row['cycleTime'], $adjust), 'number', 
+		['placeholder'=>1, 'min'=>1, 'max'=>600]);
+	inputRow('Minimum Soak Time (min)', 'soakTime', 
+		$parDB->unadjust('soakTime', $row['soakTime'], $adjust), 'number', 
+		['placeholder'=>1, 'min'=>1, 'max'=>600]);
+	inputRow('On Delay (s)', 'onDelay', $row['onDelay'], 'number', 
+		['placeholder'=>1, 'min'=>1, 'max'=>900]);
+	inputRow('Off Delay (s)', 'offDelay', $row['offDelay'], 'number', 
+		['placeholder'=>1, 'min'=>1, 'max'=>900]);
+	inputRow('Measured Flow (GPM)', 'measuredFlow', $row['measuredFlow'], 'number', 
+		['placeholder'=>5.1, 'step'=>0.1, 'min'=>0, 'max'=>100]);
+	inputRow('User Flow (GPM)', 'userFlow', $row['userFlow'], 'number', 
+		['placeholder'=>5.1, 'step'=>0.1, 'min'=>0, 'max'=>100]);
+	inputRow('Low flow fraction', 'lowFlowFrac', $row['lowFlowFrac'], 'number', 
+		['placeholder'=>0.1, 'step'=>0.1, 'min'=>0, 'max'=>10]);
+	inputRow('High flow fraction', 'highFlowFrac', $row['highFlowFrac'], 'number',
+		['placeholder'=>0.1, 'step'=>0.1, 'min'=>0, 'max'=>10]);
 	echo "</table>\n";
 	submitDelete($submit, !empty($row['name']));
 	echo "</form>\n";

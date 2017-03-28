@@ -16,37 +16,50 @@ require_once 'php/webForm.php';
 $table = 'program';
 $fields = ['site', 'name', 'mode', 'maxStations', 'maxFlow'];
 
-if (!empty($_POST)) {postUp($_POST, $table, $fields, $parDB);}
+if (!empty($_POST)) {$parDB->postUpArray($table, $fields, $_POST);}
 
-function myForm(array $row, array $sites, array $modes, string $submit) {
-	echo "<hr>\n";
-	echo "<center>\n";
-	echo "<form method='post'>\n";
-	echo "<input type='hidden' name='id' value='" . $row['id'] . "'>\n";
-	echo "<table>\n";
-	selectFromList('Site', 'site', $sites, $row['site']);
-	selectFromList('Operating Mode', 'mode', $modes, $row['mode']);
-	inputRow('Name', 'name', $row['name'], 'text', 'Program B', true);
-	inputRow('Maximum Number Simultaneous Stations', 'maxStations', $row['maxStations'], 
-		'number', '1', false, 1, 1, 200);
-	inputRow('Maximum Flow (GPM)', 'maxFlow', $row['maxFlow'], 
-		'number', '20.5', false, 0.1, 0.1, 200);
-	echo "</table>\n";
-	submitDelete($submit, !empty($row['name']));
-	echo "</form>\n";
-	echo "</center>\n";
+function myRow(array $row, array $sites, array $modes) {
+	echo "<tr>\n";
+	echo "<td>\n";
+	inputHidden($row['id'], 'id[]');
+	inputHidden($row['id'], 'delete[]', 'checkbox');
+	echo "</td>\n<td>\n";
+	inputBlock('name[]', $row['name'], 'text', ['placeholder'=>'Pgm B', 'required'=>NULL]);
+	echo "</td>\n";
+	selectCellList('mode[]', $modes, $row['mode']);
+	selectCellList('site[]', $sites, $row['site']);
+	echo "<td>\n";
+	inputBlock('maxStations[]', $row['maxStations'], 'number', 
+		['placeholder'=>1, 'min'=>1, 'max'=>200]);
+	echo "</td>\n<td>\n";
+	inputBlock('maxFlow[]', $row['maxFlow'], 'number', 
+		['placeholder'=>1.5, 'step'=>0.1, 'min'=>0.1, 'max'=>200]);
+	echo "</td>\n";
+	echo "</tr>\n";
 }
 
 $sites = $parDB->loadTable('site', 'id', 'name', 'name');
 $modes = $parDB->loadTable('programMode', 'id', 'label', 'label');
 
-$results = $parDB->query("SELECT * FROM $table ORDER BY name;");
+echo "<center>\n";
+echo "<form method='post'>\n";
+echo "<table>\n";
+echo "<tr><th>Delete</th><th>Name</th>";
+if (count($sites) > 1) {echo "<th>Site</th>";}
+echo "<th>Mode</th><th>Max #<br>Stations</th><th>Max Flow<br>(GPM)</th></tr>\n";
+
+$results = $parDB->query("SELECT * FROM $table ORDER BY name COLLATE NOCASE;");
 while ($row = $results->fetchArray()) {
-	myForm($row, $sites, $modes, 'Update');
+	myRow($row, $sites, $modes);
 }
 
-myForm(mkBlankRow($fields, ['id'=>'','site'=>key($sites),'mode'=>key($modes)]), 
-       $sites, $modes, 'Create');
+myRow(mkBlankRow($fields, ['id'=>'','site'=>key($sites),'mode'=>key($modes), 'name'=>'New Pgm']), 
+	$sites, $modes);
+
+echo "</table>\n";
+echo "<input type='submit' value='Update'>\n";
+echo "</form>";
+echo "</center>";
 ?>
 </body>
 </html>

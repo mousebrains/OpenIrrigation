@@ -17,30 +17,38 @@ $table = 'controller';
 $fields = ['site', 'name', 'latitude', 'longitude', 'driver', 
 	'maxStations', 'maxCurrent', 'delay', 'make', 'model',
 	'installed', 'notes'];
+$adjust = ['installed'=>'date'];
 
-if (!empty($_POST)) {postUp($_POST, $table, $fields, $parDB);}
+if (!empty($_POST)) {$parDB->postUp($table, $fields, $_POST, $adjust);}
 
 function myForm(array $row, array $sites, string $submit) {
+	global $parDB;
+	global $adjust;
 	echo "<hr>\n";
 	echo "<center>\n";
 	echo "<form method='post'>\n";
-	echo "<input type='hidden' name='id' value='" . $row['id'] . "'>\n";
+	inputHidden($row['id']);
 	echo "<table>\n";
 	selectFromList('Site Name', 'site', $sites, $row['site']);
-	inputRow('Controller Name', 'name', $row['name'], 'text', 'Controller Name');
-	inputRow('Latitude (deg)', 'latitude', $row['latitude'], 'latlon', '23.45');
-	inputRow('Longitude (deg)', 'longitude', $row['longitude'], 'latlon', '-85.4');
-	inputRow('Driver', 'driver', $row['driver'], 'text', 'TDI');
-	inputRow('Maximum simultaneous stations', 'maxStations', $row['maxStations'], 
-		'number', '1', false, NULL, 1, 100);
-	inputRow('Maximum allowed current (mAmps)', 'maxCurrent', $row['maxCurrent'], 
-		'number', '9999', false, NULL, 20, 10000);
-	inputRow('Delay between station operations (s)', 'delay', $row['delay'], 
-		'number', '1', false, NULL, 0, 900);
-	inputRow('Make', 'make', $row['make'], 'text', 'Tucor');
-	inputRow('Model', 'model', $row['model'], 'text', 'TDI');
-	inputRow('Installed on', 'installed', $row['installed'], 'date', '2007-10-23');
-	inputRow('Notes', 'notes', $row['notes'], 'text', 'Something interesting');
+	inputRow('Controller Name', 'name', $row['name'], 'text', 
+		['placeholder'=>'Controller Name']);
+	inputRow('Latitude (deg)', 'latitude', $row['latitude'], 'latlon', 
+		['placeholder'=>-23.45]);
+	inputRow('Longitude (deg)', 'longitude', $row['longitude'], 'latlon',
+		['placeholder'=>-123.45]);
+	inputRow('Driver', 'driver', $row['driver'], 'text', ['placeholder'=>'TDI']);
+	inputRow('Maximum simultaneous stations', 'maxStations', $row['maxStations'], 'number', 
+		['placeholder'=>1, 'min'=>1, 'max'=>100]);
+	inputRow('Maximum allowed current (mAmps)', 'maxCurrent', $row['maxCurrent'], 'number', 
+		['placeholder'=>9999, 'min'=>20, 'max'=>10000]);
+	inputRow('Delay between station operations (s)', 'delay', $row['delay'], 'number', 
+		['placeholder'=>1, 'min'=>0, 'max'=>900]);
+	inputRow('Make', 'make', $row['make'], 'text', ['placeholder'=>'Tucor']);
+	inputRow('Model', 'model', $row['model'], 'text', ['placeholder'=>'TDI']);
+	inputRow('Installed on', 'installed', 
+		$parDB->unadjust('installed', $row['installed'], $adjust), 
+		'date', ['placeholder'=>'2007-10-23']);
+	inputRow('Notes', 'notes', $row['notes'], 'text', ['placeholder'=>'Something interesting']);
 	echo "</table>\n";
 	submitDelete($submit, !empty($row['name']));
 	echo "</form>\n";
@@ -49,7 +57,7 @@ function myForm(array $row, array $sites, string $submit) {
 
 $sites = $parDB->loadTable('site', 'id', 'name', 'name');
 
-$results = $parDB->query("SELECT * FROM $table ORDER BY name;");
+$results = $parDB->query("SELECT * FROM $table ORDER BY name COLLATE NOCASE;");
 while ($row = $results->fetchArray()) {
 	myForm($row, $sites, 'Update');
 }

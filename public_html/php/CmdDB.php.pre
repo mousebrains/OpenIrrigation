@@ -8,6 +8,9 @@ class CmdDB extends SQLite3 {
 	function __destruct() {
                 $this->close();
 	}
+
+	function onOffStatus($stn) {
+	}
 }
 
 $cmdDB = new CmdDB();

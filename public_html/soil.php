@@ -16,31 +16,32 @@ require_once 'php/webForm.php';
 $table = 'soil';
 $fields = ['name', 'paw', 'infiltration', 'infiltrationSlope', 'rootNorm'];
 
-if (!empty($_POST)) {postUp($_POST, $table, $fields, $parDB);}
+if (!empty($_POST)) {$parDB->postUp($table, $fields, $_POST);}
 
 function myForm(array $row, string $submit) {
 	echo "<hr>\n";
 	echo "<center>\n";
 	echo "<form method='post'>\n";
-	echo "<input type='hidden' name='id' value='" . $row['id'] . "'>\n";
+	inputHidden($row['id']);
 	echo "<table>\n";
-	inputRow('Crop Name', 'name', $row['name'], 'text', 'Joe Smith', true);
-	inputRow('Plant Available Water (mm/m)', 'paw', $row['paw'], 'number', '10', false,
-		1, 0, 1000);
-	inputRow('Infiltration Rate (mm/hour)', 'infiltration', $row['infiltration'], 
-		'number', '10', false, 0.1, 0, 1000);
-	inputRow('Infiltration Rate Slope (mm/hour/%)', 
-		'infiltrationSlope', $row['infiltrationSlope'], 
-		'number', '10', false, 0.01, 0, 1000);
-	inputRow('Root Depth Normalization', 'rootNorm', $row['rootNorm'], 
-		'number', '1.1', false, 0.1, 0, 5);
+	inputRow('Crop Name', 'name', $row['name'], 'text', 
+		['placeholder'=>'Joe Smith', 'required'=>NULL]);
+	inputRow('Plant Available Water (mm/m)', 'paw', $row['paw'], 'number', 
+		['placeholder'=>10, 'min'=>0, 'max'=>1000]);
+	inputRow('Infiltration Rate (mm/hour)', 'infiltration', $row['infiltration'], 'number', 
+		['placeholder'=>10, 'step'=>0.1, 'min'=>0, 'max'=>1000]);
+	inputRow('Infiltration Rate Slope (mm/hour/%)', 'infiltrationSlope', 
+		$row['infiltrationSlope'], 'number', 
+		['placeholder'=>10, 'step'=>0.01, 'min'=>0, 'max'=>1000]);
+	inputRow('Root Depth Normalization', 'rootNorm', $row['rootNorm'], 'number', 
+		['placeholder'=>1.1, 'step'=>0.1, 'min'=>0, 'max'=>5]);
 	echo "</table>\n";
 	submitDelete($submit, !empty($row['name']));
 	echo "</form>\n";
 	echo "</center>\n";
 }
 
-$results = $parDB->query("SELECT * FROM $table ORDER BY name;");
+$results = $parDB->query("SELECT * FROM $table ORDER BY name COLLATE NOCASE;");
 while ($row = $results->fetchArray()) {
 	myForm($row, 'Update');
 }

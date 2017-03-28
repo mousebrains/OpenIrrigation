@@ -15,32 +15,27 @@ require_once 'php/webForm.php';
 
 $table = 'user';
 $fields = ['name', 'passwd'];
+$adjust = ['passwd'=>'passwd'];
 
-if (!empty($_POST)) {
-	if (!empty($_POST['passwd'])) { // Hash it
-		$_POST['passwd'] = password_hash($_POST['passwd'], PASSWORD_DEFAULT); 
-	}
-	postUp($_POST, $table, $fields, $parDB);
-}
+if (!empty($_POST)) {$parDB->postUp($table, $fields, $_POST, $adjust);}
 
 function myForm(array $row, string $submit) {
 	echo "<hr>\n";
 	echo "<center>\n";
 	echo "<form method='post'>\n";
-	echo "<input type='hidden' name='id' value='" . $row['id'] . "'>\n";
+	inputHidden($row['id']);
 	echo "<table>\n";
-	inputRow('User Name', 'name', $row['name'], 'text', 'Joe Smith', true);
-	inputRow('Password', 'passwd', '', 'password', '1234567890');
+	inputRow('User Name', 'name', $row['name'], 'text', 
+		['placeholder'=>'Joe Smith', 'required'=>NULL]);
+	inputRow('Password', 'passwd', '', 'password', ['placeholder'=>'1234567890']);
 	echo "</table>\n";
 	submitDelete($submit, !empty($row['name']));
 	echo "</form>\n";
 	echo "</center>\n";
 }
 
-$results = $parDB->query("SELECT * FROM $table ORDER BY name;");
-while ($row = $results->fetchArray()) {
-	myForm($row, 'Update');
-}
+$results = $parDB->query("SELECT * FROM $table ORDER BY name COLLATE NOCASE;");
+while ($row = $results->fetchArray()) { myForm($row, 'Update'); }
 
 myForm(mkBlankRow($fields, ['id'=>'']), 'Create');
 ?>

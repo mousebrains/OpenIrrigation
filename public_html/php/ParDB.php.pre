@@ -73,7 +73,35 @@ class ParDB extends SQLite3 {
 
 	}
 
-	function insertIntoTable(string $table, array $fields, array $post) : bool {
+	function adjust(string $field, $val, array $adjust) 
+	{
+		if ($val == '') {return $val;}
+		if (array_key_exists($field, $adjust)) {
+			if (is_numeric($val) && is_numeric($adjust[$field])) {
+				return $val * $adjust[$field];
+			}
+			if ($adjust[$field] == 'date') {return strtotime($val);}	
+			if ($adjust[$field] == 'passwd') {
+				return password_hash($val, PASSWORD_DEFAULT);
+			}
+		} 
+		if (is_int($val)) {return intval($val);}
+		if (is_numeric($val)) {return floatval($val);}
+		return $val;	
+	}
+
+	function unadjust(string $field, $val, array $adjust) 
+	{
+		if (($val == '') || !array_key_exists($field, $adjust)) {return $val;}
+		if (is_numeric($val)) {
+			if (is_numeric($adjust[$field])) {return $val / $adjust[$field];}
+			if ($adjust[$field] == 'date') {return strftime('%Y-%m-%d', $val);}
+		}
+		return $val;	
+	}
+
+	function insertIntoTable(string $table, array $fields, array $post, array $adjust=[]) : bool
+	{
 		try {
 			$this->foreignKeys();
 			$qInsert = false;
@@ -82,22 +110,22 @@ class ParDB extends SQLite3 {
                 		if ($post[$field] != $post["old$field"]) {
 					$qInsert = true;
 				}
-				if (!empty($post[$field])) {
+				if (($post[$field] != '') || ($post["old$field"] != '')) {
 					array_push($toSave, $field);
 				}
         		}
         		if ($qInsert) {
         			$sql = "INSERT INTO $table (" . implode(',', $toSave) . ') VALUES (:' .
                 			implode(',:', $toSave) . ');';
-				echo "<pre>$sql\n";
+				echo "<pre>$sql</pre>";
         			$stmt = $this->prepare($sql);
         			foreach ($toSave as $field) {
-					$stmt->bindValue(':' . $field, $post[$field]);
-					echo " $field=" . $post[$field] . "\n";
+					$stmt->bindValue(':' . $field, 
+						$this->adjust($field, $post[$field], $adjust));
+					echo "<pre>$field=" . $post[$field] . "</pre>";
 				}
         			$stmt->execute();
         			$stmt->close();
-				echo "</pre>\n";
 			}
 			return true;
 		} catch (Exception $e) {
@@ -105,13 +133,13 @@ class ParDB extends SQLite3 {
 		}
 	}
 
-	function update(string $table, string $field, $value, $id) : bool {
+	function update(string $table, string $field, $value, $id, array $adjust=[]) : bool {
 		try {
 			$this->foreignKeys();
 			$sql = "UPDATE $table SET $field=:val WHERE id==:id;";
 			echo "<pre>$sql id='$id' $field='$value'\n</pre>\n";
 			$stmt = $this->prepare($sql);
-			$stmt->bindValue(':val', $value);
+			$stmt->bindValue(':val', $this->adjust($field, $value, $adjust));
                 	$stmt->bindValue(':id', $id);
                 	$stmt->execute();
                 	$stmt->close();
@@ -121,16 +149,16 @@ class ParDB extends SQLite3 {
 		}
 	}
 
-	function maybeUpdateField(string $table, string $field, $val, $old, $id) {
+	function maybeUpdateField(string $table, string $field, $val, $old, $id, array $adjust=[]) {
                 if ($val != $old) {
-			$this->update($table, $field, $val, $id);
+			$this->update($table, $field, $val, $id, $adjust);
         	}
 	}
 
-	function maybeUpdate(string $table, array $fields, array $post) {
+	function maybeUpdate(string $table, array $fields, array $post, array $adjust=[]) {
         	foreach ($fields as $field) {
 			$this->maybeUpdateField($table, $field, $post[$field],
-					$post["old$field"], $post['id']);
+					$post["old$field"], $post['id'], $adjust);
         	}
 	}
 
@@ -160,6 +188,35 @@ class ParDB extends SQLite3 {
 		} catch (Exception $e) {
 			$this->errMsg($e, "loadTableKeyValue $table $key $value $defVal");
 			return [];
+		}
+	}
+
+	function postUp(string $table, array $fields, array $post, array $adjust=[]) {
+		if (array_key_exists('delete', $post)) { // Delete an entry by its id
+			$this->deleteFromTable($table, 'id', $post['id']);
+			return;
+		}
+		if (empty($post['id'])) { // Update an existing row
+			$this->insertIntoTable($table, $fields, $post, $adjust);
+			return;
+		}
+		$this->maybeUpdate($table, $fields, $post, $adjust);
+	}
+
+	function postUpArray(string $table, array $fields, array $post, array $adjust=[]) {
+		$n = count($post['id']);
+		for ($i = 0; $i < $n; ++$i) {
+			$data = ['id'=>$post['id'][$i]];
+			foreach ($fields as $field) {
+				$data[$field] = $post[$field][$i];
+				$data["old$field"] = $post["old$field"][$i];
+			}
+			$this->postUp($table, $fields, $data, $adjust);
+		}
+		if (array_key_exists('delete', $post)) { // Delete after updates
+			foreach ($post['delete'] as $id) {
+				if (!empty($id)) {$this->deleteFromTable($table, 'id', $id);}
+			}
 		}
 	}
 }

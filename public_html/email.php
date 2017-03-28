@@ -45,21 +45,20 @@ function myForm(array $row, array $users, array $reports, array $emailReports, s
 	echo "<hr>\n";
 	echo "<center>\n";
 	echo "<form method='post'>\n";
-	echo "<input type='hidden' name='id' value='" . $row['id'] . "'>\n";
+	inputHidden($row['id']);
 	echo "<table>\n";
 	selectFromList('User Name', 'user', $users, $row['user']);
-	inputRow('email', 'email', $row['email'], 'email', 'george@spam.com');
-	echo "<input type='hidden' name='oldqSMS' value='" . $row['qSMS'] . "'>\n";
-	echo "<input type='hidden' name='oldqHTML' value='" . $row['qHTML'] . "'>\n";
-	inputRow('Format as text', 'qFormat', 'qText', 'radio', NULL, false, NULL, NULL, NULL, 
-		!$row['qSMS'] & !$row['qHTML']);
-	inputRow('Format as SMS', 'qFormat', 'qSMS', 'radio', NULL, false, NULL, NULL, NULL, 
-		$row['qSMS']);
-	inputRow('Format as HTML', 'qFormat', 'qHTML', 'radio', NULL, false, NULL, NULL, NULL, 
-		$row['qHTML']);
+	inputRow('email', 'email', $row['email'], 'email', ['placeholder'=>'george@spam.com']);
+	inputHidden($row['qSMS'], 'oldqSMS');
+	inputHidden($row['qHTML'], 'oldqHTML');
+	$checked = ['checked'=>NULL];
+	inputRow('Format as text', 'qFormat', 'qText', 'radio', 
+		(!$row['qSMS'] & !$row['qHTML']) ? $checked : []);
+	inputRow('Format as SMS', 'qFormat', 'qSMS', 'radio', $row['qSMS'] ? $checked : []);
+	inputRow('Format as HTML', 'qFormat', 'qHTML', 'radio', $row['qHTML'] ? $checked : []);
 	foreach ($reports as $key => $value) {
-		inputRow($value, 'report[]', $key, 'checkbox', NULL, false, NULL, NULL, NULL, 
-			 !empty($emailReports[$row['id']][$key]));
+		inputRow($value, 'report[]', $key, 'checkbox', 
+			 !empty($emailReports[$row['id']][$key]) ? $checked : []);
 	}
 	echo "</table>\n";
 	submitDelete($submit, !empty($row['email']));
@@ -71,7 +70,7 @@ $users = $parDB->loadTable('user', 'id', 'name', 'name');
 $reports = $parDB->loadTable('reports', 'id', 'label', 'label');
 $emailReports = $parDB->loadTableKeyValue('emailReports', 'email', 'report');
 
-$results = $parDB->query("SELECT * FROM $table ORDER BY email;");
+$results = $parDB->query("SELECT * FROM $table ORDER BY email COLLATE NOCASE;");
 while ($row = $results->fetchArray()) {
 	myForm($row, $users, $reports, $emailReports, 'Update');
 }

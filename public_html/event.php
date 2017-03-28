@@ -16,21 +16,13 @@ require_once 'php/webForm.php';
 $table = 'event';
 $fields = ['site', 'name', 'mode', 'action', 'val', 'refDate', 'startTime', 'duration',
 	'startMode', 'stopMode'];
+$adjust = ['refDate'=>'date'];
 
 if (!empty($_POST)) {
-	if (!empty($_POST['delete'])) { // Delete the entry
-		$parDB->deleteFromTable($table, 'id', $_POST['id']);
-	} else {
-		if (!is_null($_POST['refDate'])) {
-			$_POST['refDate'] = strtotime($_POST['refDate']);
-		}
-		if (!is_null($_POST['oldrefDate'])) {
-			$_POST['oldrefDate'] = strtotime($_POST['oldrefDate']);
-		}
-		$_POST['oldval'] = intval($_POST['olddow']);
+	if (empty($_POST['delete'])) { // not a delete entry, so adjust values
 		if ($_POST['dailyAction'] == $_POST['action']) {
 			$_POST['val'] = 0;
-			foreach ($_POST['dow'] as $bit) {$_POST['val'] += 1 << intval($bit);}
+			foreach ($_POST['dow'] as $bit) {$_POST['val'] |= 1 << intval($bit);}
 		} else {
 			$_POST['val'] = $_POST['nDays'];
 		}
@@ -46,41 +38,40 @@ if (!empty($_POST)) {
 			$_POST['duration'] -= $_POST['startTime'] - 86400;
 			$_POST['oldduration'] -= $_POST['oldstartTime'] - 86400;
 		}
-		if ($_POST['id'] == '') {
-			$parDB->insertIntoTable($table, $fields, $_POST);	
-		} else {
-			$parDB->maybeUpdate($table, $fields, $_POST);	
-		}
 	}
+	$parDB->postUp($table, $fields, $_POST, $adjust);
 }
 
 function myForm(array $row, array $sites, array $modes, array $actions,
 	array $celestial, array $dow, string $submit) 
 {
-	if (!is_null($row['refDate'])) {
-		$row['refDate'] = strftime('%Y-%m-%d', intval($row['refDate']));
-	}
+	global $parDB;
+	global $adjust;
 	$stime = intval($row['startTime']);
 	$row['duration'] = gmstrftime('%H:%M:%S', $stime + intval($row['duration']));
 	$row['startTime'] = gmstrftime('%H:%M:%S', $stime);
-	$row['dow'] = $row['val'];
-	$row['nDays'] = 0;
 	$dailyAction = array_search('Day(s) of week', $actions);
 	$nDaysAction = array_search('Every n days', $actions);
+	$row['dow'] = ($row['action'] == $dailyAction) ? $row['val'] : '';
+	$row['nDays'] = ($row['action'] == $nDaysAction) ? $row['val'] : 0;
 	echo "<hr>\n";
 	echo "<center>\n";
 	echo "<form method='post'>\n";
-	echo "<input type='hidden' name='id' value='" . $row['id'] . "'>\n";
-	echo "<input type='hidden' name='dailyAction' value='$dailyAction'>\n";
-	echo "<input type='hidden' name='nDaysAction' value='$nDaysAction'>\n";
+	inputHidden($row['id']);
+	inputHidden($dailyAction, 'dailyAction');
+	inputHidden($nDaysAction, 'nDaysAction');
+	inputHidden($row['val'], 'oldval');
 	echo "<table>\n";
 	selectFromList('Site', 'site', $sites, $row['site']);
-	inputRow('Name', 'name', $row['name'], 'text', 'Program B', true);
+	inputRow('Name', 'name', $row['name'], 'text', 
+		['placeholder'=>'Program B', 'required'=>NULL]);
 	selectFromList('Operating Mode', 'mode', $modes, $row['mode']);
 	selectFromList('Event type', 'action', $actions, $row['action']);
 	selectFromList('Days of Week', 'dow[]', $dow, $row['dow']);
-	inputRow('Every n days', 'nDays', $row['nDays'], 'number', '1', false, 1, 0);
-	inputRow('Reference date for "Every n Days"', 'refDate', $row['refDate'], 'date');
+	inputRow('Every n days', 'nDays', $row['nDays'], 'number', 
+		['placeholder'=>1, 'min'=>0, 'max'=>365]);
+	inputRow('Reference date for "Every n Days"', 'refDate', 
+		$parDB->unadjust('refDate', $row['refDate'], $adjust), 'date');
 	inputRow('Start Time', 'startTime', $row['startTime'], 'time');
 	inputRow('End Time', 'duration', $row['duration'], 'time');
 	selectFromList('Start Mode', 'startMode', $celestial, $row['startMode']);
@@ -97,14 +88,14 @@ $actions = $parDB->loadTable('eventAction', 'id', 'label', 'label');
 $celestial = $parDB->loadTable('eventCelestial', 'id', 'label', 'label');
 $dayOfWeek = $parDB->loadTable('eventDaysOfWeek', 'id', 'label', 'id');
 
-$results = $parDB->query("SELECT * FROM $table ORDER BY name;");
+$results = $parDB->query("SELECT * FROM $table ORDER BY name COLLATE NOCASE;");
 while ($row = $results->fetchArray()) {
 	myForm($row, $sites, $modes, $actions, $celestial, $dayOfWeek, 'Update');
 }
 
-myForm(mkBlankRow($fields, ['id'=>'','site'=>key($sites),'mode'=key($modes),
+myForm(mkBlankRow($fields, ['id'=>'','site'=>key($sites),'mode'=>key($modes),
 			'action'=>key($actions),
-			'startMode'=key($celestial),'stopMode'=key($celestial)]),
+			'startMode'=>key($celestial),'stopMode'=>key($celestial)]),
 	$sites, $modes, $actions, $celestial, $dayOfWeek, 'Create');
 ?>
 </body>

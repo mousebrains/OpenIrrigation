@@ -18,42 +18,37 @@ $fields = ['controller', 'name', 'latitude', 'longitude', 'passiveCurrent',
 	'activeCurrent', 'devType', 'driver', 'addr', 'make', 'model', 
 	'installed', 'notes'];
 
-if (!empty($_POST)) {
-	if (!empty($_POST['delete'])) { // Delete the entry
-		$parDB->deleteFromTable($table, 'id', $_POST['id']);
-	} else {
-		$_POST['installed'] = strtotime($_POST['installed']);
-		$_POST['oldinstalled'] = strtotime($_POST['oldinstalled']);
-		if ($_POST['id'] == '') {
-			$parDB->insertIntoTable($table, $fields, $_POST);	
-		} else {
-			$parDB->maybeUpdate($table, $fields, $_POST);	
-		}
-	}
-}
+$adjust = ['installed'=>'date'];
+
+if (!empty($_POST)) {$parDB->postUp($table, $fields, $_POST, $adjust);}
 
 function myForm(array $row, array $controllers, array $devTypes, string $submit) {
-	$row['installed'] = date('Y-m-d', intval($row['installed']));
+	global $parDB;
+	global $adjust;
 	echo "<hr>\n";
 	echo "<center>\n";
 	echo "<form method='post'>\n";
-	echo "<input type='hidden' name='id' value='" . $row['id'] . "'>\n";
+	inputHidden($row['id']);
 	echo "<table>\n";
 	selectFromList('Controller', 'controller', $controllers, $row['controller']);
-	inputRow('Name', 'name', $row['name'], 'text', 'Sensor Name', true);
-	inputRow('Latitude (deg)', 'latitude', $row['latitude'], 'latlon', '-45.6');
-	inputRow('Longitude (deg)', 'longitude', $row['longitude'], 'latlon', '-45.6');
-	inputRow('Passive Current (mAmps)', 'passiveCurrent', $row['passiveCurrent'], 
-			'number', '0.5', false, 0.5, 0, 100);
-	inputRow('Active Current (mAmps)', 'activeCurrent', $row['activeCurrent'], 
-			'number', '0.5', false, 0.5, 0, 100);
+	inputRow('Name', 'name', $row['name'], 'text', 
+		['placeholder'=>'Sensor Name', 'required'=>NULL]);
+	inputRow('Latitude (deg)', 'latitude', $row['latitude'], 'latlon', 
+		['placeholder'=>-45.6]);
+	inputRow('Longitude (deg)', 'longitude', $row['longitude'], 'latlon', 
+		['placeholder'=>-145.6]);
+	inputRow('Passive Current (mAmps)', 'passiveCurrent', $row['passiveCurrent'], 'number', 
+		['placeholder'=>0.5, 'step'=>0.5, 'min'=>0, 'max'=>100]);
+	inputRow('Active Current (mAmps)', 'activeCurrent', $row['activeCurrent'], 'number', 
+		['placeholder'=>0.5, 'step'=>0.5, 'min'=>0, 'max'=>100]);
 	selectFromList('Device Type', 'devType', $devTypes, $row['devType']);
-	inputRow('Device Driver', 'driver', $row['driver'], 'text', 'TDI');
-	inputRow('Device Address', 'addr', $row['addr'], 'number', '0');
-	inputRow('Make', 'make', $row['make'], 'text', 'Tucor');
-	inputRow('Model', 'model', $row['model'], 'text', 'TDI');
-	inputRow('Installed', 'installed', $row['installed'], 'date');
-	inputRow('Notes', 'notes', $row['notes'], 'text', 'something intersting');
+	inputRow('Device Driver', 'driver', $row['driver'], 'text', ['placeholder'=>'TDI']);
+	inputRow('Device Address', 'addr', $row['addr'], 'number', ['placeholder'=>0]);
+	inputRow('Make', 'make', $row['make'], 'text', ['placeholder'=>'Tucor']);
+	inputRow('Model', 'model', $row['model'], 'text', ['placeholder'=>'TDI']);
+	inputRow('Installed', 'installed', 
+		$parDB->unadjust('installed',$row['installed'], $adjust), 'date');
+	inputRow('Notes', 'notes', $row['notes'], 'text', ['placeholder'=>'something intersting']);
 	echo "</table>\n";
 	submitDelete($submit, !empty($row['name']));
 	echo "</form>\n";

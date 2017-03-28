@@ -11,60 +11,25 @@
 <?php
 require_once 'php/navBar.php';
 require_once 'php/ParDB.php';
+require_once 'php/webForm.php';
 
 $table = 'programEvent';
 $fields = ['pgm', 'event', 'attractorFrac', 'priority'];
 
-if (!empty($_POST)) {
-	for ($i = 0; $i < count($_POST['id']); ++$i) {
-		$id = $_POST['id'][$i];
-		$a = ['id'=>$id];
-		foreach ($fields as $field) {
-			$a[$field] = $_POST[$field][$i];
-			$a["old$field"] = $_POST["old$field"][$i];
-		}
-		if ($id > 0) {
-			$parDB->maybeUpdate($table, $fields, $a);
-		} else {
-			$parDB->insertIntoTable($table, $fields, $a);
-		}
-	}
-	if (!empty($_POST['delete'])) { // Delete the entry (Do 2nd so updates are overridden
-		foreach ($_POST['delete'] as $id) {
-			if ($id >= 0) {
-				$parDB->deleteFromTable($table, 'id', $id);
-			}
-		}
-	}
-}
-
-function mySelect(string $name, array $items, string $active) {
-	echo "<td>\n";
-	echo "<input type='hidden' name='old$name' value='$active'>\n";
-	echo "<select name='$name'>\n";
-	foreach ($items as $key => $value) {
-		echo "<option value='$key'";
-		if ($key == $active) {echo " selected";}
-		echo ">$value</option>";
-	}
-	echo "<select>\n</td>\n";
-}
+if (!empty($_POST)) {$parDB->postupArray($table, $fields, $_POST);}
 
 function myRow(array $row, array $programs, array $events) {
-	echo "<tr>\n";
-        echo "<th><input type='hidden' name='id[]' value='" . $row['id'] . "'>";
-	echo "<input type='checkbox' name='delete[]' value='" . $row['id'] . "'></th>\n";
-	mySelect('pgm[]', $programs, $row['pgm']);
-	mySelect('event[]', $events, $row['event']);
-	echo "<td>\n";
-	echo "<input type='hidden' name='oldpriority[]' value='" . $row['priority'] . "'>\n";
-	echo "<input type='number' name='priority[]' value='" . $row['priority'] . 
-		"' placeholder='1' min='0'>\n";
+	echo "<tr>\n<td>\n";
+	inputHidden($row['id'], 'id[]');
+	inputHidden($row['id'], 'delete[]', 'checkbox');
 	echo "</td>\n";
+	selectCellList('pgm[]', $programs, $row['pgm']);
+	selectCellList('event[]', $events, $row['event']);
 	echo "<td>\n";
-	echo "<input type='hidden' name='oldattractorFrac[]' value='" . $row['attractorFrac'] . "'>\n";
-	echo "<input type='number' name='attractorFrac[]' value='" . $row['attractorFrac'] . 
-		"' placeholder='0' step='0.01' min='0' max='1'>\n";
+	inputBlock('priority[]', $row['priority'], 'number', ['placeholder'=>1, 'min'=>0]);
+	echo "</td>\n<td>\n";
+	inputBlock('attractorFrac[]', $row['attractorFrac'], 'number', 
+		['placeholder'=>1, 'step'=>0.05, 'min'=>0, 'max'=>1]);
 	echo "</td>\n";
 	echo "</tr>\n";
 }
@@ -77,20 +42,20 @@ echo "<form method='post'>\n";
 echo "<table>\n";
 echo "<tr>\n";
 echo "<th>Delete</th>\n";
-echo "<th>Program</th>\n";
-echo "<th>Event</th>\n";
+if (count($programs) > 1) {echo "<th>Program</th>\n";}
+if (count($events) > 1) {echo "<th>Event</th>\n";}
 echo "<th>Priority</th>\n";
 echo "<th>Attractor Frac</th>\n";
 echo "</tr>\n";
 // Inner join needed for order by, ordering on pgm does not seem to work
 $sql = "SELECT $table.id as id,"  . implode(',', $fields) . " FROM $table INNER JOIN program " .
-	"ON pgm==program.id ORDER BY program.name,priority;";
+	"ON pgm==program.id ORDER BY program.name,priority COLLATE NOCASE;";
 $results = $parDB->query($sql);
 while ($row = $results->fetchArray()) {
 	myRow($row, $programs, $events);
 }
 
-myRow(mkBlankRow($fields, ['id'=-1,'pgm'=>key($programs),'event'=>key($events)]), 
+myRow(mkBlankRow($fields, ['id'=>'','pgm'=>key($programs),'event'=>key($events)]), 
 	$programs, $events);
 echo "</table>\n";
 echo "<input type='submit' value='Update'>\n";

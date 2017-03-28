@@ -250,11 +250,17 @@ INSERT INTO event(site,mode,action,startMode,stopMode,name,val,startTime,duratio
 
 -- water windows
 INSERT INTO programEvent (pgm,event) VALUES (
-  (SELECT id FROM program WHERE name=='Selva plantas'),(SELECT id FROM event WHERE name=='Wed evening'));
+  (SELECT id FROM program WHERE name=='Selva plantas'),
+  (SELECT id FROM event WHERE name=='Selva Wed evening')
+);
 INSERT INTO programEvent (pgm,event) VALUES (
-  (SELECT id FROM program WHERE name=='Selva goteo'),(SELECT id FROM event WHERE name=='Selva goteo'));
+  (SELECT id FROM program WHERE name=='Selva goteo'),
+  (SELECT id FROM event WHERE name=='Selva goteo')
+);
 INSERT INTO programEvent (pgm,event) VALUES (
-  (SELECT id FROM program WHERE name=='Selva rocio'),(SELECT id FROM event WHERE name=='Selva rocio'));
+  (SELECT id FROM program WHERE name=='Selva rocio'),
+  (SELECT id FROM event WHERE name=='Selva rocio')
+);
 
 -- SELECT * FROM programEvent;
 
