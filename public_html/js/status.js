@@ -11,8 +11,14 @@ if (typeof(EventSource) != "undefined") {
 		a = data["sensor"];
 		for (var i = 0; i < a.length; ++i) {
 			var t = new Date(a[i][0] * 1000);
-			console.log(t);
-			msg += ", " + t.toTimeString().substr(0,9) + " sensor(" + a[i][1] + ")=" + a[i][2];
+			var key = a[i][1];
+			msg += ", " + t.toTimeString().substr(0,9);
+			if (key in sensorMap) {
+				var flow = (a[i][2]*sensorMap[key]['K'])-sensorMap[key]['offset'];
+ 				msg += " " + sensorMap[key]['name'] + "=" + Math.max(0,flow);
+			} else {
+ 				msg += " sensor(" + key + ")=" + a[i][2];
+			}
 		}
                 msg += ", nOn=" + data["nOn"];
 		$("#statusBlock").html(msg);

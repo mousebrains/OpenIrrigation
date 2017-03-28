@@ -1,5 +1,14 @@
 <?php
-echo "
+require_once 'php/ParDB.php';
+
+echo "<script>
+var sensorMap = new Object();\n";
+$results = $parDB->query('SELECT addr,pocFlow.name,toHertz*K as K,offset FROM pocFlow INNER JOIN sensor ON pocFlow.sensor==sensor.id;');
+while ($row = $results->fetchArray()) {
+	echo "sensorMap['" . $row['addr'] . "']={name:'" . $row['name']
+		. "', offset:" . $row['offset'] . ", K:" . $row['K'] . "};\n";
+}
+echo "</script>
 <div id='topnav'>
  <div id='statusBlock'>Status info</div>
  <ul>
@@ -29,6 +38,7 @@ echo "
   </li>
  </ul>
 </div>
+
 <script src='js/status.js'></script>
 ";
 ?>
