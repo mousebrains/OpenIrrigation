@@ -80,3 +80,4 @@ function mkBlankRow(array $fields, array $others) : array
 {
 	return array_merge(array_fill_keys($fields, ''), $others);
 }
+?>
