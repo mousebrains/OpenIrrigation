@@ -397,7 +397,7 @@ class TDICommand(threading.Thread):
             if reply[0:2] == b'1D' and reply[2:4] == sentence[5:7]:
                 self.__closeDB(valve, int(reply[4:], 16))
             else:
-                self.logger.error('Invalid reply, {}'.format(reply))
+                self.logger.error('Invalid reply, {} to {}'.format(reply, sentence))
                 self.__closeDB(valve, -1)
         except queue.Empty:
             self.logger.error('Timed out for {}'.format(sentence))
