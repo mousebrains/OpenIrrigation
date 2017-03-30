@@ -17,12 +17,12 @@ class DB(sqlite3.Connection):
         self.commit()
         self.close()
 
-    def write(self, sql, args):
+    def write(self, sql, args=[]):
         self.__lock.acquire()
         self.__curr.execute(sql, args)
         self.__lock.release()
 
-    def read(self, sql, args):
+    def read(self, sql, args=[]):
         self.__lock.acquire()
         self.__curr.execute(sql, args)
         rows = self.__curr.fetchall()

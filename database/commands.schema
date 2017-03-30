@@ -18,27 +18,47 @@ DROP TABLE IF EXISTS commands;
 CREATE TABLE commands(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                       timestamp INTEGER, -- when action should occur
                       cmd INTEGER, -- on=0, off=1, T=2
-                      valve INTEGER, -- valve number
-                      src INTEGER -- command source, manual=0, scheduler=1
+                      addr INTEGER, -- station address
+                      src INTEGER -- command source, manual=-1, scheduler=-2, >0 program id
                      );
+DROP INDEX IF EXISTS commandsTS;
+CREATE INDEX commandsTS ON commands(timestamp);
+
+-- Zee message log
+DROP TABLE IF EXISTS zeeLog;
+CREATE TABLE zeeLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                    timestamp INTEGER, -- Time received
+                    value TEXT -- Message
+                   );
+-- DROP INDEX IF EXISTS zeeTS;
+-- CREATE INDEX zeeTS ON zeeLog(timestamp);
+                                 
+-- Number message log
+DROP TABLE IF EXISTS numberLog;
+CREATE TABLE numberLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                       timestamp INTEGER, -- Time received
+                       value INTEGER -- number returned
+                      );
+-- DROP INDEX IF EXISTS numberTS;
+-- CREATE INDEX numberTS ON numberLog(timestamp);
+                                 
+-- Version message results
+DROP TABLE IF EXISTS versionLog;
+CREATE TABLE versionLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- ID
+                        timestamp INTEGER, -- Time received
+                        value TEXT -- version string returned
+                       );
+-- DROP INDEX IF EXISTS versionTS;
+-- CREATE INDEX versionTS ON versionLog (timestamp);
 
 -- Error message results
 DROP TABLE IF EXISTS errorLog;
 CREATE TABLE errorLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
-                      timestamp INTEGER, -- time code was added
-                      val INTEGER -- Error code
+                      timestamp INTEGER, -- Time received
+                      value INTEGER -- error code returned
                      );
-DROP INDEX IF EXISTS errorTS;
-CREATE INDEX errorTS on errorLog (timestamp);
-
--- Version message results
-DROP TABLE IF EXISTS versionLog;
-CREATE TABLE versionLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
-                        timestamp INTEGER, -- time code was added
-                        val TEXT -- Version
-                       );
-DROP INDEX IF EXISTS versionTS;
-CREATE INDEX versionTS on versionLog (timestamp);
+-- DROP INDEX IF EXISTS errorTS;
+-- CREATE INDEX errorTS ON errorLog (timestamp);
 
 -- Current message results
 DROP TABLE IF EXISTS currentLog;
@@ -48,62 +68,74 @@ CREATE TABLE currentLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record I
                         mAmps INTEGER -- current in mAmps
                        );
 DROP INDEX IF EXISTS currentTS;
-CREATE INDEX currentTS on currentLog (timestamp);
+CREATE INDEX currentTS ON currentLog (timestamp);
 
 -- Sensor message results
 DROP TABLE IF EXISTS sensorLog;
 CREATE TABLE sensorLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                        timestamp INTEGER, -- time code was added
-                       sensor INTEGER, -- sensor number
-                       val INTEGER, -- reading, Hertz*10
-                       code INTEGER, -- reading code, typically 4
-		       flow REAL -- val processed into a physical value
+                       addr INTEGER, -- sensor address
+                       code INTEGER, -- code, typically 4 or 5
+                       value INTEGER, -- reading, Hertz*10
+		       flow REAL -- value processed into a physical value
                        );
 DROP INDEX IF EXISTS sensorTS;
-CREATE INDEX sensorTS on sensorLog (timestamp);
+CREATE INDEX sensorTS ON sensorLog (timestamp);
 
 -- Two message results
 DROP TABLE IF EXISTS twoLog;
 CREATE TABLE twoLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                     timestamp INTEGER, -- time code was added
-                    sensor INTEGER, -- sensor number
-                    val INTEGER -- reading
+                    addr INTEGER, -- address
+                    value INTEGER -- reading
                    );
+-- DROP INDEX IF EXISTS twoTS;
+-- CREATE INDEX twoTS ON twoLog (timestamp);
 
 -- Pee message results
 DROP TABLE IF EXISTS peeLog;
 CREATE TABLE peeLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                     timestamp INTEGER, -- time code was added
-                    sensor INTEGER, -- sensor number
-                    val INTEGER -- reading
+                    addr INTEGER, -- address
+                    value INTEGER -- reading
                    );
+-- DROP INDEX IF EXISTS peeTS;
+-- CREATE INDEX peeTS ON peeLog (timestamp);
 
 -- Tee message results
 DROP TABLE IF EXISTS teeLog;
 CREATE TABLE teeLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                     timestamp INTEGER, -- time code was added
-                    valve INTEGER, -- sensor number
-                    preCurrent INTEGER, -- pre on current in mAmps
-                    peakCurrent INTEGER, -- peak on current in mAmps
-                    postCurrent INTEGER -- post on current in mAmps
+                    addr INTEGER, -- station address
+                    code INTEGER, -- returned code
+                    pre INTEGER, -- pre on current in mAmps
+                    peak INTEGER, -- peak on current in mAmps
+                    post INTEGER -- post on current in mAmps
                    );
 DROP INDEX IF EXISTS teeTS;
-CREATE INDEX teeTS on teeLog (timestamp,valve);
+CREATE INDEX teeTS ON teeLog (timestamp,addr);
 
--- On/Off results
-DROP TABLE IF EXISTS onOffLog;
-CREATE TABLE onOffLog(
-	id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
-	valve INTEGER, -- valve being worked on
-	onTimeStamp INTEGER, -- When was this valve turned on
-        offTimeStamp INTEGER DEFAULT NULL, -- When was this valve turned off
-        preCurrent INTEGER, -- pre-current reported by on command
-        peakCurrent INTEGER, -- peak-current reported by on command
-        postCurrent INTEGER, -- on-current reported by on command
-        onCode INTEGER, -- code returned by on command
-        offCode INTEGER DEFAULT NULL -- code returned by off command
-       );
-DROP INDEX IF EXISTS onOffTS;
-CREATE INDEX onOffTS on onOffLog (onTimeStamp,offTimeStamp,valve);
+-- On message results
+DROP TABLE IF EXISTS onLog;
+CREATE TABLE onLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+                   timestamp INTEGER, -- time code was added
+                   addr INTEGER, -- station address
+                   code INTEGER, -- return code
+                   pre INTEGER, -- pre on current in mAmps
+                   peak INTEGER, -- peak on current in mAmps
+                   post INTEGER -- post on current in mAmps
+                  );
+DROP INDEX IF EXISTS onTS;
+CREATE INDEX onTS ON onLog (timestamp,addr);
+
+-- Off message results
+DROP TABLE IF EXISTS offLog;
+CREATE TABLE offLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+                    timestamp INTEGER, -- time code was added
+                    addr INTEGER, -- station address
+                    code INTEGER -- return code
+                  );
+DROP INDEX IF EXISTS offTS;
+CREATE INDEX offTS ON offLog (timestamp,addr);
 
 -- .schema

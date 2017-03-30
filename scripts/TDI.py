@@ -1,427 +1,344 @@
-#
-# These are python classes designed to talk to a Tucor TDI controller
-# over a serial port.
-#
-import serial
+#! /usr/bin/python3 -b
+
 import threading
 import queue
 import time
 import math
 
-class TDISerial(threading.Thread):
-    def __init__(self, params, logger):
-        threading.Thread.__init__(self, daemon=True) # Initialize threading object
-        self.name = 'TDISerial'
-        self.__log = logger
-        self.__port = params['port']
-        self.__baudrate = params['baudrate']
-        self.__queue = queue.Queue()
+class Reader(threading.Thread):
+	def __init__(self, s0, logger):
+		threading.Thread.__init__(self, daemon=True)
+		self.name='Reader'
+		self.s0 = s0
+		self.logger = logger
+		self.q = queue.Queue()
 
-    def mkSentence(self, msg):
-        chkSum = 0
-        msg = '{:02X}{}'.format(len(msg), msg)
-        for c in msg:
-            chkSum += ord(c)
-        return bytes('\x16{}{:02X}'.format(msg, chkSum & 255), 'UTF-8')
+	def run(self): # Called on thread start
+		self.logger.info('Starting')
+		s0 = self.s0
+		q = self.q
+		while True:
+			a = s0.read(1)
+			q.put(a)
 
-    def put(self, sentence, q):
-        self.__queue.put((sentence, q))
+class Writer(threading.Thread):
+	def __init__(self, s0, logger):
+		threading.Thread.__init__(self, daemon=True)
+		self.name='Writer'
+		self.s0 = s0
+		self.logger = logger
+		self.q = queue.Queue()
 
-    def run(self): # Called on thread start
-        self.__log.info('Starting port={} baudrate={}'.format( \
-                        self.__port, self.__baudrate))
-        with serial.Serial(port=self.__port, baudrate=self.__baudrate, timeout=1) as s0:
-            self.__process(s0)
+	def run(self): # Called on thread start
+		self.logger.info('Starting')
+		s0 = self.s0
+		q = self.q
+		while True:
+			a = q.get()
+			if (len(a) == 1):
+				s0.write(a)
+			else:
+				chkSum = 0
+				msg = '{:02X}{}'.format(len(a), a)
+				for c in msg:
+					chkSum += ord(c)
+				msg += '{:02X}'.format(chkSum & 255)
+				s0.write(bytes('\x16' + msg, 'UTF-8'))
+			q.task_done()
 
-    def __readACKCR(self, s0):
-        state = 0
-        while True:
-            a = s0.read(1)
-            if not a:
-                return False
-            if a == b'\x06':
-                state = 1
-            elif state == 1 and a == b'\r':
-                return True
-            else:
-                self.__log.warn('{} found instead of ACK/CR {}'.format(a, b'\x06'))
-                state = 0
+class Builder(threading.Thread): # construct sentences and send ACK/NAK
+	def __init__(self, s0, logger, qReader, qWriter):
+		threading.Thread.__init__(self, daemon=True)
+		self.name='Builder'
+		self.s0 = s0
+		self.logger = logger
+		self.qReader = qReader
+		self.qWriter = qWriter
+		self.q = queue.Queue()
 
-    def __readSentence(self, s0):
-        state = 0
-        buffer = bytearray()
-        while True:
-            a = s0.read(1)
-            if not a:
-                return None
-            if a == b'\x16':
-                state = 1
-                buffer = bytearray()
-            elif state == 1:
-                if a == b'\r':
-                    break
-                buffer.extend(a)
-        try:
-            l = int(buffer[0:2], 16)
-            chk = int(buffer[-2:], 16)
-            b = sum(buffer[:-2])
-            if chk == (b & 255):
-                return bytes(buffer[2:-2])
-            self.__log.error('Checksum error {}, {} != {}'.format(buffer, chk, b&255))
-            return None
-        except Exception as e:
-            self.__log.error('Unable to read sentence {}, {}'.format(buffer, e))
-            return None
+	def run(self): # Called on thread start
+		logger = self.logger
+		qReader = self.qReader
+		qWriter = self.qWriter
+		qBuilder = self.q
+		logger.info('Starting')
+		state = 0
+		while True:
+			a = qReader.get()
+			if state == 0:
+				if a == b'\x16': # Start a sentence
+					state += 1  # Get length
+					msgLen = 0
+					chkSum = 0
+					msg = ''
+				elif (a == b'\x06') or (a == b'\r'): # ACK or c/r
+					pass
+				elif a == b'\x15': # NAK
+					logger.warn('NAK')
+				else: # Ignore if c/r
+					logger.warn('Bad character, {}'.format(str(a, 'UTF-8')))
+			elif (state == 1) or (state == 2): # message length
+				state += 1
+				try:
+					msgLen = msgLen * 16 + int(a, 16)
+					chkSum += sum(a)
+				except Exception as e:
+					logger.error('Unable to convert {} to an integer'.format(str(a, 'UTF-8')))
+					state == 0
+			elif len(msg) < msgLen: # Build message
+				msg += str(a, 'UTF-8')
+				chkSum += sum(a)
+			elif state == 3: # First character of checksum
+				try:
+					chk = int(a, 16)
+					state += 1
+				except Exception as e:
+					logger.error('Unable to convert {} to an integer'.format(str(a, 'UTF-8')))
+					state == 0
+			else: # Second character of checksum
+				state = 0
+				chk = chk * 16 + int(a, 16)
+				if chk == (chkSum & 255): # Send back an ACK
+					qWriter.put(b'\x06')
+					qBuilder.put(msg)
+				else:
+					qWriter.put(b'\x15')
+			qReader.task_done()
 
+class Consumer(threading.Thread):
+	def __init__(self, db, logger, qBuilder):
+		threading.Thread.__init__(self, daemon=True)
+		self.name = 'Consumer'
+		self.db = db
+		self.logger = logger
+		self.qBuilder = qBuilder
+		self.previous = {}
+		self.commands = {'#': self.Number,
+                                 'V': self.Version,
+                                 'U': self.Current,
+                                 'S': self.Sensor,
+                                 '2': self.Two,
+                                 'Z': self.Zee,
+                                 'P': self.Pee,
+                                 'T': self.Tee,
+                                 'A': self.On,
+                                 'D': self.Off,
+                                 'E': self.Error}
 
-    def __process(self, s0):
-        q = self.__queue
-        cSYN = b'\x16'
-        cACK = b'\x06'
-        cNAK = b'\x15'
-        cACKCR = b'\x06\r'
-        cNAKCR = b'\x15\r'
-        while True:
-            item = q.get()
-            s0.reset_input_buffer() # Flush anything queued in the input buffer
-            qOkay = False
-            for i in range(2): # Try sending twice if needed
-                s0.write(item[0])
-                if self.__readACKCR(s0): 
-                    qOkay = True
-                    break
-                self.__log.error('Bad ACK/return for {}'.format(item[0]))
+	def run(self): # Called on thread start
+		logger = self.logger
+		q = self.qBuilder
+		cmds = self.commands
+		logger.info('Starting')
+		while True:
+			msg = q.get()
+			if (msg[0] == '1') and (msg[1] in cmds):
+				try:
+					cmds[msg[1]](msg)
+				except Exception as e:
+					logger.error('Error processing {}, {}'.format(msg, e))
+			else:
+				logger.error('Unrecognized message "{}"'.format(msg))
+			q.task_done()
 
-            if not qOkay:
-                self.__log.error('Unable to send {}'.format(item[0]))
-                item[1].put(None)
-                q.task_done()
-                continue
+	def notPrevious(self, msg, cmd=None):
+		if cmd is None:
+			cmd = msg[0:2]
+		if (cmd in self.previous) and (self.previous[cmd] == msg):
+			return False
+		self.previous[cmd] = msg
+		return True
 
-            qOkay = False
-            for i in range(2): # Try reading the sentence twice
-                a = self.__readSentence(s0)
-                if a != None:
-                    s0.write(cACK)
-                    qOkay = True
-                    item[1].put(a)
-                    break
-                s0.write(cNAK)
+	def Zee(self, msg):
+		if self.notPrevious(msg):
+			self.db.write('INSERT INTO zeeLog (timestamp, value) VALUES(?,?);',
+				(round(time.time()), msg))
 
-            if not qOkay:
-                self.__log.error('Unable to read reply for {}'.format(item[0]))
-                item[1].put(None)
-            q.task_done()
+	def Number(self, msg):
+		if self.notPrevious(msg):
+			self.db.write('INSERT INTO numberLog (timestamp,value) VALUES(?,?);',
+				(round(time.time()), int(msg[2:], 16)))
+	def Version(self, msg):
+		if self.notPrevious(msg):
+			self.db.write('INSERT INTO versionLog (timestamp,value) VALUES(?,?);',
+				(round(time.time()), msg[2:]))
 
-class TDINoArgs(threading.Thread):
-    # For TDI command which don't have any arguments
-    def __init__(self, tdiSerial, db, logger, name, letter, dt, timeout):
-        threading.Thread.__init__(self, daemon=True) # Initialize threading object
-        self.__tdi = tdiSerial
-        self.db = db
-        self.logger = logger
-        self.name = name
-        self.letter = letter
-        self.suffix = ''
-        self.__dt = dt
-        self.__timeout = timeout
-        self.previous = None
+	def Error(self, msg):
+		if self.notPrevious(msg):
+			self.db.write('INSERT INTO errorLog (timestamp,value) VALUES(?,?);',
+					(round(time.time()), int(msg[2:], 16)))
 
-    def parseReply(self, reply):
-        pass
+	def Current(self, msg):
+		if self.notPrevious(msg):
+			self.db.write('INSERT INTO currentLog (timestamp,volts,mAmps) ' +
+					'VALUES(?,?,?);',
+					(round(time.time()), float(int(msg[2:6], 16)) / 10, 
+					int(msg[6:],16)))
 
-    def run(self):
-        self.logger.info('Starting dt={} to={}'.format(self.__dt, self.__timeout))
-        sentence = self.__tdi.mkSentence('0{}{}'.format(self.letter, self.suffix))
-        prefix = bytes('1{}'.format(self.letter), 'UTF-8')
-        q = queue.Queue()
-        while True:
-            self.__tdi.put(sentence, q)
-            stime = time.time()
-            try:
-                reply = q.get(self.__timeout)
-                if reply[0:2] == prefix:
-                    self.parseReply(reply)
-                else:
-                    self.logger.error('Bad reply {} for {}'.format(reply, sentence))
-            except Exception as e:
-                self.logger.error('Error getting reply for {}, {}'.format(sentence, e))
-            time.sleep(max(1, self.__dt - (time.time() - stime)))
+	def Sensor(self, msg):
+		if self.notPrevious(msg, msg[0:4]):
+			code = int(msg[4:6],16)
+			if code > -1:
+				self.db.write('INSERT INTO sensorLog (timestamp,addr,code,value) ' +
+					'VALUES(?,?,?,?);',
+					(round(time.time()), int(msg[2:4], 16), code,
+					int(msg[6:],16)))
+	
+	def Two(self, msg):
+		if self.notPrevious(msg, msg[0:4]):
+			self.db.write('INSERT INTO sensorLog (timestamp,addr,value) ' +
+					'VALUES(?,?,?);',
+					(round(time.time()), int(msg[2:4], 16), int(msg[4:],16)))
 
-class TDINumber(TDINoArgs):
-    # 0#XX -- request
-    # 1#XX -- reply
-    #   XX is the number of active stations, ??
-    def __init__(self, params, tdiSerial, db, logger):
-        TDINoArgs.__init__(self, tdiSerial, db, logger, 'TDINumber', '#', \
-                params['numberPeriod'], params['numberTimeout'])
-        self.suffix = '{:02X}'.format(params['numberStations'])
+	def Pee(self, msg):
+		if self.notPrevious(msg, msg[0:4]):
+			self.db.write('INSERT INTO peeLog (timestamp,addr,value) ' +
+					'VALUES(?,?,?);',
+					(round(time.time()), int(msg[2:4], 16), int(msg[4:],16)))
 
-class TDIVersion(TDINoArgs):
-    # 0V -- request
-    # 1VXX... -- reply
-    #   XX is Version string
-    def __init__(self, params, tdiSerial, db, logger):
-        TDINoArgs.__init__(self, tdiSerial, db, logger, 'TDIVersion', 'V', \
-                params['versionPeriod'], params['versionTimeout'])
+	def Tee(self, msg):
+		if self.notPrevious(msg, msg[0:4]):
+			self.db.write('INSERT INTO teeLog (timestamp,addr,code,pre,peak,post) ' +
+					'VALUES(?,?,?,?,?,?);',
+					(round(time.time()), 
+					int(msg[2:4], 16), int(msg[4:6], 16),
+					int(msg[6:10],16), int(msg[10:14],16), int(msg[14:],16)))
 
-    def parseReply(self, reply):
-        a = reply[2:]
-        if a != self.previous:
-            self.previous = a
-            self.db.write('INSERT INTO versionLog (timestamp,val) VALUES(?,?);', \
-                          (math.floor(time.time()), str(a, 'UTF-8')))
-            self.logger.info('{}'.format(str(a, 'UTF-8')))
+	def On(self, msg):
+		addr = int(msg[2:4],16)
+		code = int(msg[4:6],16)
+		pre = int(msg[6:10],16)
+		peak = int(msg[10:14],16)
+		post = int(msg[14:],16)
+		self.db.write('INSERT INTO onLog (timestamp,addr,code,pre,peak,post) ' +
+				'VALUES(?,?,?,?,?,?);',
+				(round(time.time()), addr, code, pre, peak, post))
+		self.logger.info('On addr={} code={} pre={} peak={} post={}'.format(
+				addr, code, pre, peak, post))
 
-class TDIError(TDINoArgs):
-    # 0E -- request
-    # 1EXX -- reply
-    #   XX is ??
-    def __init__(self, params, tdiSerial, db, logger):
-        TDINoArgs.__init__(self, tdiSerial, db, logger, 'TDIError', 'E', \
-                params['errorPeriod'], params['errorTimeout'])
+	def Off(self, msg):
+		addr = int(msg[2:4],16)
+		code = int(msg[4:],16)
+		self.db.write('INSERT INTO offLog (timestamp,addr,code) VALUES(?,?,?);',
+			(round(time.time()), addr, code))
+		self.logger.info('Off addr={} code={}'.format(addr, code))
 
-    def parseReply(self, reply):
-        a = int(reply[2:], 16)
-        if a != self.previous:
-            self.previous = a
-            self.db.write('INSERT INTO errorLog (timestamp,val) VALUES(?,?);', \
-                          (math.floor(time.time()), a))
-            self.logger.info('{}'.format(a))
+class MyBase(threading.Thread):
+	def __init__(self, logger, qWriter, label, dt):
+		threading.Thread.__init__(self, daemon=True)
+		self.logger = logger
+		self.qWriter = qWriter
+		self.name = label
+		self.dt = dt
 
-class TDICurrent(TDINoArgs):
-    # 0U -- request
-    # 1UXXXXYYYY -- reply
-    #   XXXX - volts * 10   
-    #   YYYY - mAmps
-    def __init__(self, params, tdiSerial, db, logger):
-        TDINoArgs.__init__(self, tdiSerial, db, logger, 'TDICurrent', 'U', \
-                params['currentPeriod'], params['currentTimeout'])
-        self.prevCurr = None
+class NoArgs(MyBase):
+	def __init__(self, logger, qWriter, label, msg, dt):
+		MyBase.__init__(self, logger, qWriter, label, dt)
+		self.msg = msg
 
-    def parseReply(self, reply):
-        a = int(reply[2:6], 16)
-        b = int(reply[6:], 16)
-        if (a != self.previous) or (b != self.prevCurr):
-            self.previous = a
-            self.prevCurr = b
-            self.db.write('INSERT INTO currentLog (timestamp,volts,mAmps) VALUES(?,?,?);', \
-                          (math.floor(time.time()), float(a) / 10, b))
-            self.logger.debug('{} volts {} mAmps'.format(float(a) / 10, b))
+	def run(self): # Called on thread start
+		q = self.qWriter
+		dt = self.dt
+		msg = self.msg
+		self.logger.info('Starting {} {}'.format(dt, msg))
+		while True:
+			q.put(msg)
+			time.sleep(dt);
 
-class TDIArgs(threading.Thread):
-    # For TDI command which has a single argument and maybe a suffix
-    def __init__(self, tdiSerial, db, logger, name, letter, dt, timeout, sensors):
-        threading.Thread.__init__(self, daemon=True) # Initialize threading object
-        self.__tdi = tdiSerial
-        self.db = db
-        self.logger = logger
-        self.name = name
-        self.letter = letter
-        self.suffix = ''
-        self.__dt = dt
-        self.__timeout = timeout
-        self.sensors = sensors
-        self.previous = {}
+class Number(NoArgs):
+	def __init__(self, params, logger, qWriter):
+		NoArgs.__init__(self, logger, qWriter, 'Number', 
+				'0#{:02X}'.format(params['numberStations']),
+				params['numberPeriod'])
 
-    def checkPrevious(self, sensor, value):
-        if sensor in self.previous and self.previous[sensor] == value:
-            return False
-        self.previous[sensor] = value
-        return True
-    
-    def run(self):
-        self.logger.info('Starting dt={} to={}'.format(self.__dt, self.__timeout))
-        sentences = []
-        prefixes = []
-        if not isinstance(self.sensors, list):
-            self.sensors = [self.sensors]
-        for sensor in self.sensors:
-            sentences.append(self.__tdi.mkSentence('0{}{:02X}{}'.format( \
-                    self.letter, sensor, self.suffix)));
-            prefixes.append(bytes('1{}{:02X}'.format(self.letter, sensor), 'UTF-8'))
-        q = queue.Queue()
-        while True:
-            stime = time.time()
-            for i in range(len(sentences)):
-                sentence = sentences[i]
-                prefix = prefixes[i]
-                self.__tdi.put(sentence, q)
-                try:
-                    reply = q.get(self.__timeout)
-                    if reply[0:4] == prefix:
-                        self.parseReply(reply)
-                    else:
-                        self.logger.error('Bad reply {} for {}'.format(reply, sentence))
-                except Exception as e:
-                    self.logger.error('Error getting reply for {}, {}'.format(sentence, e))
-            time.sleep(max(1, self.__dt - (time.time() - stime)))
+class Version(NoArgs):
+	def __init__(self, params, logger, qWriter):
+		NoArgs.__init__(self, logger, qWriter, 'Version', '0V',
+				params['versionPeriod'])
 
-class TDISensor(TDIArgs):
-    # 0SXX -- request
-    # 1SXXYYYY -- reply
-    #   XX is sensor number, 0-3
-    #   YYYY is hertz * 10
-    def __init__(self, params, tdiSerial, db, logger):
-        TDIArgs.__init__(self, tdiSerial, db, logger, 'TDISensor', 'S', \
-                params['sensorPeriod'], params['sensorTimeout'], \
-                params['sensors'])
+class Error(NoArgs):
+	def __init__(self, params, logger, qWriter):
+		NoArgs.__init__(self, logger, qWriter, 'Error', '0E',
+				params['errorPeriod'])
 
-    def parseReply(self, reply):
-        code = int(reply[4:6], 16)
-        if code >= 4:
-            sensor = int(reply[2:4], 16)
-            value = int(reply[6:], 16)
-            if self.checkPrevious(sensor, value):
-                self.db.write('INSERT INTO sensorLog (timestamp,sensor,val,code) VALUES(?,?,?,?);', \
-                        (math.floor(time.time()), sensor, value, code));
-                self.logger.debug('{} {} {}'.format(sensor, value, code))
+class Current(NoArgs):
+	def __init__(self, params, logger, qWriter):
+		NoArgs.__init__(self, logger, qWriter, 'Current', '0U',
+				params['currentPeriod'])
 
-class TDITwo(TDIArgs):
-    # 02XXZZ -- request
-    # 12XXYY -- reply
-    #   XX is sensor number, 0-3
-    #   ZZ has always been FF
-    #   YY is ??
-    def __init__(self, params, tdiSerial, db, logger):
-        TDIArgs.__init__(self, tdiSerial, db, logger, 'TDITwo', '2', \
-                params['twoPeriod'], params['twoTimeout'], \
-                params['twoChannels'])
-        self.suffix = 'FF'
+class Args(MyBase):
+	def __init__(self, logger, qWriter, label, msg, dt, sensors):
+		MyBase.__init__(self, logger, qWriter, label, dt)
+		self.msg = msg
+		if isinstance(sensors, list):
+			self.sensors = sensors
+		else:
+			self.sensors = [sensors]
 
-    def parseReply(self, reply):
-        sensor = int(reply[2:4], 16)
-        value = int(reply[4:], 16)
-        if self.checkPrevious(sensor, value):
-            self.db.write('INSERT INTO twoLog (timestamp,sensor,val) VALUES(?,?,?);', \
-                        (math.floor(time.time()), sensor, value));
-            self.logger.info('{} {}'.format(sensor, value))
+	def run(self): # Called on thread start
+		q = self.qWriter
+		dt = self.dt
+		msg = self.msg
+		sensors = self.sensors
+		self.logger.info('Starting {} {} {}'.format(dt, msg, sensors))
+		while True:
+			for sensor in sensors:
+				q.put(msg.format(sensor))
+			time.sleep(dt)
 
-class TDIPee(TDIArgs):
-    # 0PXXZZ -- request
-    # 1PXXYYYY -- reply
-    #   XX is sensor number, 0-3
-    #   ZZ has always been FF
-    #   YYYY is ??
-    def __init__(self, params, tdiSerial, db, logger):
-        TDIArgs.__init__(self, tdiSerial, db, logger, 'TDIPee', 'P', \
-                params['peePeriod'], params['peeTimeout'], \
-                params['peeChannels'])
-        self.suffix = 'FF'
+class Sensor(Args):
+	def __init__(self, params, logger, qWriter):
+		Args.__init__(self, logger, qWriter, 'Sensor', '0S{:02X}',
+			params['sensorPeriod'],
+			params['sensors'])
+	
 
-    def parseReply(self, reply):
-        sensor = int(reply[2:4], 16)
-        value = int(reply[4:], 16)
-        if self.checkPrevious(sensor, value):
-            self.db.write('INSERT INTO peeLog (timestamp,sensor,val) VALUES(?,?,?);', \
-                        (math.floor(time.time()), sensor, value));
-            self.logger.info('{} {}'.format(sensor, value))
+class Two(Args):
+	def __init__(self, params, logger, qWriter):
+		Args.__init__(self, logger, qWriter, 'Two', '02{:02X}FF',
+			params['twoPeriod'], params['twoChannels'])
 
-class TDICommand(threading.Thread):
-    # Receive commands from a database queue, 
-    # send out appropriate commands to serial
-    # then set action in database
-    def __init__(self, params, tdi, db, logger):
-        threading.Thread.__init__(self, daemon=True)
-        self.name = 'TDICmd'
-        self.tdi = tdi
-        self.db = db
-        self.logger = logger
-        self.dt = params['cmdPeriod']
-        self.timeout = params['cmdTimeout']
-        self.q = queue.Queue()
+class Pee(Args):
+	def __init__(self, params, logger, qWriter):
+		Args.__init__(self, logger, qWriter, 'Pee', '0P{:02X}FF',
+			params['peePeriod'], params['peeChannels'])
 
-    def __teeCmd(self, valve):
-        # 0TXXYY -- request
-        # 1TXXYYAAAABBBBCCCC -- reply
-        #   XX -- is sensor number
-        #   YY -- has always been 00
-        #   AAAA -- pre on current
-        #   BBBB -- peak on current
-        #   CCCC -- post on current
-        sentence = self.tdi.mkSentence('0T{:02X}00'.format(valve))
-        self.tdi.put(sentence, self.q)
-        try:
-            reply = self.q.get(timeout=self.timeout)
-            if reply[0:2] == b'1T' and reply[2:4] == sentence[5:7]:
-                code = int(reply[4:6], 16)
-                pre = int(reply[6:10], 16)
-                peak = int(reply[10:14], 16)
-                post = int(reply[14:], 16)
-                self.db.write('INSERT INTO teeLog (timestamp,valve,preCurrent,peakCurrent,postCurrent) VALUES (?,?,?,?,?);', \
-                        (math.floor(time.time()), valve, pre, peak, post))
-                self.logger.info('T {} on pre {} peak {} post {}'.format( \
-                        valve, pre, peak, post))
+class Command(threading.Thread):
+	def __init__(self, db, logger, qWriter):
+		threading.Thread.__init__(self, daemon=True)
+		self.db = db
+		self.logger = logger
+		self.qWriter = qWriter
+		self.name = 'Cmd'
 
-            else:
-                self.logger.error('Invalid reply, {}, to {}'.format(reply, sentence))
-        except queue.Empty:
-            self.logger.error('Timed out for {}'.format(sentence))
-
-    def __openCmd(self, valve):
-        sentence = self.tdi.mkSentence('0A{:02X}00'.format(valve))
-        self.tdi.put(sentence, self.q)
-        try:
-            reply = self.q.get(timeout=self.timeout)
-            if reply[0:2] == b'1A' and reply[2:4] == sentence[5:7]:
-                code = int(reply[4:6], 16)
-                pre = int(reply[6:10], 16)
-                peak = int(reply[10:14], 16)
-                post = int(reply[14:], 16)
-                self.db.write('INSERT INTO onOffLog (valve,onTimeStamp,onCode,preCurrent,peakCurrent,postCurrent) VALUES (?,?,?,?,?,?);', \
-                        (valve, math.floor(time.time()), code, pre, peak, post))
-                self.logger.info('Turned {} on pre {} peak {} post {}'.format( \
-                        valve, pre, peak, post))
-
-            else:
-                self.logger.error('Invalid reply, {}, to {}'.format(reply, sentence))
-        except queue.Empty:
-            self.logger.error('Timed out for {}'.format(sentence))
-
-    def __closeDB(self, valve, code):
-        ts = math.floor(time.time())
-        if valve == 255: # All
-            self.db.write('UPDATE onOffLog SET offTimeStamp=?,offCode=? WHERE offTimeStamp is NULL;',
-                            (ts, code))
-            self.logger.info('Turned all off')
-        else: # Particular valve
-            self.db.write('UPDATE onOffLog SET offTimeStamp=?,offCode=? WHERE valve=? AND offTimeStamp is NULL;',
-                            (ts, code, valve))
-            self.logger.info('Turned {} off'.format(valve))
-
-    def __closeCmd(self, valve):
-        sentence = self.tdi.mkSentence('0D{:02X}'.format(valve))
-        self.tdi.put(sentence, self.q)
-        try:
-            reply = self.q.get(timeout=self.timeout)
-            if reply[0:2] == b'1D' and reply[2:4] == sentence[5:7]:
-                self.__closeDB(valve, int(reply[4:], 16))
-            else:
-                self.logger.error('Invalid reply, {} to {}'.format(reply, sentence))
-                self.__closeDB(valve, -1)
-        except queue.Empty:
-            self.logger.error('Timed out for {}'.format(sentence))
-            self.__closeDB(valve, -2)
-
-    def process(self, row):
-        id = row[0]
-        cmd = row[1]
-        valve = row[2]
-        if cmd == 0: # On
-            self.__openCmd(valve)
-        elif cmd == 1: # Off
-            self.__closeCmd(valve)
-        else: # T command
-            self.__teeCmd(valve)
-        self.db.write('DELETE FROM commands WHERE id=?;', (id,))
-
-    def run(self):
-        self.logger.info('Starting dt={} timeout={}'.format(self.dt, self.timeout))
-        while True:
-            stime = time.time()
-            rows = self.db.read('SELECT id,cmd,valve FROM commands WHERE timestamp<? ORDER BY timestamp,cmd;', \
-                        (math.ceil(time.time() + 0.5),))
-            if rows:
-                for row in rows:
-                    self.process(row)
-            time.sleep(max(1, self.dt - (time.time() - stime)))
+	def run(self): # Called on thread start
+		db = self.db
+		logger = self.logger
+		q = self.qWriter
+		sql = 'SELECT id,cmd,addr FROM commands WHERE timestamp<? ORDER BY timestamp,cmd;'
+		del1 = 'DELETE FROM commands WHERE id=={};'
+		deln = 'DELETE FROM commands WHERE id IN ({});'
+		sqlOn = 'INSERT INTO onLog (timestamp,addr) VALUES(?,?);'
+		sqlOff = 'INSERT INTO offLog (timestamp,addr) VALUES(?,?);'
+		logger.info('Starting');
+		while True:
+			try:
+				rows = db.read(sql, (math.ceil(time.time()+0.5),))
+				ids = []
+				for row in rows:
+					ids.append(row[0])
+					cmd = row[1]
+					if cmd == 0: # On command
+						q.put('0A{:02X}00'.format(row[2]));
+					elif cmd == 1: # Off command
+						q.put('0D{:02X}'.format(row[2]));
+					elif cmd == 2: # Tee command
+						q.put('0T{:02X}00'.format(row[2]));
+					else:
+						logger.error('Unrecognized command, {}'.format(row))
+				if len(ids) == 1:
+					db.write(del1.format(ids[0]))
+				elif len(ids) > 1:
+					db.write(deln.format(','.join(map(str, ids))))
+			except Exception as e:
+				logger.error('Exception {}'.format(e))

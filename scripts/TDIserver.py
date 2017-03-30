@@ -7,14 +7,13 @@
 # the database name
 # the tty device to use
 # the name of the output log file
-# 
-from TDI import TDISerial,TDINumber,TDIVersion,TDIError,TDICurrent
-from TDI import TDISensor,TDITwo,TDIPee,TDICommand
-from Params import Params
-import DB
+#
+import DB 
+import TDI 
+import Params
+import serial 
 import logging
 import argparse
-import sys
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--params', help='parameter database name', required=True)
@@ -40,35 +39,31 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
-params = Params(args.params, args.group)
+params = Params.Params(args.params, args.group)
 logger.info(params)
 
-with DB.DB(args.cmds) as db:
-    tdi = TDISerial(params, logger)
-    tdi.start()
+with DB.DB(args.cmds) as db, \
+     serial.Serial(port=params['port'], baudrate=params['baudrate']) as s0:
+    thrReader = TDI.Reader(s0, logger)
+    thrWriter = TDI.Writer(s0, logger)
+    thrBuilder = TDI.Builder(s0, logger, thrReader.q, thrWriter.q)
 
-    tdiNumber = TDINumber(params, tdi, db, logger)
-    tdiNumber.start()
+    thr = []
+    thr.append(TDI.Consumer(db, logger, thrBuilder.q))
+    thr.append(TDI.Number(params, logger, thrWriter.q))
+    thr.append(TDI.Version(params, logger, thrWriter.q))
+    thr.append(TDI.Error(params, logger, thrWriter.q))
+    thr.append(TDI.Current(params, logger, thrWriter.q))
+    thr.append(TDI.Sensor(params, logger, thrWriter.q))
+    thr.append(TDI.Two(params, logger, thrWriter.q))
+    thr.append(TDI.Pee(params, logger, thrWriter.q))
+    thr.append(TDI.Command(db, logger, thrWriter.q))
 
-    tdiVersion = TDIVersion(params, tdi, db, logger)
-    tdiVersion.start()
+    thrReader.start()
+    thrWriter.start()
+    thrBuilder.start()
 
-    tdiErr = TDIError(params, tdi, db, logger)
-    tdiErr.start()
+    for i in range(len(thr)):
+        thr[i].start()
 
-    tdiCurr = TDICurrent(params, tdi, db, logger)
-    tdiCurr.start()
-
-    tdiSensor = TDISensor(params, tdi, db, logger)
-    tdiSensor.start()
-
-    tdiTwo = TDITwo(params, tdi, db, logger)
-    tdiTwo.start()
-
-    tdiPee = TDIPee(params, tdi, db, logger)
-    tdiPee.start()
-
-    tdiCommand = TDICommand(params, tdi, db, logger)
-    tdiCommand.start()
-
-    tdi.join() # Wait for TDISerial to exit, which should never happen
+    thrReader.join()
