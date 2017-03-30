@@ -17,7 +17,7 @@ require_once 'php/CmdDB.php';
 if (!empty($_POST)) {
 	$stime = time();
 	$etime = $stime + $_POST['time'] * 60;
-	$stmt = $cmdDB->prepare('INSERT INTO commands (valve,cmd,timestamp,src) '
+	$stmt = $cmdDB->prepare('INSERT INTO commands (addr,cmd,timestamp,src) '
 			. ' VALUES(:stn,:cmd,:ts,:src);');
 	$stmt->bindValue(':stn', $_POST['id']);
 	$stmt->bindValue(':cmd', 0);

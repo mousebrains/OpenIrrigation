@@ -21,11 +21,11 @@ if (!empty($_POST)) {
 	// echo "</pre>\n";
 	if (array_key_exists('clearAll', $_POST)) {
 		$cmdDB->exec('DELETE FROM commands;');
-		$cmdDB->exec('INSERT INTO commands (valve,cmd,timestamp)'
+		$cmdDB->exec('INSERT INTO commands (addr,cmd,timestamp)'
 			. ' VALUES(255,1,CURRENT_TIMESTAMP);'); 
 	} elseif (array_key_exists('off', $_POST)) {
-		$stmt = $cmdDB->prepare('INSERT INTO commands (timestamp,valve,cmd) VALUES('
-				. ':time,:id,1);');
+		$stmt = $cmdDB->prepare('INSERT INTO commands (timestamp,addr,cmd,src) VALUES('
+				. ':time,:id,1,-1);');
 		$stmt->bindValue(':time', time());
 		$stmt->bindValue(':id', $_POST['id']);
 		$stmt->execute();
@@ -37,8 +37,8 @@ if (!empty($_POST)) {
 		$stmt->execute();
 		$stmt->close();
 	} elseif (array_key_exists('on', $_POST)) {
-		$stmt = $cmdDB->prepare('INSERT INTO commands (timestamp,valve,cmd) VALUES('
-				. ':time,:id,0);');
+		$stmt = $cmdDB->prepare('INSERT INTO commands (timestamp,addr,cmd,src) VALUES('
+				. ':time,:id,0,-1);');
 		$stmt->bindValue(':time', time());
 		$stmt->bindValue(':id', $_POST['id']);
 		$stmt->execute();
@@ -97,7 +97,7 @@ function mkCurrent() {
 		. 'preCurrent,peakCurrent,postCurrent,onCode'
 		. ' FROM onOffLog'
 		. ' INNER JOIN commands'
-		. ' ON ((onOffLog.valve==commands.valve) OR (commands.valve==255))'
+		. ' ON ((onOffLog.valve==commands.addr) OR (commands.addr==255))'
 		. ' AND offTimeStamp is NULL'
 		. ' AND cmd == 1'
 		. ' GROUP BY onTimeStamp, onOffLog.valve;'); 
@@ -135,16 +135,16 @@ function mkCurrent() {
 function mkPending() {
 	global $cmdDB;
 	$results = $cmdDB->query('SELECT'
-		. ' A.valve,A.timestamp as tOn,min(B.timestamp) AS tOff,A.src'
+		. ' A.addr,A.timestamp as tOn,min(B.timestamp) AS tOff,A.src'
 		. ',A.id AS aid,B.id AS bid'
 		. ' FROM commands AS A'
 		. ' INNER JOIN commands AS B'
-		. ' ON ((A.valve==B.valve) OR (B.valve==255))'
+		. ' ON ((A.addr==B.addr) OR (B.addr==255))'
 		. ' AND A.cmd == 0'
 		. ' AND B.cmd == 1'
 		. ' AND A.timestamp <= B.timestamp'
-		. ' GROUP BY A.timestamp,A.valve'
-		. ' ORDER BY A.timestamp,A.valve;');
+		. ' GROUP BY A.timestamp,A.addr'
+		. ' ORDER BY A.timestamp,A.addr;');
 	$hdr = "<tr><th></th><th>Station</th><th>Start</th>"
 		. "<th>RunTime</th><th>Source</th></tr>";
 	$qFirst = true;
@@ -155,7 +155,7 @@ function mkPending() {
 			echo "<center>\n<table>\n";
 			echo "<thead>$hdr</thead>\n<tbody>\n";
 		}
-		$valve = $row['valve'];
+		$valve = $row['addr'];
 		echo "<tr>\n<td>\n"
 			. "<form method='post'>\n"
 			. "<input type='hidden' name='aid' value='" . $row['aid'] . "'>\n"
