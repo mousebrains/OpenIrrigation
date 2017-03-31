@@ -178,7 +178,7 @@ class Consumer(threading.Thread):
 	def Sensor(self, msg):
 		if self.notPrevious(msg, msg[0:4]):
 			code = int(msg[4:6],16)
-			if code > -1:
+			if code >= 4: # Something fresh
 				self.db.write('INSERT INTO sensorLog (timestamp,addr,code,value) ' +
 					'VALUES(?,?,?,?);',
 					(round(time.time()), int(msg[2:4], 16), code,
