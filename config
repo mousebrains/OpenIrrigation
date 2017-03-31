@@ -1,0 +1,57 @@
+#! /usr/bin/python3 -b
+#
+# This script builds Makefile.params for the local system
+#
+import argparse
+import sys
+import os
+import time
+
+def rewrite(prefixOld,prefixNew,name):
+	if prefixOld != prefixNew:
+		a = os.path.relpath(name, prefixOld)
+		name = os.path.join(prefixNew, a)
+	return os.path.normcase(os.path.normpath(name))
+	
+mydir = os.path.dirname(sys.argv[0])
+
+user = 'irrigation'
+prefix = os.path.join('/home', user)
+webdir = os.path.join(prefix, "public_html")
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--prefix', help='directory tree prefix', default=prefix)
+parser.add_argument('--user', help='user to set ownership to', default=user)
+parser.add_argument('--group', help='group name to set ownerhip to', default=user)
+parser.add_argument('--logdir', help='Where to store log files', 
+			default=os.path.join(prefix, "logs"))
+parser.add_argument('--bindir', help='Where to store log files', 
+			default=os.path.join(prefix, "bin"))
+parser.add_argument('--dbdir', help='Where to store log files', 
+			default=os.path.join(prefix, "database"))
+parser.add_argument('--webdir', help='Where to store log files', default=webdir)
+parser.add_argument('--phpdir', help='Where to store log files', 
+			default=os.path.join(webdir, "php"))
+parser.add_argument('--cssdir', help='Where to store log files', 
+			default=os.path.join(webdir, "css"))
+parser.add_argument('--jsdir', help='Where to store log files', 
+			default=os.path.join(webdir, "js"))
+parser.add_argument('--servicedir', help='Where to store log files', 
+			default="/etc/systemd/system")
+args = parser.parse_args()
+
+with open(os.path.join(mydir, "Makefile.params"), "w") as f:
+  f.write("# This file automatically generated on " + time.asctime() + "\n")
+  f.write("# by\n")
+  f.write("#  " + " ".join(sys.argv) + "\n\n")
+  f.write("USER = " + args.user + "\n")
+  f.write("GROUP = " + args.group + "\n")
+  f.write("USERDIR = " + rewrite(prefix,prefix,args.prefix) + "\n")
+  f.write("LOGDIR = " + rewrite(prefix, args.prefix, args.logdir) + "\n")
+  f.write("BINDIR = " + rewrite(prefix, args.prefix, args.bindir) + "\n")
+  f.write("DBDIR = " + rewrite(prefix, args.prefix, args.dbdir) + "\n")
+  f.write("WEBDIR = " + rewrite(prefix, args.prefix, args.webdir) + "\n")
+  f.write("PHPDIR = " + rewrite(prefix, args.prefix, args.phpdir) + "\n")
+  f.write("CSSDIR = " + rewrite(prefix, args.prefix, args.cssdir) + "\n")
+  f.write("JSDIR = " + rewrite(prefix, args.prefix, args.jsdir) + "\n")
+  f.write("SERVICEDIR = " + rewrite(prefix, args.prefix, args.servicedir) + "\n")
