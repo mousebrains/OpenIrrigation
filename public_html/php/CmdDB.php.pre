@@ -9,7 +9,37 @@ class CmdDB extends SQLite3 {
                 $this->close();
 	}
 
-	function onOffStatus($stn) {
+	function insertCommand($addr, int $cmd, int $t=NULL, int $src=-1) {
+		if (is_null($t)) {$t = time();}
+        	$sql = "INSERT INTO commands (timestamp,addr,cmd,src) "
+				. "VALUES($t,:addr,$cmd,$src);";
+        	$stmt = $this->prepare($sql);
+		$stmt->bindValue(":addr", $addr);
+		$stmt->execute();
+		$stmt->close();
+	}
+
+	function turnOn($addr, int $t=NULL, int $src=-1) {
+		$this->insertCommand($addr, 0, $t, $src);
+	}
+
+	function turnOff($addr=255, int $t=NULL, int $src=-1) {
+		$this->insertCommand($addr, 1, $t, $src);
+	}
+
+	function clearAll() {
+		$this->exec('DELETE FROM commands;');
+		$this->turnOff(); // Turn everything off
+	}
+
+	function deletePair($idOn, $idOff=NULL) {
+		if (is_null($idOn) && is_null($idOff)) {return;}
+		$sql = "DELETE FROM commands WHERE id IN (:idOn,:idOff) AND addr!=255;";
+		$stmt = $this->prepare($sql);
+		$stmt->bindValue(':idOn', is_null($idOn) ? $idOn : $idOff);	
+		$stmt->bindValue(':idOff', is_null($idOff) ? $idOff : $idOn);	
+		$stmt->execute();
+		$stmt->close();
 	}
 }
 

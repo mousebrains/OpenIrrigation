@@ -6,7 +6,7 @@
 <meta name='viewport' content='width=device-width, initial-scale=1'>
 <link rel='stylesheet' type='text/css' href='css/irrigation.css'>
 <script src="js/jquery.min.js"></script>
-<title>Report Name Editor</title>
+<title>Parameter Editor</title>
 </head>
 <body>
 <?php
@@ -14,8 +14,8 @@ require_once 'php/navBar.php';
 require_once 'php/ParDB.php';
 require_once 'php/webForm.php';
 
-$table = 'reports';
-$fields = ['name', 'label'];
+$table = 'params';
+$fields = ['grp','name', 'val'];
 
 if (!empty($_POST)) {$parDB->postUpArray($table, $fields, $_POST);}
 
@@ -24,9 +24,11 @@ function myRow(array $row) {
 	inputHidden($row['id'], 'id[]');
 	inputHidden($row['id'], 'delete[]', 'checkbox');
 	echo "</th>\n<td>\n";
+	inputBlock('grp[]', $row['grp'], 'text', ['placeholder'=>'Group']);
+	echo "</td>\n<td>\n";	
 	inputBlock('name[]', $row['name'], 'text', ['placeholder'=>'Short Name']);
 	echo "</td>\n<td>\n";	
-	inputBlock('label[]', $row['label'], 'text', ['placeholder'=>'Descriptive name']);
+	inputBlock('val[]', $row['val'], 'text', ['placeholder'=>'Descriptive name']);
 	echo "</td>\n</tr>\n";	
 }
 
@@ -34,9 +36,9 @@ function myRow(array $row) {
 echo "<center>\n";
 echo "<form method='post'>\n";
 echo "<table>\n";
-echo "<tr><th>Delete</th><th>Short Name</th><th>Descriptive Name</th></tr>\n";
+echo "<tr><th>Delete</th><th>Group</th><th>Short Name</th><th>Descriptive Name</th></tr>\n";
 
-$results = $parDB->query("SELECT * FROM $table ORDER BY name COLLATE NOCASE;");
+$results = $parDB->query("SELECT * FROM $table ORDER BY grp,name COLLATE NOCASE;");
 while ($row = $results->fetchArray()) { myRow($row); }
 
 myRow(mkBlankRow($fields, ['id'=>'']));

@@ -16,33 +16,14 @@ require_once 'php/CmdDB.php';
 require_once 'php/ParDB.php';
 
 if (!empty($_POST)) {
-	// echo "<pre>\n";
-	// var_dump($_POST);
-	// echo "</pre>\n";
 	if (array_key_exists('clearAll', $_POST)) {
-		$cmdDB->exec('DELETE FROM commands;');
-		$cmdDB->exec('INSERT INTO commands (addr,cmd,timestamp)'
-			. ' VALUES(255,1,CURRENT_TIMESTAMP);'); 
+		$cmdDB->clearAll();
 	} elseif (array_key_exists('off', $_POST)) {
-		$stmt = $cmdDB->prepare('INSERT INTO commands (timestamp,addr,cmd,src) VALUES('
-				. ':time,:id,1,-1);');
-		$stmt->bindValue(':time', time());
-		$stmt->bindValue(':id', $_POST['id']);
-		$stmt->execute();
-		$stmt->close();
+		$cmdDB->turnOff($_POST['id']);
 	} elseif (array_key_exists('delete', $_POST)) {
-		$stmt = $cmdDB->prepare('DELETE FROM commands WHERE id==:aid OR id==:bid;');
-		$stmt->bindValue(':aid', $_POST['aid']);
-		$stmt->bindValue(':bid', $_POST['bid']);
-		$stmt->execute();
-		$stmt->close();
+		$cmdDB->deletePair($_POST['idOn'], $_POST['idOff']);
 	} elseif (array_key_exists('on', $_POST)) {
-		$stmt = $cmdDB->prepare('INSERT INTO commands (timestamp,addr,cmd,src) VALUES('
-				. ':time,:id,0,-1);');
-		$stmt->bindValue(':time', time());
-		$stmt->bindValue(':id', $_POST['id']);
-		$stmt->execute();
-		$stmt->close();
+		$cmdDB->turnOn($_POST['id']);
 	}
 }
 
@@ -53,7 +34,8 @@ function vName($valve) {
 	return "Station $valve";
 }
 
-function mkRT(int $stime, int $etime) {
+function mkRT(int $stime, int $etime = NULL) {
+	if (is_null($stime) or is_null($etime)) { return ''; }
 	$dt = $etime - $stime;
 	if ($dt < 3600) {return sprintf('%d:%02d', floor($dt / 60), $dt % 60);}
 	return sprintf('%d:%02d:%02d', floor($dt / 3600), floor(($dt % 3600) / 60), $dt % 60);
@@ -62,10 +44,9 @@ function mkRT(int $stime, int $etime) {
 
 function mkPast() {
 	global $cmdDB;
-	$results = $cmdDB->query("SELECT * FROM onOffLog WHERE offTimeStamp IS NOT NULL" .
-				" ORDER BY onTimeStamp DESC,valve ASC LIMIT 500;");
+	$results = $cmdDB->query("SELECT * FROM onOffHistorical ORDER BY tOn DESC,addr LIMIT 50;");
 	$hdr = "<tr><th>Station</th><th>Start</th><th>RunTime</th><th>Pre</th><th>Peak</th>"
-		. "<th>Post</th><th>On Code</th><th>Off Code</th></tr>";
+		. "<th>Post</th><th>On Code</th><th>Off Code</th><th>Source</th></tr>";
 	$qFirst = true;
 	while ($row = $results->fetchArray()) {
 		if ($qFirst) {
@@ -74,14 +55,15 @@ function mkPast() {
 			echo "<center>\n<table>\n";
 			echo "<thead>$hdr</thead>\n<tbody>\n";
 		}
-		echo "<tr>\n<th>" . vName($row['valve'])
-			. "</th>\n<td>" . strftime('%m/%d %H:%M:%S', $row['onTimeStamp'])
-			. "</td>\n<td>" . mkRT($row['onTimeStamp'], $row['offTimeStamp'])
-			. "</td>\n<td>" . $row['preCurrent']
-			. "</td>\n<td>" . $row['peakCurrent']
-			. "</td>\n<td>" . $row['postCurrent']
-			. "</td>\n<td>" . $row['onCode']
-			. "</td>\n<td>" . $row['offCode']
+		echo "<tr>\n<th>" . vName($row['addr'])
+			. "</th>\n<td>" . strftime('%m/%d %H:%M:%S', $row['tOn'])
+			. "</td>\n<td>" . mkRT($row['tOn'], $row['tOff'])
+			. "</td>\n<td>" . $row['pre']
+			. "</td>\n<td>" . $row['peak']
+			. "</td>\n<td>" . $row['post']
+			. "</td>\n<td>" . $row['codeOn']
+			. "</td>\n<td>" . $row['codeOff']
+			. "</td>\n<td>" . $row['srcOff']
 			. "</td>\n</tr>\n";
 	}
 	if (!$qFirst) {
@@ -92,15 +74,8 @@ function mkPast() {
 function mkCurrent() {
 	global $cmdDB;
 	$now = time();
-	$results = $cmdDB->query('SELECT'
-		. ' onOffLog.valve,onTimeStamp,min(timestamp) as timestamp,'
-		. 'preCurrent,peakCurrent,postCurrent,onCode'
-		. ' FROM onOffLog'
-		. ' INNER JOIN commands'
-		. ' ON ((onOffLog.valve==commands.addr) OR (commands.addr==255))'
-		. ' AND offTimeStamp is NULL'
-		. ' AND cmd == 1'
-		. ' GROUP BY onTimeStamp, onOffLog.valve;'); 
+	$results = $cmdDB->query('SELECT addr,tOn,tOff,pre,peak,post,codeOn FROM onOffActive ' 
+			. ' ORDER BY tOn,addr;');
 	$hdr = "<tr><th></th><th>Station</th><th>Start</th>"
 		. "<th>RunTime</th><th>Time Left</th>"
 		. "<th>Pre</th><th>Peak</th><th>Post</th><th>On Code</th></tr>";
@@ -111,20 +86,20 @@ function mkCurrent() {
 			echo "<center>\n<table>\n";
 			echo "<thead>$hdr</thead>\n<tbody>\n";
 		}
-		$valve = $row['valve'];
+		$addr = $row['addr'];
 		echo "<tr>\n<td>\n"
 			. "<form method='post'>\n"
-			. "<input type='hidden' name='id' value='$valve'>\n"
+			. "<input type='hidden' name='id' value='$addr'>\n"
 			. "<input type='submit' name='off' value='Off'>\n"
 			. "</form>\n"
-			. "</td>\n<th>" . vName($valve)
-			. "</th>\n<td>" . strftime('%m/%d %H:%M:%S', $row['onTimeStamp'])
-			. "</td>\n<td>" . mkRT($row['onTimeStamp'], $now)
-			. "</td>\n<td>" . mkRT($now, $row['timestamp'])
-			. "</td>\n<td>" . $row['preCurrent']
-			. "</td>\n<td>" . $row['peakCurrent']
-			. "</td>\n<td>" . $row['postCurrent']
-			. "</td>\n<td>" . $row['onCode']
+			. "</td>\n<th>" . vName($addr)
+			. "</th>\n<td>" . strftime('%m/%d %H:%M:%S', $row['tOn'])
+			. "</td>\n<td>" . mkRT($row['tOn'], $now)
+			. "</td>\n<td>" . mkRT($now, $row['tOff'])
+			. "</td>\n<td>" . $row['pre']
+			. "</td>\n<td>" . $row['peak']
+			. "</td>\n<td>" . $row['post']
+			. "</td>\n<td>" . $row['codeOn']
 			. "</td>\n</tr>\n";
 	}
 	if (!$qFirst) {
@@ -134,17 +109,7 @@ function mkCurrent() {
 
 function mkPending() {
 	global $cmdDB;
-	$results = $cmdDB->query('SELECT'
-		. ' A.addr,A.timestamp as tOn,min(B.timestamp) AS tOff,A.src'
-		. ',A.id AS aid,B.id AS bid'
-		. ' FROM commands AS A'
-		. ' INNER JOIN commands AS B'
-		. ' ON ((A.addr==B.addr) OR (B.addr==255))'
-		. ' AND A.cmd == 0'
-		. ' AND B.cmd == 1'
-		. ' AND A.timestamp <= B.timestamp'
-		. ' GROUP BY A.timestamp,A.addr'
-		. ' ORDER BY A.timestamp,A.addr;');
+	$results = $cmdDB->query('SELECT * FROM onOffPending ORDER BY tOn,addr;');
 	$hdr = "<tr><th></th><th>Station</th><th>Start</th>"
 		. "<th>RunTime</th><th>Source</th></tr>";
 	$qFirst = true;
@@ -158,14 +123,14 @@ function mkPending() {
 		$valve = $row['addr'];
 		echo "<tr>\n<td>\n"
 			. "<form method='post'>\n"
-			. "<input type='hidden' name='aid' value='" . $row['aid'] . "'>\n"
-			. "<input type='hidden' name='bid' value='" . $row['bid'] . "'>\n"
+			. "<input type='hidden' name='idOn' value='" . $row['idOn'] . "'>\n"
+			. "<input type='hidden' name='idOff' value='" . $row['idOff'] . "'>\n"
 			. "<input type='submit' name='delete' value='Delete'>\n"
 			. "</form>\n"
 			. "</td>\n<th>" . vName($valve)
 			. "</th>\n<td>" . strftime('%m/%d %H:%M:%S', $row['tOn'])
 			. "</td>\n<td>" . mkRT($row['tOn'], $row['tOff'])
-			. "</td>\n<td>" . $row['src']
+			. "</td>\n<td>" . $row['srcOn']
 			. "</td>\n</tr>\n";
 	}
 	if (!$qFirst) {

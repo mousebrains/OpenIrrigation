@@ -15,10 +15,11 @@ PRAGMA foreign_keys = ON;
 
 -- Interface parameters
 DROP TABLE IF EXISTS params;
-CREATE TABLE params(grp TEXT, -- name of group this parameter belongs to
+CREATE TABLE params(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                    grp TEXT, -- name of group this parameter belongs to
                     name TEXT, -- name of parameter
                     val TEXT, -- value of parameter
-                    PRIMARY KEY (grp, name) ON CONFLICT REPLACE -- combination must be unique
+                    UNIQUE(grp, name) ON CONFLICT REPLACE -- combination must be unique
                    );
 DROP INDEX IF EXISTS paramsGroup;
 CREATE INDEX paramsGroup ON params (grp);

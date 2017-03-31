@@ -34,6 +34,7 @@ echo "</script>
       <a href='report.php'>Report Name Edit</a>
       <a href='soil.php'>Soil Edit</a>
       <a href='crop.php'>Crop Edit</a>
+      <a href='params.php'>Parameter Edit</a>
     </div>
   </li>
  </ul>
