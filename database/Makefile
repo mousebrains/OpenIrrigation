@@ -17,8 +17,8 @@ install: $(SRC)
 clean:
 	$(RM) $(SRC) $(DEST)
 
-commands.db: commands.schema
-	sqlite3 $@ <$<
+commands.db: commands.schema commands.view
+	for i in $^; do sqlite3 $@ <$$i; done
 
 params.db: params.schema params.init params.soil params.crop params.site
 	for i in $^; do sqlite3 $@ <$$i; done

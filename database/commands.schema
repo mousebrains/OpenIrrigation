@@ -24,6 +24,75 @@ CREATE TABLE commands(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
 DROP INDEX IF EXISTS commandsTS;
 CREATE INDEX commandsTS ON commands(timestamp);
 
+-- onOffPending enteries built by trigger when things are added/subtracted from commands
+DROP TABLE IF EXISTS onOffPending;
+CREATE TABLE onOffPending(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+                          idOn INTEGER REFERENCES commands(id), -- commands id for the on record
+                          idOff INTEGER REFERENCES commands(id), -- commands id for the off record
+                          addr INTEGER, -- device being worked on
+                          addrOff INTEGER, -- how it is turned off
+			  tOn INTEGER, -- When it will be turned on
+			  tOff INTEGER, -- When it will be turned off
+			  srcOn INTEGER, -- Who is turning it on
+			  srcOff INTEGER -- Who is turning it off
+                         );
+DROP INDEX IF EXISTS onOffPendingIDOn;
+CREATE INDEX onOffPendingIDOn ON onOffPending(idOn);
+DROP INDEX IF EXISTS onOffPendingIDOff;
+CREATE INDEX onOffPendingIDOff ON onOffPending(idOff);
+
+DROP TRIGGER IF EXISTS pendingOnInsert;
+CREATE TRIGGER pendingOnInsert 
+	AFTER INSERT ON commands -- For every insert
+        FOR EACH ROW
+	WHEN NEW.cmd == 0 -- For on commands
+	BEGIN
+		INSERT INTO onOffPending(idOn,addr,tOn,srcOn)
+			VALUES(NEW.id,NEW.addr,NEW.timestamp,NEW.src);
+		UPDATE onOffPending SET (idOff,tOff,srcOff,addrOff)= 
+				(SELECT id,timestamp,src,addr FROM commands 
+					WHERE (timestamp>=NEW.timestamp) 
+					AND (cmd==1) 
+					AND ((addr==NEW.addr) OR (addr==255))
+					ORDER BY timestamp
+					LIMIT 1
+				)
+				WHERE idOn==NEW.id;
+					
+	END;
+
+DROP TRIGGER IF EXISTS pendingOffInsert;
+CREATE TRIGGER pendingOffInsert 
+	AFTER INSERT ON commands -- For every insert
+        FOR EACH ROW
+	WHEN NEW.cmd == 1 -- For off commands
+	BEGIN
+		UPDATE onOffPending SET (idOff,tOff,srcOff,addrOff)=
+			(NEW.id,NEW.timestamp,NEW.src,NEW.addr) 
+			WHERE ((addr == NEW.addr) OR (NEW.addr == 255))
+			AND (tOn <= NEW.timestamp)
+			AND ((tOff IS NULL) OR (tOff > NEW.timestamp));
+	END;
+
+DROP TRIGGER IF EXISTS pendingOnDelete;
+CREATE TRIGGER pendingOnDelete 
+	AFTER DELETE ON commands -- For every deletion
+        FOR EACH ROW
+	WHEN OLD.cmd == 0 -- For on commands
+	BEGIN
+		DELETE FROM onOffPending WHERE idOn==OLD.id;
+	END;
+
+DROP TRIGGER IF EXISTS pendingOffDelete;
+CREATE TRIGGER pendingOffDelete 
+	AFTER DELETE ON commands -- For every deletion
+        FOR EACH ROW
+	WHEN OLD.cmd == 1 -- For off commands
+	BEGIN
+		UPDATE onOffPending SET (idOff,tOff,srcOff,addrOff)=(NULL,NULL,NULL,NULL)
+	       		WHERE idOff==OLD.id;
+	END;
+
 -- Zee message log
 DROP TABLE IF EXISTS zeeLog;
 CREATE TABLE zeeLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
@@ -125,8 +194,6 @@ CREATE TABLE onLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                    peak INTEGER, -- peak on current in mAmps
                    post INTEGER -- post on current in mAmps
                   );
-DROP INDEX IF EXISTS onTS;
-CREATE INDEX onTS ON onLog (timestamp,addr);
 
 -- Off message results
 DROP TABLE IF EXISTS offLog;
@@ -135,7 +202,75 @@ CREATE TABLE offLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                     addr INTEGER, -- station address
                     code INTEGER -- return code
                   );
-DROP INDEX IF EXISTS offTS;
-CREATE INDEX offTS ON offLog (timestamp,addr);
+
+-- Active/historical stations, i.e. on but no off yet
+DROP TABLE IF EXISTS onOffStatus;
+CREATE TABLE onOffStatus(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+                         idOn INTEGER REFERENCES onLog(id), -- id of on command
+                         idOff INTEGER REFERENCES offLog(id), -- id of off command
+                         addr INTEGER, -- device address
+                         addrOff INTEGER, -- device address used to turn off
+                         tOn INTEGER, -- time turned on
+                         tOff INTEGER, -- time we are scheduled to turn off
+                         codeOn INTEGER, -- code from turn on
+                         codeOff INTEGER, -- code from turn off
+                         srcOff INTEGER, -- who originated turn off
+                         pre INTEGER, -- pre on current in mAmps
+                         peak INTEGER, -- peak on current in mAmps
+                         post INTEGER -- post on current in mAmps
+                        );
+DROP INDEX IF EXISTS onOffStatusTS;
+CREATE INDEX onOffStatusTS ON onOffStatus(tOn,addr);
+
+DROP TRIGGER IF EXISTS onLogInsert;
+CREATE TRIGGER onLogInsert 
+	AFTER INSERT ON onLOG 
+	FOR EACH ROW
+	BEGIN
+	INSERT INTO onOffStatus(addr,tOn,codeOn,pre,peak,post,idOn)
+		VALUES(NEW.addr,NEW.timestamp,NEW.code,NEW.pre,NEW.peak,NEW.post,NEW.id);
+	UPDATE onOffStatus SET (idOff,tOff,srcOff,addrOff)= 
+			(SELECT id,timestamp,src,addr FROM commands 
+				WHERE (cmd == 1)
+				AND (timestamp >= NEW.timestamp)
+				AND ((addr == NEW.addr) OR (addr == 255))
+				ORDER BY timestamp
+				LIMIT 1
+			)
+			WHERE idOn==New.id;
+	END;
+
+DROP TRIGGER IF EXISTS onOffStatusCmdInsert;
+CREATE TRIGGER onOffStatusCmdInsert 
+	AFTER INSERT ON commands
+	FOR EACH ROW
+	WHEN NEW.cmd == 1
+	BEGIN
+	UPDATE onOffStatus SET (idOff,tOff,srcOff,addrOff)=(NEW.id,NEW.timestamp,NEW.src,NEW.addr)
+		WHERE ((addr == NEW.addr) OR (NEW.addr == 255))
+		AND (codeOff IS NULL)
+	        AND ((tOff IS NULL) OR (tOff > NEW.timestamp));
+	END;
+
+DROP TRIGGER IF EXISTS onOffStatusDelete;
+CREATE TRIGGER onOffStatusDelete 
+	AFTER DELETE ON commands
+	FOR EACH ROW
+	WHEN OLD.cmd == 1
+	BEGIN
+	UPDATE onOffStatus SET (idOff,tOff,addrOff)=(NULL,NULL,NULL) 
+		WHERE (OLD.id==idOff) AND (codeOff IS NULL);
+	END;
+
+DROP TRIGGER IF EXISTS offLogInsert;
+CREATE TRIGGER offLogInsert 
+	AFTER INSERT 
+	ON offLOG 
+	FOR EACH ROW
+	BEGIN
+	UPDATE onOffStatus SET idOff=NEW.id,tOff=NEW.timestamp,codeOff=NEW.code,addrOff=NEW.addr
+		WHERE (codeOff IS NULL)
+		AND ((addr == NEW.addr) OR (NEW.addr == 255));
+	END;
 
 -- .schema

@@ -6,7 +6,7 @@ INSERT INTO params VALUES('TDI', 'currentPeriod', 1); -- Seconds between current
 INSERT INTO params VALUES('TDI', 'numberPeriod', 10); -- Seconds between number requests
 INSERT INTO params VALUES('TDI', 'numberStations', 96); -- # of stations in the system
 INSERT INTO params VALUES('TDI', 'versionPeriod', 86400); -- Seconds between version requests
-INSERT INTO params VALUES('TDI', 'sensorPeriod', 10); -- Seconds between sensor requests
+INSERT INTO params VALUES('TDI', 'sensorPeriod', 1); -- Seconds between sensor requests
 INSERT INTO params VALUES('TDI', 'sensors', 0); -- which sensors to get readings for
 INSERT INTO params VALUES('TDI', 'twoPeriod', 8); -- Seconds between two requests
 INSERT INTO params VALUES('TDI', 'twoChannels', '0,1'); -- values to probe
