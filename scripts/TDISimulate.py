@@ -68,7 +68,7 @@ class Simulate(threading.Thread):
 
 	def cmdD(self, msg):
 		addr = msg[2:4]
-		code = 2 if self.nOne <= 0 else 0
+		code = 2 if self.nOn <= 0 else 0
 		self.nOn = 0 if msg == 'FF' else max(0, self.nOn - 1)
 		self.putter("1D{}{:02X}".format(addr, code))
 
