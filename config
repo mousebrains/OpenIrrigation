@@ -41,6 +41,7 @@ parser.add_argument('--jsdir', help='Where to store log files',
 parser.add_argument('--servicedir', help='Where to store log files', 
 			default="/etc/systemd/system")
 parser.add_argument('--install', help='How to install',  default=installCmd)
+parser.add_argument('--simulate', help='Run as a simulator',  action='store_true')
 
 args = parser.parse_args()
 
@@ -59,5 +60,9 @@ with open(os.path.join(mydir, "Makefile.params"), "w") as f:
   f.write("CSSDIR = " + rewrite(prefix, args.prefix, args.cssdir) + "\n")
   f.write("JSDIR = " + rewrite(prefix, args.prefix, args.jsdir) + "\n")
   f.write("SERVICEDIR = " + rewrite(prefix, args.prefix, args.servicedir) + "\n")
+
   f.write("\n")
   f.write("INSTALL = " + args.install + "\n");
+
+  f.write("\n")
+  f.write("SIMULATE =" + (" --simul\n" if args.simulate else "\n"))

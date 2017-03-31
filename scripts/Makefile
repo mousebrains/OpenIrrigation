@@ -5,7 +5,7 @@
 
 include ../Makefile.params
 
-LIB = DB.py Params.py TDI.py
+LIB = DB.py Params.py TDI.py TDISimulate.py
 BIN = TDIserver.py
 
 DEST = $(LIB:%=$(BINDIR)/%) $(BIN:%=$(BINDIR)/%)
@@ -15,6 +15,7 @@ DEST = $(LIB:%=$(BINDIR)/%) $(BIN:%=$(BINDIR)/%)
 install: 
 	$(INSTALL) --target-directory=$(BINDIR) --mode=0444 $(LIB)
 	$(INSTALL) --target-directory=$(BINDIR) --mode=0555 $(BIN)
+	chown -R $(USER):$(GROUP) $(BINDIR)
 
 clean:
 	$(RM) $(DEST)

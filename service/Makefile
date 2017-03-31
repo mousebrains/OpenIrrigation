@@ -28,6 +28,7 @@ $(SERVICEDIR)/%: %
 	    -e 's?__LOGDIR__?$(LOGDIR)?g' \
 	    -e 's?__BINDIR__?$(BINDIR)?g' \
 	    -e 's?__DBDIR__?$(DBDIR)?g' \
+	    -e 's?__SIMULATE__?$(SIMULATE)?g' \
 	    <$< >$@
 	chown -R $(USER):$(GROUP) $(@D)
 
