@@ -10,6 +10,7 @@
 #
 import DB 
 import TDI 
+import TDISimulate 
 import Params
 import serial 
 import logging
@@ -20,6 +21,7 @@ parser.add_argument('--params', help='parameter database name', required=True)
 parser.add_argument('--cmds', help='commands database name', required=True)
 parser.add_argument('--log', help='logfile, if not specified use the console')
 parser.add_argument('--group', help='parameter group name to use', default='TDI')
+parser.add_argument('--simul', help='simulate controller', action='store_true')
 parser.add_argument('--verbose', help='logfile, if not specified use the console', \
                     action='store_true')
 args = parser.parse_args()
@@ -42,8 +44,13 @@ logger.addHandler(ch)
 params = Params.Params(args.params, args.group)
 logger.info(params)
 
-with DB.DB(args.cmds) as db, \
-     serial.Serial(port=params['port'], baudrate=params['baudrate']) as s0:
+if args.simul:
+  s0 = TDISimulate.Simulate(logger)
+  s0.start()
+else:
+  s0 = serial.Serial(port=params['port'], baudrate=params['baudrate']);
+
+with DB.DB(args.cmds) as db:
     thrReader = TDI.Reader(s0, logger)
     thrWriter = TDI.Writer(s0, logger)
     thrBuilder = TDI.Builder(s0, logger, thrReader.q, thrWriter.q)
@@ -67,3 +74,5 @@ with DB.DB(args.cmds) as db, \
         thr[i].start()
 
     thrReader.join()
+
+s0.close()
