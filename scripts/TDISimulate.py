@@ -12,7 +12,7 @@ class Simulate(threading.Thread):
 		self.nOn = 0
 		self.cmds = {'0E':self.cmdE, '0U':self.cmdU, '0S':self.cmdS, '02':self.cmd2,
 			'0P': self.cmdP, '0A':self.cmdA, '0D': self.cmdD, '0T':self.cmdT,
-			'0#': self.cmdPound}
+			'0V': self.cmdV, '0#': self.cmdPound}
 
 	def write(self, a): # serial interface
 		self.qIn.put(a)
@@ -84,7 +84,7 @@ class Simulate(threading.Thread):
 		self.putter("1U{:04X}{:04X}".format(int(volts * 10), int(mAmps)))
 
 	def cmdS(self, msg):
-		flow = self.nOn * (20 + random.uniform(-1,1))
+		flow = self.nOn * (20 + random.uniform(-1,1)) # In Hertz*10
 		self.putter("1S{}04{:04X}".format(msg[2:4], int(flow)))
 
 	def cmd2(self, msg):
@@ -92,6 +92,9 @@ class Simulate(threading.Thread):
 
 	def cmdP(self, msg):
 		self.putter('1P000A')
+
+	def cmdV(self, msg):
+		self.putter('1VSimul')
 
 	def cmdT(self, msg):
 		pre = 28 + random.uniform(-1,1)

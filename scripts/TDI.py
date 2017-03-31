@@ -186,7 +186,7 @@ class Consumer(threading.Thread):
 	
 	def Two(self, msg):
 		if self.notPrevious(msg, msg[0:4]):
-			self.db.write('INSERT INTO sensorLog (timestamp,addr,value) ' +
+			self.db.write('INSERT INTO twoLog (timestamp,addr,value) ' +
 					'VALUES(?,?,?);',
 					(round(time.time()), int(msg[2:4], 16), int(msg[4:],16)))
 
