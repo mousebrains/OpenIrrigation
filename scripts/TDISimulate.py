@@ -9,7 +9,7 @@ class Simulate(threading.Thread):
 		self.logger = logger
 		self.qIn = queue.Queue()
 		self.qOut = queue.Queue()
-		self.nOn = 0
+		self.qOn = {}
 		self.cmds = {'0E':self.cmdE, '0U':self.cmdU, '0S':self.cmdS, '02':self.cmd2,
 			'0P': self.cmdP, '0A':self.cmdA, '0D': self.cmdD, '0T':self.cmdT,
 			'0V': self.cmdV, '0#': self.cmdPound}
@@ -59,17 +59,22 @@ class Simulate(threading.Thread):
 			qIn.task_done()
 
 	def cmdA(self, msg):
-		self.nOn += 1
+		addr = msg[2:4]
+		self.qOn[addr] = 1
 		pre = 28 + random.uniform(-1,1)
 		peak = 650 + random.uniform(-10,10)
 		post = 50 + random.uniform(-2,2)
-		self.putter("1A{}00{:04X}{:04X}{:04X}".format(msg[2:4],
+		self.putter("1A{}00{:04X}{:04X}{:04X}".format(addr,
 			int(pre), int(peak), int(post)))
 
 	def cmdD(self, msg):
 		addr = msg[2:4]
-		code = 2 if self.nOn <= 0 else 0
-		self.nOn = 0 if msg == 'FF' else max(0, self.nOn - 1)
+		code = 0 if addr in self.qOn else 2
+		if addr == 'FF':
+			code = 0 if len(self.qOn) else 2
+			self.qOn = {}
+		elif code == 0: # In the dictionary
+			del self.qOn[addr]
 		self.putter("1D{}{:02X}".format(addr, code))
 
 	def cmdE(self, msg):
@@ -79,12 +84,14 @@ class Simulate(threading.Thread):
 		self.putter('1#{}'.format(msg[2:]))
 
 	def cmdU(self, msg):
-		volts = 34 - self.nOn * 0.05 + random.uniform(-0.07,0.07)
-		mAmps = 25 + self.nOn * 25 + random.uniform(-1,1)
+		n = len(self.qOn)
+		volts = 34 - n * 0.05 + random.uniform(-0.07,0.07)
+		mAmps = 25 + n * 25 + random.uniform(-1,1)
 		self.putter("1U{:04X}{:04X}".format(int(volts * 10), int(mAmps)))
 
 	def cmdS(self, msg):
-		flow = self.nOn * (20 + random.uniform(-1,1)) # In Hertz*10
+		n = len(self.qOn)
+		flow = n * (100 + random.uniform(-2,2)) # In Hertz*10
 		self.putter("1S{}04{:04X}".format(msg[2:4], int(flow)))
 
 	def cmd2(self, msg):
