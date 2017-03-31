@@ -1,9 +1,1 @@
 -- Create views for the commands database
-
--- Create a view to tell us what is has run and finished
-
-DROP VIEW IF EXISTS onOffHistorical;
-CREATE VIEW onOffHistorical AS SELECT * FROM onOffStatus WHERE codeOff is NOT NULL;
-
-DROP VIEW IF EXISTS onOffActive;
-CREATE VIEW onOffActive AS SELECT * FROM onOffStatus WHERE codeOff is NULL;

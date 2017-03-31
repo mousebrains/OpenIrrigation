@@ -203,33 +203,30 @@ CREATE TABLE offLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                     code INTEGER -- return code
                   );
 
--- Active/historical stations, i.e. on but no off yet
-DROP TABLE IF EXISTS onOffStatus;
-CREATE TABLE onOffStatus(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+-- Active stations, i.e. not yet off
+DROP TABLE IF EXISTS onOffActive;
+CREATE TABLE onOffActive(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                          idOn INTEGER REFERENCES onLog(id), -- id of on command
-                         idOff INTEGER REFERENCES offLog(id), -- id of off command
-                         addr INTEGER, -- device address
+                         idOff INTEGER REFERENCES commands(id), -- id of off command
+                         addr INTEGER UNIQUE ON CONFLICT IGNORE, -- device address
                          addrOff INTEGER, -- device address used to turn off
                          tOn INTEGER, -- time turned on
                          tOff INTEGER, -- time we are scheduled to turn off
                          codeOn INTEGER, -- code from turn on
-                         codeOff INTEGER, -- code from turn off
                          srcOff INTEGER, -- who originated turn off
                          pre INTEGER, -- pre on current in mAmps
                          peak INTEGER, -- peak on current in mAmps
                          post INTEGER -- post on current in mAmps
                         );
-DROP INDEX IF EXISTS onOffStatusTS;
-CREATE INDEX onOffStatusTS ON onOffStatus(tOn,addr);
 
 DROP TRIGGER IF EXISTS onLogInsert;
 CREATE TRIGGER onLogInsert 
 	AFTER INSERT ON onLOG 
 	FOR EACH ROW
 	BEGIN
-	INSERT INTO onOffStatus(addr,tOn,codeOn,pre,peak,post,idOn)
+	INSERT INTO onOffActive(addr,tOn,codeOn,pre,peak,post,idOn)
 		VALUES(NEW.addr,NEW.timestamp,NEW.code,NEW.pre,NEW.peak,NEW.post,NEW.id);
-	UPDATE onOffStatus SET (idOff,tOff,srcOff,addrOff)= 
+	UPDATE onOffActive SET (idOff,tOff,srcOff,addrOff)= 
 			(SELECT id,timestamp,src,addr FROM commands 
 				WHERE (cmd == 1)
 				AND (timestamp >= NEW.timestamp)
@@ -240,37 +237,60 @@ CREATE TRIGGER onLogInsert
 			WHERE idOn==New.id;
 	END;
 
-DROP TRIGGER IF EXISTS onOffStatusCmdInsert;
-CREATE TRIGGER onOffStatusCmdInsert 
+DROP TRIGGER IF EXISTS onOffActiveCmdInsert;
+CREATE TRIGGER onOffActiveCmdInsert 
 	AFTER INSERT ON commands
 	FOR EACH ROW
 	WHEN NEW.cmd == 1
 	BEGIN
-	UPDATE onOffStatus SET (idOff,tOff,srcOff,addrOff)=(NEW.id,NEW.timestamp,NEW.src,NEW.addr)
+	UPDATE onOffActive SET (idOff,tOff,srcOff,addrOff)=(NEW.id,NEW.timestamp,NEW.src,NEW.addr)
 		WHERE ((addr == NEW.addr) OR (NEW.addr == 255))
-		AND (codeOff IS NULL)
 	        AND ((tOff IS NULL) OR (tOff > NEW.timestamp));
 	END;
 
-DROP TRIGGER IF EXISTS onOffStatusDelete;
-CREATE TRIGGER onOffStatusDelete 
+DROP TRIGGER IF EXISTS onOffActiveDelete;
+CREATE TRIGGER onOffActiveDelete 
 	AFTER DELETE ON commands
 	FOR EACH ROW
 	WHEN OLD.cmd == 1
 	BEGIN
-	UPDATE onOffStatus SET (idOff,tOff,addrOff)=(NULL,NULL,NULL) 
-		WHERE (OLD.id==idOff) AND (codeOff IS NULL);
+	UPDATE onOffActive SET (idOff,tOff,addrOff)=(NULL,NULL,NULL) 
+		WHERE OLD.id==idOff;
 	END;
+
+-- Historical stations
+DROP TABLE IF EXISTS onOffHistorical;
+CREATE TABLE onOffHistorical(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
+                             idOn INTEGER REFERENCES onLog(id), -- id of on command
+                             idOff INTEGER REFERENCES offLog(id), -- id of off command
+                             addr INTEGER, -- device address
+                             addrOff INTEGER, -- device address used to turn off
+                             tOn INTEGER, -- time turned on
+                             tOff INTEGER, -- time we are scheduled to turn off
+                             codeOn INTEGER, -- code from turn on
+                             codeOff INTEGER, -- code from turn off
+                             srcOff INTEGER, -- who originated turn off
+                             pre INTEGER, -- pre on current in mAmps
+                             peak INTEGER, -- peak on current in mAmps
+                             post INTEGER -- post on current in mAmps
+                            );
+DROP INDEX IF EXISTS onOffHistoricalTS;
+CREATE INDEX onOffHistoricalTS ON onOffHistorical(tOn,addr);
 
 DROP TRIGGER IF EXISTS offLogInsert;
 CREATE TRIGGER offLogInsert 
-	AFTER INSERT 
-	ON offLOG 
+	AFTER INSERT ON offLOG 
 	FOR EACH ROW
 	BEGIN
-	UPDATE onOffStatus SET idOff=NEW.id,tOff=NEW.timestamp,codeOff=NEW.code,addrOff=NEW.addr
-		WHERE (codeOff IS NULL)
-		AND ((addr == NEW.addr) OR (NEW.addr == 255));
+	INSERT INTO onOffHistorical (idOn,addr,tOn,codeOn,srcOff,pre,peak,post)
+		SELECT idOn,addr,tOn,codeOn,srcOff,pre,peak,post 
+			FROM onOffActive
+			WHERE (addr == NEW.addr) OR (NEW.addr == 255);
+	UPDATE onOffHistorical 
+		SET (idOff,addrOff,tOff,codeOff)=(NEW.id,NEW.addr,NEW.timestamp,NEW.code)
+		WHERE (addr == NEW.addr) OR (NEW.addr == 255)
+		AND tOff IS NULL;
+	DELETE FROM onOffActive WHERE (addr == NEW.addr) OR (NEW.addr == 255);
 	END;
 
 -- .schema
