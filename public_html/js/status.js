@@ -15,7 +15,8 @@ if (typeof(EventSource) != "undefined") {
 			msg += ", " + t.toTimeString().substr(0,9);
 			if (key in sensorMap) {
 				var flow = (a[i][2]*sensorMap[key]['K'])-sensorMap[key]['offset'];
- 				msg += " " + sensorMap[key]['name'] + "=" + Math.max(0,flow);
+ 				msg += " " + sensorMap[key]['name'] + "=" 
+					+ Math.max(0,flow).toFixed(1);
 			} else {
  				msg += " sensor(" + key + ")=" + a[i][2];
 			}
