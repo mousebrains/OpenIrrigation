@@ -1,12 +1,15 @@
 .phony: all install clean start stop restart status
 
-all: install
+all: Makefile.params install
 
-install clean:
+Makefile.params: config
+	./$<
+
+install clean: Makefile.params
 	$(MAKE) -C database $@
 	$(MAKE) -C scripts $@
 	$(MAKE) -C public_html $@
 	$(MAKE) -C service $@
 
-start stop restart status:
+start stop restart status reload: Makefile.params
 	$(MAKE) -C service $@

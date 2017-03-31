@@ -6,11 +6,10 @@
 include ../Makefile.params
 
 # Where to install the .service files
-SERVICEDIR = /etc/systemd/system
 SRC = OITDI.service
 DEST = $(SRC:%=$(SERVICEDIR)/%)
 
-.PHONY: install install-services install-logs clean start stop retart status
+.PHONY: install install-services install-logs clean start stop retart status reload
 
 install: install-services install-logs
 
@@ -32,8 +31,10 @@ $(SERVICEDIR)/%: %
 	    <$< >$@
 	chown -R $(USER):$(GROUP) $(@D)
 
-restart:
+reload:
 	systemctl --no-pager daemon-reload
+
+restart: reload
 	for i in $(SRC); do systemctl --no-pager restart $$i; done
 
 start stop status:
