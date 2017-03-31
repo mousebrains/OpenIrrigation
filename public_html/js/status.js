@@ -21,6 +21,7 @@ if (typeof(EventSource) != "undefined") {
 			}
 		}
                 msg += ", nOn=" + data["nOn"];
+                msg += ", nPend=" + data["nPend"];
 		$("#statusBlock").html(msg);
 	};
 }
