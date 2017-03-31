@@ -85,7 +85,7 @@ class Simulate(threading.Thread):
 
 	def cmdS(self, msg):
 		flow = self.nOn * (20 + random.uniform(-1,1))
-		self.putter("1S04{:04X}".format(int(flow)))
+		self.putter("1S{}04{:04X}".format(msg[2:4], int(flow)))
 
 	def cmd2(self, msg):
 		self.putter('12{}'.format(msg[2:]))
