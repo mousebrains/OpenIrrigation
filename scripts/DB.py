@@ -20,6 +20,7 @@ class DB(sqlite3.Connection):
     def write(self, sql, args=[]):
         self.__lock.acquire()
         self.__curr.execute(sql, args)
+	self.commit()
         self.__lock.release()
 
     def read(self, sql, args=[]):
