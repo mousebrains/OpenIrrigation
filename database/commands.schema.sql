@@ -45,7 +45,7 @@ DROP TRIGGER IF EXISTS pendingOnInsert;
 CREATE TRIGGER pendingOnInsert 
 	AFTER INSERT ON commands -- For every insert
         FOR EACH ROW
-	WHEN NEW.cmd == 0 -- For on commands
+	WHEN NEW.cmd==0 -- For on commands
 	BEGIN
 		INSERT INTO onOffPending(idOn,addr,tOn,srcOn)
 			VALUES(NEW.id,NEW.addr,NEW.timestamp,NEW.src);
@@ -65,11 +65,11 @@ DROP TRIGGER IF EXISTS pendingOffInsert;
 CREATE TRIGGER pendingOffInsert 
 	AFTER INSERT ON commands -- For every insert
         FOR EACH ROW
-	WHEN NEW.cmd == 1 -- For off commands
+	WHEN NEW.cmd==1 -- For off commands
 	BEGIN
 		UPDATE onOffPending SET (idOff,tOff,srcOff,addrOff)=
 			(NEW.id,NEW.timestamp,NEW.src,NEW.addr) 
-			WHERE ((addr == NEW.addr) OR (NEW.addr == 255))
+			WHERE ((addr==NEW.addr) OR (NEW.addr==255))
 			AND (tOn <= NEW.timestamp)
 			AND ((tOff IS NULL) OR (tOff > NEW.timestamp));
 	END;
@@ -78,7 +78,7 @@ DROP TRIGGER IF EXISTS pendingOnDelete;
 CREATE TRIGGER pendingOnDelete 
 	AFTER DELETE ON commands -- For every deletion
         FOR EACH ROW
-	WHEN OLD.cmd == 0 -- For on commands
+	WHEN OLD.cmd==0 -- For on commands
 	BEGIN
 		DELETE FROM onOffPending WHERE idOn==OLD.id;
 	END;
@@ -87,7 +87,7 @@ DROP TRIGGER IF EXISTS pendingOffDelete;
 CREATE TRIGGER pendingOffDelete 
 	AFTER DELETE ON commands -- For every deletion
         FOR EACH ROW
-	WHEN OLD.cmd == 1 -- For off commands
+	WHEN OLD.cmd==1 -- For off commands
 	BEGIN
 		UPDATE onOffPending SET (idOff,tOff,srcOff,addrOff)=(NULL,NULL,NULL,NULL)
 	       		WHERE idOff==OLD.id;
@@ -228,9 +228,9 @@ CREATE TRIGGER onLogInsert
 		VALUES(NEW.addr,NEW.timestamp,NEW.code,NEW.pre,NEW.peak,NEW.post,NEW.id);
 	UPDATE onOffActive SET (idOff,tOff,srcOff,addrOff)= 
 			(SELECT id,timestamp,src,addr FROM commands 
-				WHERE (cmd == 1)
+				WHERE (cmd==1)
 				AND (timestamp >= NEW.timestamp)
-				AND ((addr == NEW.addr) OR (addr == 255))
+				AND ((addr==NEW.addr) OR (addr==255))
 				ORDER BY timestamp
 				LIMIT 1
 			)
@@ -241,10 +241,10 @@ DROP TRIGGER IF EXISTS onOffActiveCmdInsert;
 CREATE TRIGGER onOffActiveCmdInsert 
 	AFTER INSERT ON commands
 	FOR EACH ROW
-	WHEN NEW.cmd == 1
+	WHEN NEW.cmd==1
 	BEGIN
 	UPDATE onOffActive SET (idOff,tOff,srcOff,addrOff)=(NEW.id,NEW.timestamp,NEW.src,NEW.addr)
-		WHERE ((addr == NEW.addr) OR (NEW.addr == 255))
+		WHERE ((addr==NEW.addr) OR (NEW.addr==255))
 	        AND ((tOff IS NULL) OR (tOff > NEW.timestamp));
 	END;
 
@@ -252,10 +252,9 @@ DROP TRIGGER IF EXISTS onOffActiveDelete;
 CREATE TRIGGER onOffActiveDelete 
 	AFTER DELETE ON commands
 	FOR EACH ROW
-	WHEN OLD.cmd == 1
+	WHEN OLD.cmd==1
 	BEGIN
-	UPDATE onOffActive SET (idOff,tOff,addrOff)=(NULL,NULL,NULL) 
-		WHERE OLD.id==idOff;
+	UPDATE onOffActive SET (idOff,tOff,addrOff)=(NULL,NULL,NULL) WHERE OLD.id==idOff;
 	END;
 
 -- Historical stations
@@ -285,12 +284,11 @@ CREATE TRIGGER offLogInsert
 	INSERT INTO onOffHistorical (idOn,addr,tOn,codeOn,srcOff,pre,peak,post)
 		SELECT idOn,addr,tOn,codeOn,srcOff,pre,peak,post 
 			FROM onOffActive
-			WHERE (addr == NEW.addr) OR (NEW.addr == 255);
+			WHERE (addr==NEW.addr) OR (NEW.addr==255);
 	UPDATE onOffHistorical 
 		SET (idOff,addrOff,tOff,codeOff)=(NEW.id,NEW.addr,NEW.timestamp,NEW.code)
-		WHERE (addr == NEW.addr) OR (NEW.addr == 255)
-		AND tOff IS NULL;
-	DELETE FROM onOffActive WHERE (addr == NEW.addr) OR (NEW.addr == 255);
+		WHERE ((addr==NEW.addr) OR (NEW.addr==255)) AND tOff IS NULL;
+	DELETE FROM onOffActive WHERE (addr==NEW.addr) OR (NEW.addr==255);
 	END;
 
 -- .schema

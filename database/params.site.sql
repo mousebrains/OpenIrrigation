@@ -3,29 +3,38 @@ INSERT INTO user (name) VALUES ('Pat');
 INSERT INTO user (name) VALUES ('Teresa');
 
 -- email information
-INSERT INTO email (user,email,qSMS,qHTML) VALUES (
- (SELECT id FROM user WHERE name=='Pat'), 'pat@mousebrains.com', 0, 1);
-INSERT INTO email (user,email,qSMS,qHTML) VALUES (
- (SELECT id FROM user WHERE name=='Pat'), '5412207738@vtext.com', 1, 0);
-INSERT INTO email (user,email,qSMS,qHTML) VALUES (
- (SELECT id FROM user WHERE name=='Teresa'), 'welch.teresa@gmail.com', 0, 1);
-INSERT INTO email (user,email,qSMS,qHTML) VALUES (
- (SELECT id FROM user WHERE name=='Teresa'), '5412078955@vtext.com', 1, 0);
+INSERT INTO email (email,user,format) VALUES 
+ ('pat@mousebrains.com', 
+  (SELECT id FROM user WHERE name=='Pat'), 
+  (SELECT id FROM webList WHERE grp=='email' AND key=='html')
+ ),
+ ('5412207738@vtext.com', 
+  (SELECT id FROM user WHERE name=='Pat'), 
+  (SELECT id FROM webList WHERE grp=='email' AND key=='sms')
+ ),
+ ('welch.teresa@gmail.com', 
+  (SELECT id FROM user WHERE name=='Teresa'), 
+  (SELECT id FROM webList WHERE grp=='email' AND key=='html')
+ ),
+ ('5412078955@vtext.com', 
+  (SELECT id FROM user WHERE name=='Teresa'), 
+  (SELECT id FROM webList WHERE grp=='email' AND key=='sms')
+ );
 
 -- report/alerts
-INSERT INTO reports (name,label) VALUES ('lowFlow', 'Low Flow Alerts');
-INSERT INTO reports (name,label) VALUES ('highFlow', 'High Flow Alerts');
-INSERT INTO reports (name,label) VALUES ('electrical', 'Electrical Alerts');
-INSERT INTO reports (name,label) VALUES ('controller', 'Controller Alerts');
-INSERT INTO reports (name,label) VALUES ('daily', 'Daily Summary Report');
+INSERT INTO webList(sortOrder,grp,key,label) VALUES(0,'reports','lowFlow', 'Low Flow Alerts');
+INSERT INTO webList(sortOrder,grp,key,label) VALUES(1,'reports','highFlow', 'High Flow Alerts');
+INSERT INTO webList(sortOrder,grp,key,label) VALUES(2,'reports','electrical', 'Electrical Alerts');
+INSERT INTO webList(sortOrder,grp,key,label) VALUES(3,'reports','controller', 'Controller Alerts');
+INSERT INTO webList(sortOrder,grp,key,label) VALUES(4,'reports','daily', 'Daily Summary Report');
 
 -- which reports/alerts each email receives
 INSERT into emailReports VALUES (
  (SELECT id FROM email WHERE email=='pat@mousebrains.com'),
- (SELECT id FROM reports WHERE name=='lowFlow'));
+ (SELECT id FROM webList WHERE grp=='reports' and key=='lowFlow'));
 INSERT into emailReports VALUES (
  (SELECT id FROM email WHERE email=='pat@mousebrains.com'),
- (SELECT id FROM reports WHERE name=='electrical'));
+ (SELECT id FROM webList WHERE grp=='reports' and key=='electrical'));
 
 -- site information
 INSERT INTO site (name,addr,timezone,latitude,longitude,elevation) VALUES (
@@ -50,7 +59,7 @@ INSERT INTO controller(site,name,latitude,longitude,driver,maxStations,
 -- sensor information, valves, sensors, ...
 -- flow sensor
 INSERT INTO sensor(name,devType,addr,model) VALUES(
- 'Flow 0', (SELECT id FROM sensorDevType WHERE name=='flow'), 0, 'WT2W-FD');
+ 'Flow 0', (SELECT id FROM webList WHERE grp='sensor' and key=='flow'), 0, 'WT2W-FD');
 -- Master Valve
 INSERT INTO sensor(name,addr,activeCurrent,make,model) VALUES (
   'MasterValve 0', 240, 30, 'Superior', 3300150);
@@ -67,7 +76,7 @@ INSERT INTO sensor(addr) VALUES (70),(71),(72);
 UPDATE sensor SET controller=(SELECT controller.id FROM controller WHERE controller.name=='Casa');
 UPDATE sensor SET name=printf('Station %d', addr+1) WHERE name is NULL;
 UPDATE sensor SET devType=(
-	SELECT sensorDevType.id FROM sensorDevType WHERE sensorDevType.name=='solenoid') 
+	SELECT webList.id FROM webList WHERE webList.grp=='sensor' AND webList.key=='solenoid') 
 	WHERE devType IS NULL;
 UPDATE sensor SET latitude=(
 	SELECT controller.latitude FROM controller WHERE controller.name=='Casa');
@@ -171,8 +180,8 @@ UPDATE station SET poc=(SELECT poc.id FROM poc WHERE poc.name='Outside') WHERE s
 UPDATE station SET poc=(SELECT poc.id FROM poc WHERE poc.name='Selva') WHERE station > 70;
 UPDATE station SET sensor=(
 	SELECT sensor.id FROM sensor 
-	INNER JOIN sensorDevType 
-	ON sensorDevType.id==sensor.devType AND sensorDevType.name=='solenoid' 
+	INNER JOIN webList 
+	ON webList.id==sensor.devType AND webList.key=='solenoid' 
 	WHERE station.station==(sensor.addr+1)) 
 	WHERE sensor IS NULL;
 UPDATE station SET make='Hunter',model='PGV-100A';
@@ -187,7 +196,7 @@ INSERT INTO program (site,name) VALUES((SELECT id FROM site WHERE name=='Casa'),
 INSERT INTO program (site,name) VALUES((SELECT id FROM site WHERE name=='Casa'), 'Selva goteo');
 INSERT INTO program (site,name) VALUES((SELECT id FROM site WHERE name=='Casa'), 'Selva rocio');
 
-UPDATE program SET mode=(SELECT programMode.id FROM programMode WHERE programMode.name='on');
+UPDATE program SET mode=(SELECT webList.id FROM webList WHERE webList.grp=='pgm' AND webList.key='on');
 
 -- SELECT * FROM program;
 
@@ -211,40 +220,57 @@ INSERT INTO programStation (pgm,stn,mode,runTime) VALUES (
 -- SELECT * FROM programStation;
 
 -- event/water windows
-INSERT INTO event(site,mode,action,startMode,stopMode,name,val,startTime,duration) VALUES (
- (SELECT id FROM site WHERE name=='Casa'),
- (SELECT id FROM eventMode WHERE name=='water'),
- (SELECT id FROM eventAction WHERE name=='dow'),
- (SELECT id FROM eventCelestial WHERE name=='clock'),
- (SELECT id FROM eventCelestial WHERE name=='clock'),
- 'Selva Wed evening',
- (SELECT 1<<id FROM eventDaysOfWeek WHERE name=='wed'),
- (SELECT 20*3600),
- (SELECT 2*3600)
+INSERT INTO event(action,startMode,stopMode,name,startTime,endTime) VALUES (
+ (SELECT id FROM webList WHERE grp=='evAct' AND key=='dow'),
+ (SELECT id FROM webList WHERE grp=='evCel' AND key=='clock'),
+ (SELECT id FROM webList WHERE grp=='evCel' AND key=='clock'),
+ 'Selva Wed evening', 
+ strftime('%s', '20:00:00')-strftime('%s','00:00:00'),
+ strftime('%s', '22:00:00')-strftime('%s','00:00:00')
 );
-INSERT INTO event(site,mode,action,startMode,stopMode,name,val,startTime,duration,refDate) VALUES (
- (SELECT id FROM site WHERE name=='Casa'),
- (SELECT id FROM eventMode WHERE name=='water'),
- (SELECT id FROM eventAction WHERE name=='nDays'),
- (SELECT id FROM eventCelestial WHERE name=='clock'),
- (SELECT id FROM eventCelestial WHERE name=='clock'),
+
+INSERT INTO eventDOW VALUES(
+	(SELECT id FROM event WHERE name=='Selva Wed evening'),
+	(SELECT id FROM webList WHERE grp=='dow' AND key=='wed'));
+
+INSERT INTO event(action,startMode,stopMode,name,nDays,startTime,endTime,refDate) VALUES (
+ (SELECT id FROM webList WHERE grp=='evAct' AND key=='nDays'),
+ (SELECT id FROM webList WHERE grp=='evCel' AND key=='clock'),
+ (SELECT id FROM webList WHERE grp=='evCel' AND key=='clock'),
  'Selva goteo',
  21,
- (SELECT 18*3600),
- (SELECT 5*3600),
- (SELECT strftime('%s', '2017-03-15'))
+ strftime('%s', '18:00:00')-strftime('%s','00:00:00'),
+ strftime('%s', '23:00:00')-strftime('%s','00:00:00'),
+ strftime('%s', '2017-03-15')
 );
-INSERT INTO event(site,mode,action,startMode,stopMode,name,val,startTime,duration) VALUES (
- (SELECT id FROM site WHERE name=='Casa'),
- (SELECT id FROM eventMode WHERE name=='water'),
- (SELECT id FROM eventAction WHERE name=='dow'),
- (SELECT id FROM eventCelestial WHERE name=='clock'),
- (SELECT id FROM eventCelestial WHERE name=='clock'),
+
+INSERT INTO event(action,startMode,stopMode,name,startTime,endTime) VALUES (
+ (SELECT id FROM webList WHERE grp=='evAct' AND key=='dow'),
+ (SELECT id FROM webList WHERE grp=='evCel' AND key=='clock'),
+ (SELECT id FROM webList WHERE grp=='evCel' AND key=='clock'),
  'Selva rocio',
- -1,
- (SELECT 20*3600),
- (SELECT 2*3600)
+ strftime('%s', '20:00:00')-strftime('%s','00:00:00'),
+ strftime('%s', '22:00:00')-strftime('%s','00:00:00')
 );
+
+INSERT INTO eventDOW VALUES
+	((SELECT id FROM event WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='sun')),
+	((SELECT id FROM event WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='mon')),
+	((SELECT id FROM event WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='tue')),
+	((SELECT id FROM event WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='wed')),
+	((SELECT id FROM event WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='thur')),
+	((SELECT id FROM event WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='fri')),
+	((SELECT id FROM event WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='sat'));
+
+UPDATE event SET site=(SELECT id FROM site WHERE name=='Casa');
+UPDATE event SET mode=(SELECT id FROM webList WHERE grp='evMode' AND key='water');
 
 -- SELECT * FROM event;
 

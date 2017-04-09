@@ -7,13 +7,14 @@ include ../Makefile.params
 
 .PHONY: install clean
 
-SRC = index.php status.php site.php user.php email.php report.php
+SRC = index.php status.php site.php user.php email.php
 SRC += monitor.php
 SRC+= controller.php sensor.php
 SRC+= poc.php pocFlow.php pocMV.php pocPump.php
 SRC+= soil.php crop.php
 SRC+= station.php program.php event.php programEvent.php programStation.php
 SRC+= params.php
+SRC+= ET.php ETannual.php ETStn.php
 
 DEST = $(SRC:%=$(WEBDIR)/%)
 

@@ -22,6 +22,7 @@ echo "</script>
       <a href='event.php'>Events</a>
       <a href='programEvent.php'>Program Events</a>
       <a href='station.php'>Stations</a>
+      <a href='ETStn.php'>ET Stations</a>
       <a href='site.php'>Site Edit</a>
       <a href='user.php'>User Edit</a>
       <a href='email.php'>EMail Edit</a>
@@ -31,10 +32,11 @@ echo "</script>
       <a href='pocFlow.php'>Flow Sensor Edit</a>
       <a href='pocMV.php'>Master Valve Edit</a>
       <a href='pocPump.php'>Booster Pump Edit</a>
-      <a href='report.php'>Report Name Edit</a>
       <a href='soil.php'>Soil Edit</a>
       <a href='crop.php'>Crop Edit</a>
       <a href='params.php'>Parameter Edit</a>
+      <a href='ET.php'>ET Daily</a>
+      <a href='ETannual.php'>ET Annual</a>
     </div>
   </li>
  </ul>

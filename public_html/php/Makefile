@@ -9,7 +9,7 @@ PRE = CmdDB.php.pre ParDB.php.pre
 
 SRC = $(PRE:%.pre=%) 
 SRC+= statusBlock.php navBar.php
-SRC+= webForm.php
+SRC+= webPage.php
 
 DEST = $(SRC:%=$(PHPDIR)/%)
 

@@ -6,7 +6,7 @@
 <meta name='viewport' content='width=device-width, initial-scale=1'>
 <link rel='stylesheet' type='text/css' href='css/irrigation.css'>
 <script src="js/jquery.min.js"></script>
-<title>Soil editor</title>
+<title>ET Annual editor</title>
 </head>
 <body>
 <?php
@@ -15,7 +15,7 @@ require_once 'php/ParDB.php';
 require_once 'php/webPage.php';
 
 session_start();
-$pb = new PageBuilder('soil', $parDB);
+$pb = new PageBuilder('ETannual', $parDB);
 if (!empty($_POST)) $pb->postUp($_POST);
 $pb->mkPage();
 ?>

@@ -1,8 +1,10 @@
-# Scripts, schemas, and information to create/update the irrigation database
+# Scripts, schemas, and information to create/update the irrigation databases
 
   * Files:
- 1. irrigation.schema -- schema for the database
- 2. irrigation.crop -- crop and soil information for the database
- 3. irrigation.init -- initialize database, for testing purposes
- 4. gen.py -- Python script to generate the database from the above files
- 5. regen.py -- Python script which creates a new database and copies in information for an old database.
+ 1. commands.schema.sql -- schema for the commands database, more dynamic stuff
+ 1. params.web.sql -- schema for the parameter database for web page generation
+ 1. params.schema.sql -- schema for the parameter database 
+ 1. params.init.sql -- parameter table initialization for the parameter database 
+ 1. params.site.sql -- site tables initialization for the parameter database 
+ 1. params.crop.sql -- crop table initialization for the parameter database 
+ 1. params.soil.sql -- soil table initialization for the parameter database 

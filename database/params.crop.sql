@@ -12,7 +12,7 @@ INSERT INTO crop VALUES(NULL,"Annuals",
                         "UC Davis Extension" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Apples/Cherries/Pears, ground cover, killing frost",
-                        "Mar", -- Plant date
+                        strftime("%s", "2017-03-15", "localtime"), -- Plant date
                         30,50,130,30, -- Stage lengths in days
                         0.5,1.2,0.75, -- Kc init,mid,end
                         4, -- Height (m)
@@ -21,7 +21,7 @@ INSERT INTO crop VALUES(NULL,"Apples/Cherries/Pears, ground cover, killing frost
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Apples/Cherries/Pears, ground cover, no frost",
-                        "Mar", -- Plant date
+                        strftime("%s", "2017-03-15", "localtime"), -- Plant date
                         30,50,130,30, -- Stage lengths in days
                         0.8,1.2,0.85, -- Kc init,mid,end
                         4, -- Height (m)
@@ -30,7 +30,7 @@ INSERT INTO crop VALUES(NULL,"Apples/Cherries/Pears, ground cover, no frost",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Apples/Cherries/Pears, no ground cover no frost",
-                        "Mar", -- Plant date
+                        strftime("%s", "2017-03-15", "localtime"), -- Plant date
                         30,50,130,30, -- Stage lengths in days
                         0.6,0.95,0.7, -- Kc init,mid,end
                         4, -- Height (m)
@@ -39,7 +39,7 @@ INSERT INTO crop VALUES(NULL,"Apples/Cherries/Pears, no ground cover no frost",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Apples/Cherries/Pears, no ground cover, killing frost",
-                        "Mar", -- Plant date
+                        strftime("%s", "2017-03-15", "localtime"), -- Plant date
                         30,50,130,30, -- Stage lengths in days
                         0.45,0.95,0.7, -- Kc init,mid,end
                         4, -- Height (m)
@@ -48,7 +48,7 @@ INSERT INTO crop VALUES(NULL,"Apples/Cherries/Pears, no ground cover, killing fr
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Artichokes",
-                        "May", -- Plant date
+                        strftime("%s", "2017-05-15", "localtime"), -- Plant date
                         40,40,250,30, -- Stage lengths in days
                         0.5,1,0.95, -- Kc init,mid,end
                         0.7, -- Height (m)
@@ -57,7 +57,7 @@ INSERT INTO crop VALUES(NULL,"Artichokes",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Asparagus",
-                        "Feb", -- Plant date
+                        strftime("%s", "2017-02-15", "localtime"), -- Plant date
                         90,30,200,45, -- Stage lengths in days
                         0.5,0.95,0.3, -- Kc init,mid,end
                         0.5, -- Height (m)
@@ -66,7 +66,7 @@ INSERT INTO crop VALUES(NULL,"Asparagus",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Bean, broad",
-                        "May", -- Plant date
+                        strftime("%s", "2017-05-15", "localtime"), -- Plant date
                         15,25,35,15, -- Stage lengths in days
                         0.5,1.15,1.1, -- Kc init,mid,end
                         0.8, -- Height (m)
@@ -75,7 +75,7 @@ INSERT INTO crop VALUES(NULL,"Bean, broad",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Beans, dry",
-                        "Jun", -- Plant date
+                        strftime("%s", "2017-06-15", "localtime"), -- Plant date
                         25,25,30,20, -- Stage lengths in days
                         0.4,1.15,0.35, -- Kc init,mid,end
                         0.4, -- Height (m)
@@ -93,7 +93,7 @@ INSERT INTO crop VALUES(NULL,"Beans, garbanzo",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Beans, green",
-                        "Feb/Mar", -- Plant date
+                        strftime("%s", "2017-03-01", "localtime"), -- Plant date
                         20,30,30,10, -- Stage lengths in days
                         0.5,1.05,0.9, -- Kc init,mid,end
                         0.4, -- Height (m)
@@ -111,7 +111,7 @@ INSERT INTO crop VALUES(NULL,"Beans, lima",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Beets",
-                        "Apr/May", -- Plant date
+                        strftime("%s", "2017-05-01", "localtime"), -- Plant date
                         15,25,20,10, -- Stage lengths in days
                         0.5,1.05,0.95, -- Kc init,mid,end
                         0.4, -- Height (m)
@@ -129,7 +129,7 @@ INSERT INTO crop VALUES(NULL,"Berries",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Broccoli",
-                        "Sep", -- Plant date
+                        strftime("%s", "2017-09-15", "localtime"), -- Plant date
                         35,45,40,15, -- Stage lengths in days
                         0.7,1.05,0.95, -- Kc init,mid,end
                         0.3, -- Height (m)
@@ -138,7 +138,7 @@ INSERT INTO crop VALUES(NULL,"Broccoli",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Brussel Sprouts",
-                        "Oct/Nov", -- Plant date
+                        strftime("%s", "2017-11-01", "localtime"), -- Plant date
                         30,35,90,40, -- Stage lengths in days
                         0.7,1.05,0.95, -- Kc init,mid,end
                         0.4, -- Height (m)
@@ -147,7 +147,7 @@ INSERT INTO crop VALUES(NULL,"Brussel Sprouts",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Cabbage",
-                        "Sep", -- Plant date
+                        strftime("%s", "2017-09-15", "localtime"), -- Plant date
                         40,60,50,15, -- Stage lengths in days
                         0.7,1.05,0.95, -- Kc init,mid,end
                         0.4, -- Height (m)
@@ -156,7 +156,7 @@ INSERT INTO crop VALUES(NULL,"Cabbage",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Cantaloupe",
-                        "June", -- Plant date
+                        strftime("%s", "2017-06-15", "localtime"), -- Plant date
                         30,45,35,10, -- Stage lengths in days
                         0.5,0.85,0.6, -- Kc init,mid,end
                         0.3, -- Height (m)
@@ -165,7 +165,7 @@ INSERT INTO crop VALUES(NULL,"Cantaloupe",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Carrots Feb/Mar",
-                        "Feb/Mar", -- Plant date
+                        strftime("%s", "2017-03-01", "localtime"), -- Plant date
                         30,40,60,20, -- Stage lengths in days
                         0.7,1.05,0.95, -- Kc init,mid,end
                         0.3, -- Height (m)
@@ -174,7 +174,7 @@ INSERT INTO crop VALUES(NULL,"Carrots Feb/Mar",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Cauliflower",
-                        "Sep", -- Plant date
+                        strftime("%s", "2017-09-15", "localtime"), -- Plant date
                         35,50,40,15, -- Stage lengths in days
                         0.7,1.05,0.95, -- Kc init,mid,end
                         0.4, -- Height (m)
@@ -183,7 +183,7 @@ INSERT INTO crop VALUES(NULL,"Cauliflower",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Celery ",
-                        "Apr", -- Plant date
+                        strftime("%s", "2017-04-15", "localtime"), -- Plant date
                         25,40,45,15, -- Stage lengths in days
                         0.7,1.05,1, -- Kc init,mid,end
                         0.6, -- Height (m)
@@ -201,7 +201,7 @@ INSERT INTO crop VALUES(NULL,"Conifer Trees",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Corn, Sweet",
-                        "May/Jun", -- Plant date
+                        strftime("%s", "2017-06-01", "localtime"), -- Plant date
                         20,25,25,10, -- Stage lengths in days
                         0.3,1.15,1.05, -- Kc init,mid,end
                         2, -- Height (m)
@@ -210,7 +210,7 @@ INSERT INTO crop VALUES(NULL,"Corn, Sweet",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Cucumber fresh",
-                        "May", -- Plant date
+                        strftime("%s", "2017-05-15", "localtime"), -- Plant date
                         20,30,50,15, -- Stage lengths in days
                         0.6,1,0.75, -- Kc init,mid,end
                         0.3, -- Height (m)
@@ -219,7 +219,7 @@ INSERT INTO crop VALUES(NULL,"Cucumber fresh",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Egg Plant",
-                        "May/jun", -- Plant date
+                        strftime("%s", "2017-06-01", "localtime"), -- Plant date
                         30,45,40,25, -- Stage lengths in days
                         0.6,1.05,0.9, -- Kc init,mid,end
                         0.8, -- Height (m)
@@ -237,7 +237,7 @@ INSERT INTO crop VALUES(NULL,"Garlic",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Grapes, table",
-                        "Apr", -- Plant date
+                        strftime("%s", "2017-04-15", "localtime"), -- Plant date
                         30,60,40,80, -- Stage lengths in days
                         0.3,0.85,0.45, -- Kc init,mid,end
                         2, -- Height (m)
@@ -246,7 +246,7 @@ INSERT INTO crop VALUES(NULL,"Grapes, table",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Green Gram/Cowpeas",
-                        "Mar ", -- Plant date
+                        strftime("%s", "2017-03-15", "localtime"), -- Plant date
                         20,30,30,20, -- Stage lengths in days
                         0.4,1.05,0.4, -- Kc init,mid,end
                         0.4, -- Height (m)
@@ -255,7 +255,7 @@ INSERT INTO crop VALUES(NULL,"Green Gram/Cowpeas",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Groundnut/Peanut",
-                        "May/Jun", -- Plant date
+                        strftime("%s", "2017-06-01", "localtime"), -- Plant date
                         35,45,35,25, -- Stage lengths in days
                         0.4,1.15,0.6, -- Kc init,mid,end
                         0.4, -- Height (m)
@@ -273,7 +273,7 @@ INSERT INTO crop VALUES(NULL,"Herbaceous Perennials",
                         "UC Davis Extension" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Hops",
-                        "Apr", -- Plant date
+                        strftime("%s", "2017-04-15", "localtime"), -- Plant date
                         25,40,80,10, -- Stage lengths in days
                         0.3,1.05,0.85, -- Kc init,mid,end
                         5, -- Height (m)
@@ -291,7 +291,7 @@ INSERT INTO crop VALUES(NULL,"Kiwi",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Lentil",
-                        "Apr", -- Plant date
+                        strftime("%s", "2017-04-15", "localtime"), -- Plant date
                         20,30,60,40, -- Stage lengths in days
                         0.4,1.1,0.3, -- Kc init,mid,end
                         0.5, -- Height (m)
@@ -300,7 +300,7 @@ INSERT INTO crop VALUES(NULL,"Lentil",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Lettuce",
-                        "Feb", -- Plant date
+                        strftime("%s", "2017-02-15", "localtime"), -- Plant date
                         35,50,45,10, -- Stage lengths in days
                         0.7,1,0.95, -- Kc init,mid,end
                         0.3, -- Height (m)
@@ -318,7 +318,7 @@ INSERT INTO crop VALUES(NULL,"Mint",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Onions dry",
-                        "Apr", -- Plant date
+                        strftime("%s", "2017-04-15", "localtime"), -- Plant date
                         15,25,70,40, -- Stage lengths in days
                         0.7,1.05,0.75, -- Kc init,mid,end
                         0.4, -- Height (m)
@@ -327,7 +327,7 @@ INSERT INTO crop VALUES(NULL,"Onions dry",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Onions green",
-                        "Apr/May", -- Plant date
+                        strftime("%s", "2017-05-01", "localtime"), -- Plant date
                         25,30,10,5, -- Stage lengths in days
                         0.7,1,1, -- Kc init,mid,end
                         0.3, -- Height (m)
@@ -336,7 +336,7 @@ INSERT INTO crop VALUES(NULL,"Onions green",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Onions seed",
-                        "Sep", -- Plant date
+                        strftime("%s", "2017-09-15", "localtime"), -- Plant date
                         20,45,165,45, -- Stage lengths in days
                         0.7,1.05,0.8, -- Kc init,mid,end
                         0.5, -- Height (m)
@@ -354,7 +354,7 @@ INSERT INTO crop VALUES(NULL,"Parsnip",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Peas, dry",
-                        "May", -- Plant date
+                        strftime("%s", "2017-05-15", "localtime"), -- Plant date
                         15,25,35,15, -- Stage lengths in days
                         0.5,1.15,0.3, -- Kc init,mid,end
                         0.5, -- Height (m)
@@ -363,7 +363,7 @@ INSERT INTO crop VALUES(NULL,"Peas, dry",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Peas, fresh",
-                        "May", -- Plant date
+                        strftime("%s", "2017-05-15", "localtime"), -- Plant date
                         15,25,35,15, -- Stage lengths in days
                         0.5,1.15,1.1, -- Kc init,mid,end
                         0.5, -- Height (m)
@@ -372,7 +372,7 @@ INSERT INTO crop VALUES(NULL,"Peas, fresh",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Potato",
-                        "Apr/May", -- Plant date
+                        strftime("%s", "2017-05-01", "localtime"), -- Plant date
                         45,30,70,20, -- Stage lengths in days
                         0.5,1.15,0.75, -- Kc init,mid,end
                         0.6, -- Height (m)
@@ -381,7 +381,7 @@ INSERT INTO crop VALUES(NULL,"Potato",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Radishes",
-                        "Mar/Apr", -- Plant date
+                        strftime("%s", "2017-04-01", "localtime"), -- Plant date
                         5,10,15,5, -- Stage lengths in days
                         0.7,0.6,0.85, -- Kc init,mid,end
                         0.3, -- Height (m)
@@ -390,7 +390,7 @@ INSERT INTO crop VALUES(NULL,"Radishes",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Soybeans",
-                        "May", -- Plant date
+                        strftime("%s", "2017-05-15", "localtime"), -- Plant date
                         20,35,60,25, -- Stage lengths in days
                         0.4,1.15,0.5, -- Kc init,mid,end
                         0.75, -- Height (m)
@@ -399,7 +399,7 @@ INSERT INTO crop VALUES(NULL,"Soybeans",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Spinach",
-                        "Sep/Oct", -- Plant date
+                        strftime("%s", "2017-10-01", "localtime"), -- Plant date
                         20,20,25,5, -- Stage lengths in days
                         0.7,1,0.95, -- Kc init,mid,end
                         0.3, -- Height (m)
@@ -408,7 +408,7 @@ INSERT INTO crop VALUES(NULL,"Spinach",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Stone fruit, ground cover, killing frost",
-                        "Mar", -- Plant date
+                        strftime("%s", "2017-03-15", "localtime"), -- Plant date
                         30,50,130,30, -- Stage lengths in days
                         0.5,1.15,0.9, -- Kc init,mid,end
                         3, -- Height (m)
@@ -417,7 +417,7 @@ INSERT INTO crop VALUES(NULL,"Stone fruit, ground cover, killing frost",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Stone fruit, ground cover, no frost",
-                        "Mar", -- Plant date
+                        strftime("%s", "2017-03-15", "localtime"), -- Plant date
                         30,50,130,30, -- Stage lengths in days
                         0.8,1.15,0.85, -- Kc init,mid,end
                         3, -- Height (m)
@@ -426,7 +426,7 @@ INSERT INTO crop VALUES(NULL,"Stone fruit, ground cover, no frost",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Stone fruit, no ground cover, killing frost",
-                        "Mar", -- Plant date
+                        strftime("%s", "2017-03-15", "localtime"), -- Plant date
                         30,50,130,30, -- Stage lengths in days
                         0.45,0.9,0.65, -- Kc init,mid,end
                         3, -- Height (m)
@@ -435,7 +435,7 @@ INSERT INTO crop VALUES(NULL,"Stone fruit, no ground cover, killing frost",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Stone fruit, no ground cover, no frost",
-                        "Mar", -- Plant date
+                        strftime("%s", "2017-03-15", "localtime"), -- Plant date
                         30,50,130,30, -- Stage lengths in days
                         0.55,0.9,0.65, -- Kc init,mid,end
                         3, -- Height (m)
@@ -453,7 +453,7 @@ INSERT INTO crop VALUES(NULL,"Strawberries",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Summer Squash",
-                        "May/Jun", -- Plant date
+                        strftime("%s", "2017-06-01", "localtime"), -- Plant date
                         20,30,25,15, -- Stage lengths in days
                         0.5,0.95,0.75, -- Kc init,mid,end
                         0.4, -- Height (m)
@@ -471,7 +471,7 @@ INSERT INTO crop VALUES(NULL,"Sunflower",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Sweet Melons",
-                        "May", -- Plant date
+                        strftime("%s", "2017-05-15", "localtime"), -- Plant date
                         25,35,40,20, -- Stage lengths in days
                         0.5,1.05,0.75, -- Kc init,mid,end
                         0.4, -- Height (m)
@@ -480,7 +480,7 @@ INSERT INTO crop VALUES(NULL,"Sweet Melons",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Sweet Peppers",
-                        "Jun", -- Plant date
+                        strftime("%s", "2017-06-15", "localtime"), -- Plant date
                         30,35,40,20, -- Stage lengths in days
                         0.6,1.05,0.9, -- Kc init,mid,end
                         0.7, -- Height (m)
@@ -489,7 +489,7 @@ INSERT INTO crop VALUES(NULL,"Sweet Peppers",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Sweet Potato",
-                        "Apri", -- Plant date
+                        strftime("%s", "2017-04-15", "localtime"), -- Plant date
                         20,30,60,40, -- Stage lengths in days
                         0.5,1.15,0.65, -- Kc init,mid,end
                         0.4, -- Height (m)
@@ -498,7 +498,7 @@ INSERT INTO crop VALUES(NULL,"Sweet Potato",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Tomato",
-                        "Apr/May", -- Plant date
+                        strftime("%s", "2017-05-01", "localtime"), -- Plant date
                         30,40,45,30, -- Stage lengths in days
                         0.6,1.15,0.8, -- Kc init,mid,end
                         0.6, -- Height (m)
@@ -543,7 +543,7 @@ INSERT INTO crop VALUES(NULL,"Turnip/Rutabaga",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Watermelon",
-                        "May", -- Plant date
+                        strftime("%s", "2017-05-15", "localtime"), -- Plant date
                         20,30,30,30, -- Stage lengths in days
                         0.4,1,0.75, -- Kc init,mid,end
                         0.4, -- Height (m)
@@ -552,7 +552,7 @@ INSERT INTO crop VALUES(NULL,"Watermelon",
                         "FAO 56" -- Comment
                         );
 INSERT INTO crop VALUES(NULL,"Winter Squash",
-                        "Jun", -- Plant date
+                        strftime("%s", "2017-06-15", "localtime"), -- Plant date
                         25,35,35,25, -- Stage lengths in days
                         0.5,1,0.8, -- Kc init,mid,end
                         0.4, -- Height (m)

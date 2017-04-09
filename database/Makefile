@@ -8,6 +8,9 @@ include ../Makefile.params
 SRC = commands.db params.db
 DEST = $(SRC:%=$(DBDIR)/%)
 
+PARAMS = params.web.sql params.schema.sql params.init.sql
+PARAMS+= params.soil.sql params.crop.sql params.site.sql
+
 .PHONY: install clean
 
 install: $(SRC)
@@ -17,8 +20,8 @@ install: $(SRC)
 clean:
 	$(RM) $(SRC) $(DEST)
 
-commands.db: commands.schema commands.view
-	for i in $^; do sqlite3 $@ <$$i; done
+commands.db: commands.schema.sql
+	sqlite3 $@ <$<
 
-params.db: params.schema params.init params.soil params.crop params.site
-	for i in $^; do sqlite3 $@ <$$i; done
+params.db: $(PARAMS)
+	for i in $^; do echo $$i; sqlite3 $@ <$$i; done
