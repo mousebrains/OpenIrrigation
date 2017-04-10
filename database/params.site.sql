@@ -122,59 +122,59 @@ INSERT INTO pocMV(poc,sensor,name,make,model,qNormallyOpen) VALUES (
 -- SELECT * FROM pocMV;
 
 -- Station information
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (1,'Huerto S/norte', 1.2,120,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (2,'Huerto S/oeste', 0.8,60,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (3,'Huerto S/centro', 1.9,120,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (4,'Huerto S/sur', 6.8,120,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (5,'Huerto N/arriba', 3.9, 20,20);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (6,'Huerto N/abajo', 5.0, 60,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (7,'Huerto E/NE', 0.0, 60,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (8,'Huerto E/NO', 0.0, 60,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (9,'Huerto E/SE', 0.0, 60,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (10,'Huerto E/SO', 0.0, 60,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (13,'Este/norte y centro', 1.1, 30,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (14,'Este/fondo', 1.1, 60,20);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (15,'Este/sur', 0.8, 90,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (16,'Franja/oeste', 1.4, 75,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (17,'Franja/curva', 0.9, 30,30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (18,'Franja/este', 0.3, 75,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (19,'Isla/norte', 1.6, 80,30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (20,'Isla/sur', 1.4, 75,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (21,'Abeto Douglas', 1.1, 90,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (22,'Sala/patio abierto', 0.3, 50,20);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (23,'Sala/patio cuierto', 0.3, 60,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (24,'Hierbas', 2.7, 80,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (28,'Sala', 0.5, 70,20);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (29,'Comedor/patio', 0.5, 50,20);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (30,'Comedor', 0.6, 75,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (34,'Entrada/azaleas', 2, 25,20);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (35,'Entrada/centro', 1, 100,20);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (36,'Entrada/frente', 0.1, 15,20);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (37,'Entrada/isla', 1.3, 70,10);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (38,'Berma/oeste', 2.3, 80,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (39,'Escobon', 2.1, 60,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (40,'Berma/este', 1.4, 75,15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (44,'Abedul', 1.8, 80,20);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (45,'Janet Way', 5.5, 90, 15);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (46,'Azaleas/brezo/arbustos', 5.4, 80, 20);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (47,'Rododendros', 3.1, 60, 30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (48,'Rosales', 0.4, 60, 30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (52,'Cesta colgante', 0.1, 2, 10);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (53,'Barriles', 0.1, 5, 10);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (54,'Bebedero', 1, 100, 1);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (58,'Cesped entrada', 11, 10, 30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (59,'Cesped rosales norte', 10.8, 10,30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (60,'Cesped rosales sur', 12.4, 10,30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (61,'Cesped centro', 9.8, 10,30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (62,'Cesped arbol', 9.8, 10,30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (63,'Cesped abeto', 6.3, 10,30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (64,'Cesped huerto sur', 8, 10,30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (65,'Cesped isla', 7.6, 10,30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (66,'Cesped manzanas', 8.7, 10,30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (67,'Cesped huerto norte', 7.2, 10,30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (71,'Selva plantas', 0.1, 2, 10);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (72,'Selva goteo', 2.0,300, 30);
-INSERT INTO station(station,name,userFlow,cycleTime,soakTime) VALUES (73,'Selva rocio', 0.1, 2, 2);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (1,'Huerto S/norte', 1.2,120,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (2,'Huerto S/oeste', 0.8,60,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (3,'Huerto S/centro', 1.9,120,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (4,'Huerto S/sur', 6.8,120,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (5,'Huerto N/arriba', 3.9, 20,20);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (6,'Huerto N/abajo', 5.0, 60,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (7,'Huerto E/NE', 0.0, 60,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (8,'Huerto E/NO', 0.0, 60,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (9,'Huerto E/SE', 0.0, 60,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (10,'Huerto E/SO', 0.0, 60,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (13,'Este/norte y centro', 1.1, 30,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (14,'Este/fondo', 1.1, 60,20);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (15,'Este/sur', 0.8, 90,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (16,'Franja/oeste', 1.4, 75,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (17,'Franja/curva', 0.9, 30,30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (18,'Franja/este', 0.3, 75,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (19,'Isla/norte', 1.6, 80,30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (20,'Isla/sur', 1.4, 75,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (21,'Abeto Douglas', 1.1, 90,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (22,'Sala/patio abierto', 0.3, 50,20);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (23,'Sala/patio cuierto', 0.3, 60,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (24,'Hierbas', 2.7, 80,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (28,'Sala', 0.5, 70,20);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (29,'Comedor/patio', 0.5, 50,20);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (30,'Comedor', 0.6, 75,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (34,'Entrada/azaleas', 2, 25,20);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (35,'Entrada/centro', 1, 100,20);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (36,'Entrada/frente', 0.1, 15,20);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (37,'Entrada/isla', 1.3, 70,10);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (38,'Berma/oeste', 2.3, 80,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (39,'Escobon', 2.1, 60,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (40,'Berma/este', 1.4, 75,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (44,'Abedul', 1.8, 80,20);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (45,'Janet Way', 5.5, 90, 15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (46,'Azaleas/brezo/arbustos', 5.4, 80, 20);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (47,'Rododendros', 3.1, 60, 30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (48,'Rosales', 0.4, 60, 30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (52,'Cesta colgante', 0.1, 2, 10);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (53,'Barriles', 0.1, 5, 10);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (54,'Bebedero', 1, 100, 1);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (58,'Cesped entrada', 11, 10, 30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (59,'Cesped rosales norte', 10.8, 10,30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (60,'Cesped rosales sur', 12.4, 10,30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (61,'Cesped centro', 9.8, 10,30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (62,'Cesped arbol', 9.8, 10,30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (63,'Cesped abeto', 6.3, 10,30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (64,'Cesped huerto sur', 8, 10,30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (65,'Cesped isla', 7.6, 10,30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (66,'Cesped manzanas', 8.7, 10,30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (67,'Cesped huerto norte', 7.2, 10,30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (71,'Selva plantas', 0.1, 2, 10);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (72,'Selva goteo', 2.0,300, 30);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (73,'Selva rocio', 0.1, 2, 2);
 
 UPDATE station SET poc=(SELECT poc.id FROM poc WHERE poc.name='Outside') WHERE station < 71;
 UPDATE station SET poc=(SELECT poc.id FROM poc WHERE poc.name='Selva') WHERE station > 70;
@@ -187,106 +187,82 @@ UPDATE station SET sensor=(
 UPDATE station SET make='Hunter',model='PGV-100A';
 UPDATE station SET sortOrder=id;
 UPDATE station SET soakTime=soakTime*60; -- minutes to seconds
-UPDATE station SET cycleTime=cycleTime*60; -- minutes to seconds
+UPDATE station SET maxCycleTime=maxCycleTime*60; -- minutes to seconds
 
 -- SELECT * FROM station;
 
 -- programs
-INSERT INTO program (site,name) VALUES((SELECT id FROM site WHERE name=='Casa'), 'Selva plantas');
-INSERT INTO program (site,name) VALUES((SELECT id FROM site WHERE name=='Casa'), 'Selva goteo');
-INSERT INTO program (site,name) VALUES((SELECT id FROM site WHERE name=='Casa'), 'Selva rocio');
+INSERT INTO program (site,name,priority,action,startTime,endTime) VALUES(
+	(SELECT id FROM site WHERE name=='Casa'), 'Selva plantas', 1,
+	(SELECT id FROM webList WHERE grp=='evAct' AND key=='dow'),
+ 	strftime('%s', '20:00:00')-strftime('%s','00:00:00'),
+ 	strftime('%s', '22:00:00')-strftime('%s','00:00:00')
+	);
 
-UPDATE program SET mode=(SELECT webList.id FROM webList WHERE webList.grp=='pgm' AND webList.key='on');
+INSERT INTO program (site,name,priority,action,nDays,refDate,startTime,endTime) VALUES(
+	(SELECT id FROM site WHERE name=='Casa'), 'Selva goteo', 3,
+	(SELECT id FROM webList WHERE grp=='evAct' AND key=='nDays'), 
+	21,
+ 	strftime('%s', '2017-04-05 12:00'),
+ 	strftime('%s', '18:00:00')-strftime('%s','00:00:00'),
+ 	strftime('%s', '22:00:00')-strftime('%s','00:00:00')
+	);
+
+INSERT INTO program (site,name,priority,action,startTime,endTime) VALUES(
+	(SELECT id FROM site WHERE name=='Casa'), 'Selva rocio', 0,
+	(SELECT id FROM webList WHERE grp=='evAct' AND key=='dow'),
+ 	strftime('%s', '20:00:00')-strftime('%s','00:00:00'),
+ 	strftime('%s', '22:00:00')-strftime('%s','00:00:00')
+	);
+
+INSERT INTO pgmDOW VALUES(
+	(SELECT id FROM program WHERE name=='Selva plantas'),
+	(SELECT id FROM webList WHERE grp=='dow' AND key=='wed'));
+
+INSERT INTO pgmDOW VALUES
+	((SELECT id FROM program WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='sun')),
+	((SELECT id FROM program WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='mon')),
+	((SELECT id FROM program WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='tue')),
+	((SELECT id FROM program WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='wed')),
+	((SELECT id FROM program WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='thur')),
+	((SELECT id FROM program WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='fri')),
+	((SELECT id FROM program WHERE name=='Selva rocio'),
+	 (SELECT id FROM webList WHERE grp=='dow' AND key=='sat'));
+
+UPDATE program SET site=(SELECT id FROM site WHERE name=='Casa');
+UPDATE program SET onOff=(SELECT id FROM webList WHERE grp=='onOff' AND key='on');
+UPDATE program SET startMode=(SELECT id FROM webList WHERE grp=='evCel' AND key='clock');
+UPDATE program SET stopMode=(SELECT id FROM webList WHERE grp=='evCel' AND key='clock');
 
 -- SELECT * FROM program;
+-- SELECT * FROM pgmDOW;
 
 -- program stations association
-INSERT INTO programStation (pgm,stn,mode,runTime) VALUES (
+INSERT INTO pgmStn (pgm,stn,mode,runTime) VALUES (
  (SELECT id FROM program WHERE name='Selva plantas'), 
  (SELECT id FROM station WHERE station==71),
- 1,4*60
+ (SELECT id FROM webList WHERE grp=='pgm' AND key=='on'),
+ 4*60
 );
-INSERT INTO programStation (pgm,stn,mode,runTime) VALUES (
+INSERT INTO pgmStn (pgm,stn,mode,runTime) VALUES (
  (SELECT id FROM program WHERE name='Selva goteo'), 
  (SELECT id FROM station WHERE station==72),
- 1,150*60
+ (SELECT id FROM webList WHERE grp=='pgm' AND key=='on'),
+ 150*60
 );
-INSERT INTO programStation (pgm,stn,mode,runTime) VALUES (
+INSERT INTO pgmStn (pgm,stn,mode,runTime) VALUES (
  (SELECT id FROM program WHERE name='Selva rocio'), 
  (SELECT id FROM station WHERE station==73),
- 1,2*60
+ (SELECT id FROM webList WHERE grp=='pgm' AND key=='off'),
+ 2*60
 );
 
 -- SELECT * FROM programStation;
 
--- event/water windows
-INSERT INTO event(action,startMode,stopMode,name,startTime,endTime) VALUES (
- (SELECT id FROM webList WHERE grp=='evAct' AND key=='dow'),
- (SELECT id FROM webList WHERE grp=='evCel' AND key=='clock'),
- (SELECT id FROM webList WHERE grp=='evCel' AND key=='clock'),
- 'Selva Wed evening', 
- strftime('%s', '20:00:00')-strftime('%s','00:00:00'),
- strftime('%s', '22:00:00')-strftime('%s','00:00:00')
-);
-
-INSERT INTO eventDOW VALUES(
-	(SELECT id FROM event WHERE name=='Selva Wed evening'),
-	(SELECT id FROM webList WHERE grp=='dow' AND key=='wed'));
-
-INSERT INTO event(action,startMode,stopMode,name,nDays,startTime,endTime,refDate) VALUES (
- (SELECT id FROM webList WHERE grp=='evAct' AND key=='nDays'),
- (SELECT id FROM webList WHERE grp=='evCel' AND key=='clock'),
- (SELECT id FROM webList WHERE grp=='evCel' AND key=='clock'),
- 'Selva goteo',
- 21,
- strftime('%s', '18:00:00')-strftime('%s','00:00:00'),
- strftime('%s', '23:00:00')-strftime('%s','00:00:00'),
- strftime('%s', '2017-03-15')
-);
-
-INSERT INTO event(action,startMode,stopMode,name,startTime,endTime) VALUES (
- (SELECT id FROM webList WHERE grp=='evAct' AND key=='dow'),
- (SELECT id FROM webList WHERE grp=='evCel' AND key=='clock'),
- (SELECT id FROM webList WHERE grp=='evCel' AND key=='clock'),
- 'Selva rocio',
- strftime('%s', '20:00:00')-strftime('%s','00:00:00'),
- strftime('%s', '22:00:00')-strftime('%s','00:00:00')
-);
-
-INSERT INTO eventDOW VALUES
-	((SELECT id FROM event WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='sun')),
-	((SELECT id FROM event WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='mon')),
-	((SELECT id FROM event WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='tue')),
-	((SELECT id FROM event WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='wed')),
-	((SELECT id FROM event WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='thur')),
-	((SELECT id FROM event WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='fri')),
-	((SELECT id FROM event WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='sat'));
-
-UPDATE event SET site=(SELECT id FROM site WHERE name=='Casa');
-UPDATE event SET mode=(SELECT id FROM webList WHERE grp='evMode' AND key='water');
-
 -- SELECT * FROM event;
-
--- water windows
-INSERT INTO programEvent (pgm,event) VALUES (
-  (SELECT id FROM program WHERE name=='Selva plantas'),
-  (SELECT id FROM event WHERE name=='Selva Wed evening')
-);
-INSERT INTO programEvent (pgm,event) VALUES (
-  (SELECT id FROM program WHERE name=='Selva goteo'),
-  (SELECT id FROM event WHERE name=='Selva goteo')
-);
-INSERT INTO programEvent (pgm,event) VALUES (
-  (SELECT id FROM program WHERE name=='Selva rocio'),
-  (SELECT id FROM event WHERE name=='Selva rocio')
-);
-
--- SELECT * FROM programEvent;
-

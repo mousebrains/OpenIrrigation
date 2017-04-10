@@ -337,8 +337,10 @@ CREATE TABLE station(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      make TEXT, -- manufacturer
                      model TEXT, -- model
                      sortOrder INTEGER, -- display sorting order
-                     cycleTime INTEGER, -- maximum cycle time in sec
+                     minCycleTime INTEGER DEFAULT 60, -- minimum cycle time in sec
+                     maxCycleTime INTEGER, -- maximum cycle time in sec
                      soakTime INTEGER, -- minimum soak time in sec
+                     maxCoStations INTEGER, -- maximum number of other stations at same time
 		     measuredFlow FLOAT, -- measured flow in GPM
 		     userFlow FLOAT, -- user input in GPM
                      lowFlowFrac FLOAT DEFAULT 0, -- frac of meas/user flow for alert
@@ -358,7 +360,7 @@ INSERT INTO webView(sortOrder,key,field,label,itype,qRequired,sql) VALUES
                                                WHERE grp=='sensor' AND key=='solenoid')
 		         ORDER BY addr,name;");
 INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
-	(3, 'station','cycleTime','Max Cycle (min)', 'minute'),
+	(3, 'station','maxCycleTime','Max Cycle (min)', 'minute'),
 	(4, 'station','soakTime','Min Soak (min)', 'minute'),
 	(5, 'station','station','Station #', 'nStations'),
 	(6, 'station','sortOrder','Sort Order', 'nStations'),
@@ -366,49 +368,111 @@ INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
 	(8, 'station','userFlow','User Flow (GPM)', 'flow'),
 	(9, 'station','lowFlowFrac','Low flow alert fraction', 'Kflow'),
 	(10, 'station','highFlowFrac','High flow alert fraction', 'Kflow'),
-	(11, 'station','delayOn','Delay On (sec)', 'sec'),
-	(12, 'station','delayOff','Delay Off (sec)', 'sec'),
-	(13, 'station','make','Make', 'text'),
-	(14, 'station','model','Model', 'text');
+	(11, 'station','maxCoStations','Max other stations', 'nStations'),
+	(12, 'station','minCycleTime','Min Cycle (min)', 'minute'),
+	(13, 'station','delayOn','Delay On (sec)', 'sec'),
+	(14, 'station','delayOff','Delay Off (sec)', 'sec'),
+	(15, 'station','make','Make', 'text'),
+	(16, 'station','model','Model', 'text');
 
+-- Program mode on/off
+INSERT INTO webList (sortOrder,grp,key,label) VALUES
+	(0, 'onOff', 'off', 'Off'),
+	(1, 'onOff', 'on', 'On');
+
+-- program station mode on/off/ET
 INSERT INTO webList (sortOrder,grp,key,label) VALUES
 	(0, 'pgm', 'off', 'Off'),
 	(1, 'pgm', 'on', 'On non-ET'),
-	(2, 'pgm', 'ET', 'On ET');
+	(2, 'pgm', 'ET', 'ON ET');
 
+-- Event Actions 
+INSERT INTO webList(sortOrder,grp,key,label) VALUES
+	(0, 'evAct', 'dow', 'Day(s) of week'),
+	(1, 'evAct', 'nDays', 'Every n days');
+
+-- Event start/stop mode wall clock/sunrise/sunset
+INSERT INTO webList(sortOrder,grp,key,label) VALUES
+	(0, 'evCel', 'clock', 'Wall Clock'),
+	(1, 'evCel', 'sunrise', 'Sunrise'),
+	(2, 'evCel', 'sunset', 'Sunset');
+
+-- Event Day-of-week sortOrder of Sunday == 0 
+INSERT INTO webList(sortOrder,grp,key,label) VALUES
+	(0, 'dow', 'sun', 'Sunday'),
+	(1, 'dow', 'mon', 'Monday'),
+	(2, 'dow', 'tue', 'Tuesday'),
+	(3, 'dow', 'wed', 'Wednesday'),
+	(4, 'dow', 'thur', 'Thursday'),
+	(5, 'dow', 'fri', 'Friday'),
+	(6, 'dow', 'sat', 'Saturday');
 
 -- progams, a collection of water events
 DROP TABLE IF EXISTS program;
 CREATE TABLE program(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
-                     mode INTEGER REFERENCES webList(id) ON DELETE SET NULL,
-                     name TEXT COLLATE NOCASE, -- descriptive name
+                     name TEXT UNIQUE COLLATE NOCASE, -- descriptive name
+                     onOff INTEGER REFERENCES webList(id) ON DELETE SET NULL,
+                     priority INTEGER DEFAULT 0, -- sort order for windows within a program
+                     action INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- action 
+                     nDays INTEGER, -- # of days between watering when n-days mode
+                     refDate INTEGER, -- reference date for action
+                     startTime INTEGER, -- seconds into day to start
+                     endTime INTEGER, -- seconds into day to stop, may be less than start, then wrap
+                     startMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- starting
+                     stopMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- stoping
+                     attractorFrac INTEGER DEFAULT 0, -- % of interval to gravitate towards [0,100]
                      maxStations INTEGER DEFAULT 1, -- max # simultaneous stations
-                     maxFlow FLOAT DEFAULT 100, -- max flow target flow
-		     UNIQUE (site, name)
+                     maxFlow FLOAT DEFAULT 100 -- max flow target flow
                     );	
-INSERT INTO webFetch(key,sql,qTable) VALUES('program', 'SELECT * FROM program ORDER BY name;',1);
+
+--- program days of week
+DROP TABLE IF EXISTS pgmDOW;
+CREATE TABLE pgmDOW(pgm INTEGER REFERENCES program(id) ON DELETE CASCADE, -- which program
+                    dow INTEGER REFERENCES webList(id) ON DELETE CASCADE,
+                    PRIMARY KEY (pgm,dow) ON CONFLICT IGNORE
+                   );
+
+INSERT INTO webFetch(key,sql,qTable,keyField) VALUES
+	('program', 'SELECT * FROM program ORDER BY priority,name;',1, 'name');
 INSERT INTO webView(sortOrder,key,field,label,itype,qRequired,sql) VALUES
 	(0, 'program','site','Site', 'list', 1, 'SELECT id,name FROM site ORDER BY name;'),
 	(1, 'program','name','Name', 'text', 1, NULL),
-	(2, 'program','mode','Mode', 'list', 1, 
-		'SELECT id,label FROM webList WHERE grp="pgm" ORDER BY sortOrder,label;');
+	(2, 'program','onOff','on/off', 'list', 1, 
+		'SELECT id,label FROM webList WHERE grp="onOff" ORDER BY sortOrder,label;'),
+	(3, 'program','action','Action', 'list', 1, 
+		'SELECT id,label FROM webList WHERE grp="evAct" ORDER BY sortOrder,label;');
+INSERT INTO webView(sortOrder,key,field,label,itype,sql,listTable,idField) VALUES
+	(4, 'program', 'dow', 'Days of week', 'list',
+	 "SELECT id,label FROM webList WHERE grp=='dow' ORDER BY sortOrder,label;", 
+         'pgmDOW', 'pgm');
 INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
-	(3, 'program','maxStations','Max # Stations', 'nStations'),
-	(4, 'program','maxFlow','Max Flow (GPM)', 'flow');
+	(5, 'program','nDays','# of days between watering', 'nStations'),
+	(6, 'program','refDate','Ref date for every n days', 'date'),
+	(7, 'program','startTime','Starting time', 'time'),
+	(8, 'program','endTime','Stoping time', 'time');
+INSERT INTO webView(sortOrder,key,field,label,itype,sql) VALUES
+	(9, 'program','startMode','Start Mode', 'list',
+		'SELECT id,label FROM webList WHERE grp="evCel" ORDER BY sortOrder,label;'),
+	(10,'program','stopMode','Stop Mode', 'list',
+		'SELECT id,label FROM webList WHERE grp="evCel" ORDER BY sortOrder,label;');
+INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
+	(11, 'program','priority','Priority', 'nStations'),
+	(12, 'program','maxStations','Max # Stations', 'nStations'),
+	(13, 'program','maxFlow','Max Flow (GPM)', 'flow');
 
 -- stations in each program
-DROP TABLE IF EXISTS programStation;
-CREATE TABLE programStation(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
-                            pgm REFERENCES program(id) ON DELETE CASCADE, -- program's id
-                            stn REFERENCES station(id) ON DELETE CASCADE, -- station's id
-                            mode INTEGER REFERENCES webList(id) ON DELETE SET NULL,
-                            runTime INTEGER DEFAULT 0, -- total runtime in sec
-                            priority INTEGER DEFAULT 0, -- run priority
-                            UNIQUE (pgm, stn) -- one station/program pair
-                           );
+DROP TABLE IF EXISTS pgmStn;
+CREATE TABLE pgmStn(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                    pgm REFERENCES program(id) ON DELETE CASCADE, -- program's id
+                    stn REFERENCES station(id) ON DELETE CASCADE, -- station's id
+                    mode INTEGER REFERENCES webList(id) ON DELETE SET NULL,
+                    runTime INTEGER DEFAULT 0, -- total runtime in sec
+                    priority INTEGER DEFAULT 0, -- run priority
+                    UNIQUE (pgm, stn) -- one station/program pair
+                   );
 INSERT INTO webFetch(key,tbl, sql,qTable) VALUES
-	('pgmStn', 'programStation', 'SELECT * FROM programStation ORDER BY pgm,priority,stn;',1);
+	('pgmStn', 'pgmStn', 'SELECT * FROM pgmStn ORDER BY pgm,priority,stn;',1);
 INSERT INTO webView(sortOrder,key,field,label,itype,qRequired,sql) VALUES
 	(0, 'pgmStn','pgm','Program', 'list', 1, 'SELECT id,name FROM program ORDER BY name;'),
 	(1, 'pgmStn','stn','Station', 'list', 1, 'SELECT id,name FROM station ORDER BY name;'),
@@ -419,69 +483,45 @@ INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
 	(4, 'pgmStn','priority','Priority', 'nStations');
 
 
--- Event modes
-INSERT INTO webList (sortOrder,grp,key,label) VALUES
-	(0, 'evMode', 'water', 'Watering Event'),
-	(1, 'evMode', 'event', 'Non-Watering Event');
-
--- Event Actions
-INSERT INTO webList(sortOrder,grp,key,label) VALUES
-	(0, 'evAct', 'dow', 'Day(s) of week'),
-	(1, 'evAct', 'nDays', 'Every n days');
-
--- Event Time actions
-INSERT INTO webList(sortOrder,grp,key,label) VALUES
-	(0, 'evCel', 'clock', 'Wall Clock'),
-	(1, 'evCel', 'sunrise', 'Sunrise'),
-	(2, 'evCel', 'sunset', 'Sunset');
-
--- Event Day-of-week bits
-INSERT INTO webList(sortOrder,grp,key,label) VALUES
-	(0, 'dow', 'sun', 'Sunday'),
-	(1, 'dow', 'mon', 'Monday'),
-	(2, 'dow', 'tue', 'Tuesday'),
-	(3, 'dow', 'wed', 'Wednesday'),
-	(4, 'dow', 'thur', 'Thursday'),
-	(5, 'dow', 'fri', 'Friday'),
-	(6, 'dow', 'sat', 'Saturday');
-
--- event specifier
+-- non-watering event specifier
 DROP TABLE IF EXISTS event;
 CREATE TABLE event(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                    site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
                    name TEXT UNIQUE COLLATE NOCASE, -- descriptive name
-                   mode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- water, non-water...
                    action INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- action 
                    nDays INTEGER, -- # of days between watering when n-days mode
                    refDate INTEGER, -- reference date for action
                    startTime INTEGER, -- seconds into day to start
                    endTime INTEGER, -- seconds into day to stop, may be less than start, then wrap
                    startMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- starting
-                   stopMode INTEGER REFERENCES webList(id) ON DELETE SET NULL -- stoping
+                   stopMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- stoping
+                   nRepeat INTEGER DEFAULT 0, -- How many times to repeat
+                   notes TEXT -- Description
                   );
 INSERT INTO webFetch(key,sql,qTable,keyField) VALUES 
 	('event','SELECT * FROM event ORDER BY site,name;',1, 'name');
 INSERT INTO webView(sortOrder,key,field,label,itype,qRequired,sql) VALUES
-	(0, 'event','site','Program', 'list', 1, 'SELECT id,name FROM site ORDER BY name;'),
-	(1, 'event','name','Name', 'text', 1, NULL),
-	(2, 'event','mode','Mode', 'list', 1, 
-		'SELECT id,label FROM webList WHERE grp="evMode" ORDER BY sortOrder,label;'),
-	(3, 'event','action','Action', 'list', 1, 
+	(0,'event','site','Program', 'list', 1, 'SELECT id,name FROM site ORDER BY name;'),
+	(1,'event','name','Name', 'text', 1, NULL),
+	(2,'event','action','Action', 'list', 1, 
 		'SELECT id,label FROM webList WHERE grp="evAct" ORDER BY sortOrder,label;');
 INSERT INTO webView(sortOrder,key,field,label,itype,sql,listTable,idField) VALUES
-	(4, 'event', 'dow', 'Days of week', 'list',
+	(3,'event', 'dow', 'Days of week', 'list',
 	 "SELECT id,label FROM webList WHERE grp=='dow' ORDER BY sortOrder,label;", 
          'eventDOW', 'event');
 INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
-	(5, 'event','nDays','# of days between watering', 'nStations'),
-	(6, 'event','refDate','Ref date for every n days', 'date'),
-	(7, 'event','startTime','Starting time', 'time'),
-	(8, 'event','endTime','Stoping time', 'time');
+	(4,'event','nDays','# of days between watering', 'nStations'),
+	(5,'event','refDate','Ref date for every n days', 'date'),
+	(6,'event','startTime','Starting time', 'time'),
+	(7,'event','endTime','Stoping time', 'time');
 INSERT INTO webView(sortOrder,key,field,label,itype,sql) VALUES
-	(9, 'event','startMode','Start Mode', 'list',
+	(8,'event','startMode','Start Mode', 'list',
 		'SELECT id,label FROM webList WHERE grp="evCel" ORDER BY sortOrder,label;'),
-	(10,'event','stopMode','Stop Mode', 'list',
+	(9,'event','stopMode','Stop Mode', 'list',
 		'SELECT id,label FROM webList WHERE grp="evCel" ORDER BY sortOrder,label;');
+INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
+	(10,'event','nRepeat','Repeat n times', 'nStations'),
+	(11,'event','notes','Notes','textarea');
 
 --- Event days of week
 DROP TABLE IF EXISTS eventDOW;
@@ -489,24 +529,6 @@ CREATE TABLE eventDOW(event INTEGER REFERENCES event(id) ON DELETE CASCADE, -- w
                       dow INTEGER REFERENCES webList(id) ON DELETE CASCADE,
                       PRIMARY KEY (event,dow) ON CONFLICT IGNORE
                      );
-
--- water windows
-DROP TABLE IF EXISTS programEvent;
-CREATE TABLE programEvent(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
-                          pgm REFERENCES program(id) ON DELETE CASCADE, -- program's id
-                          event REFERENCES event(id) ON DELETE CASCADE, -- event's id
-                          attractorFrac FLOAT DEFAULT 0, -- fraction to gravitate towards [0,1]
-                          priority INTEGER DEFAULT 0, -- sort order for windows within a program
-                          UNIQUE (pgm,event) -- Only one entry per event/program combination
-                         );
-INSERT INTO webFetch(key,tbl,sql,qTable) VALUES 
-	('pgmEv', 'programEvent','SELECT * FROM programEvent ORDER BY pgm,priority;',1);
-INSERT INTO webView(sortOrder,key,field,label,itype,qRequired,sql) VALUES
-	(0, 'pgmEv','pgm','Program', 'list', 1, 'SELECT id,name FROM program ORDER BY name;'),
-	(1, 'pgmEv','event','Event', 'list', 1, 'SELECT id,name FROM event ORDER BY name;');
-INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
-	(2, 'pgmEv','priority','Priority', 'nStations'),
-	(3, 'pgmEv','attractorFrac','Attractor (%)', '%');
 
 -- daily ET information, set up for Agrimet
 DROP TABLE IF EXISTS ET;

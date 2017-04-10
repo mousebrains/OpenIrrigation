@@ -20,7 +20,6 @@ echo "</script>
       <a href='program.php'>Programs</a>
       <a href='programStation.php'>Program Station</a>
       <a href='event.php'>Events</a>
-      <a href='programEvent.php'>Program Events</a>
       <a href='station.php'>Stations</a>
       <a href='ETStn.php'>ET Stations</a>
       <a href='site.php'>Site Edit</a>
