@@ -33,24 +33,3 @@ CREATE TABLE ETannual(doy INTEGER NOT NULL, -- day of year [0,366]
                       n INTEGER NOT NULL, -- number of entries for this doy/code pair
 		      PRIMARY KEY (station,code,doy) ON CONFLICT REPLACE
                      );
-
--- code to label
-DROP TABLE IF EXISTS ETCodes;
-CREATE TABLE ETCodes(code TEXT NOT NULL COLLATE NOCASE,
-                     label TEXT NOT NULL COLLATE NOCASE
-                    );
-
-INSERT INTO ETCodes VALUES
-	('BN', 'Minimum Barometric Pressure (in Hg)'),
-	('BP', 'Average Barometric Pressure (in Hg)'),
-	('BX', 'Maximum Barometric Pressure (in Hg)'),
-	('ET', 'ET (in/day)'),
-	('ETrs', 'ETrs Alfalfa (in/day)'),
-	('ETos', 'ETos grass (in/day)'),
-	('MM', 'Mean air temperature (F)'),
-	('MN', 'Minimum air temperature (F)'),
-	('MX', 'Maximum air temperature (F)'),
-	('PC', 'Accumulated Precip (in)'),
-	('PE', '24 hour pan evaporation (in)'),
-	('PP', '24 hour precip (in)'),
-	('PU', 'Water year precip (in)');
