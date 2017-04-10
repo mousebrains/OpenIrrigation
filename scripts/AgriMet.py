@@ -29,24 +29,26 @@ class Fetcher(threading.Thread):
     earliestDate = time.mktime(time.strptime(params['earliestDate'], "%Y-%m-%d"))
     extraBack = params['extraBack']
     urlBase = params['URL']
+    qForce = args.force;
     tod = []
     for t in params['times']:
       st = time.strptime(t, '%H:%M')
       tod.append(datetime.time(st.tm_hour, st.tm_min))
 
     while True:
-      now = datetime.datetime.utcnow()
-      tNow = now.time()
-      tNext = None
-      for t in tod:
-        if t > tNow:
-          tNext = datetime.datetime.combine(now.date(), t)
-          break
-      if tNext is None: 
-        tNext = datetime.datetime.combine(now.date() + datetime.timedelta(days=1), tod[0])
-      dt = (tNext - now).total_seconds() # Time left to next wakeup
-      logger('Sleeping until {} which is {} seconds from now'.format(tNext, dt))
-      time.sleep(dt);
+      if not qForce:
+        now = datetime.datetime.utcnow()
+        tNow = now.time()
+        tNext = None
+        for t in tod:
+          if t > tNow:
+            tNext = datetime.datetime.combine(now.date(), t)
+            break
+        if tNext is None: 
+          tNext = datetime.datetime.combine(now.date() + datetime.timedelta(days=1), tod[0])
+        dt = (tNext - now).total_seconds() # Time left to next wakeup
+        logger('Sleeping until {} which is {} seconds from now'.format(tNext, dt))
+        time.sleep(dt);
 
       with sqlite3.Connection(self.args.db, isolation_level=None) as db:
         cur = db.cursor()
@@ -82,7 +84,9 @@ class Fetcher(threading.Thread):
           cur.execute('COMMIT TRANSACTION;');
         db.commit()
         logger('Inserted {} records'.format(cnt))
-        break
+
+      if qForce:
+        return
 
 class Stats(threading.Thread):
   def __init__(self, args, params, logger):
@@ -129,8 +133,7 @@ parser.add_argument('--params', help='parameter database name', required=True)
 parser.add_argument('--db', help='ET database name', required=True)
 parser.add_argument('--log', help='logfile, if not specified use the console')
 parser.add_argument('--group', help='parameter group name to use', default='AGRIMET')
-parser.add_argument('--force', help=', if not specified use the console', \
-		action='store_true')
+parser.add_argument('--force', help='run once fetching information', action='store_true')
 parser.add_argument('--verbose', help='logging verbosity', action='store_true')
 args = parser.parse_args()
 
