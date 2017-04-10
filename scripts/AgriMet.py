@@ -129,8 +129,9 @@ parser.add_argument('--params', help='parameter database name', required=True)
 parser.add_argument('--db', help='ET database name', required=True)
 parser.add_argument('--log', help='logfile, if not specified use the console')
 parser.add_argument('--group', help='parameter group name to use', default='AGRIMET')
-parser.add_argument('--verbose', help='logfile, if not specified use the console', \
+parser.add_argument('--force', help=', if not specified use the console', \
 		action='store_true')
+parser.add_argument('--verbose', help='logging verbosity', action='store_true')
 args = parser.parse_args()
 
 logger = logging.getLogger(__name__)

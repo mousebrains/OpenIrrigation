@@ -22,8 +22,7 @@ parser.add_argument('--cmds', help='commands database name', required=True)
 parser.add_argument('--log', help='logfile, if not specified use the console')
 parser.add_argument('--group', help='parameter group name to use', default='TDI')
 parser.add_argument('--simul', help='simulate controller', action='store_true')
-parser.add_argument('--verbose', help='logfile, if not specified use the console', \
-                    action='store_true')
+parser.add_argument('--verbose', help='logging verbosity', action='store_true')
 args = parser.parse_args()
 
 logger = logging.getLogger(__name__)
