@@ -5,7 +5,7 @@
 
 include ../Makefile.params
 
-SRC = commands.db params.db
+SRC = commands.db params.db ET.db
 DEST = $(SRC:%=$(DBDIR)/%)
 
 PARAMS = params.web.sql params.schema.sql params.init.sql
@@ -24,4 +24,7 @@ commands.db: commands.schema.sql
 	sqlite3 $@ <$<
 
 params.db: $(PARAMS)
+	for i in $^; do echo $$i; sqlite3 $@ <$$i; done
+
+ET.db: ET.schema.sql ET.codes.sql
 	for i in $^; do echo $$i; sqlite3 $@ <$$i; done

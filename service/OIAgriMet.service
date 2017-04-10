@@ -1,0 +1,23 @@
+# This file is part of OpenIrrigation
+#
+# this service runs the script which harvests AGRIMET data and builds statistics
+#
+# man systemd.unit for parameters
+# man systemd.service for parameters
+# man systemd.exec for parameters
+
+[Unit]
+Description=OpenIrrigation Agrimet Harvester
+
+[Service]
+# Type=simple # Default
+User=__USER__
+Group=__GROUP__
+SupplementaryGroups=dialout
+WorkingDirectory=__LOGDIR__
+ExecStart=__BINDIR__/AgriMet.py --params=__DBDIR__/params.db --db=__DBDIR__/ET.db --log=__LOGDIR__/AgriMet.log __SIMULATE__
+RestartSec=10 
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

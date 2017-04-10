@@ -6,7 +6,7 @@
 include ../Makefile.params
 
 # Where to install the .service files
-SRC = OITDI.service
+SRC = OITDI.service OIAgriMet.service
 DEST = $(SRC:%=$(SERVICEDIR)/%)
 
 .PHONY: install install-services install-logs clean start stop retart status reload

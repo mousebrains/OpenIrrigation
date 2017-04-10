@@ -13,4 +13,15 @@ INSERT INTO params (grp,name,val) VALUES('TDI', 'twoChannels', '0,1'); -- values
 INSERT INTO params (grp,name,val) VALUES('TDI', 'peePeriod', 10); -- Seconds between pee requests
 INSERT INTO params (grp,name,val) VALUES('TDI', 'peeChannels', '0,1'); -- values to probe
 
+-- Agrimet parameters
+
+INSERT INTO params(grp,name,val) VALUES('AGRIMET', 'station', 'CRVO');
+INSERT INTO params(grp,name,val) VALUES('AGRIMET', 'URL', 
+	'https://www.usbr.gov/pn-bin/agrimet.pl?cbtt=CRVO&interval=daily&back=');
+INSERT INTO params(grp,name,val) VALUES('AGRIMET', 'extraBack', 5);
+INSERT INTO params(grp,name,val) VALUES('AGRIMET', 'times', '0:00,2:00,4:00,18:00,20:00,22:00');
+INSERT INTO params(grp,name,val) VALUES('AGRIMET', 'statDayOfMonth', '3');
+INSERT INTO params(grp,name,val) VALUES('AGRIMET', 'statHourOfDay', '4:30');
+INSERT INTO params(grp,name,val) VALUES('AGRIMET', 'earliestDate', '1990-04-01');
+	
 -- SELECT * FROM params;

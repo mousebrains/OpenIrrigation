@@ -378,7 +378,8 @@ INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
 -- Program mode on/off
 INSERT INTO webList (sortOrder,grp,key,label) VALUES
 	(0, 'onOff', 'off', 'Off'),
-	(1, 'onOff', 'on', 'On');
+	(1, 'onOff', 'on', 'On'),
+	(2, 'onOff', 'highET', 'High ET');
 
 -- program station mode on/off/ET
 INSERT INTO webList (sortOrder,grp,key,label) VALUES
@@ -423,7 +424,8 @@ CREATE TABLE program(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      stopMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- stoping
                      attractorFrac INTEGER DEFAULT 0, -- % of interval to gravitate towards [0,100]
                      maxStations INTEGER DEFAULT 1, -- max # simultaneous stations
-                     maxFlow FLOAT DEFAULT 100 -- max flow target flow
+                     maxFlow FLOAT DEFAULT 100, -- max flow target flow
+                     etThreshold FLOAT DEFAULT 100 -- Kicks on when ET is >= this value
                     );	
 
 --- program days of week
@@ -459,7 +461,8 @@ INSERT INTO webView(sortOrder,key,field,label,itype,sql) VALUES
 INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
 	(11, 'program','priority','Priority', 'nStations'),
 	(12, 'program','maxStations','Max # Stations', 'nStations'),
-	(13, 'program','maxFlow','Max Flow (GPM)', 'flow');
+	(13, 'program','maxFlow','Max Flow (GPM)', 'flow'),
+	(14, 'program','etThreshold','High ET Threshold', 'ET');
 
 -- stations in each program
 DROP TABLE IF EXISTS pgmStn;
@@ -529,47 +532,6 @@ CREATE TABLE eventDOW(event INTEGER REFERENCES event(id) ON DELETE CASCADE, -- w
                       dow INTEGER REFERENCES webList(id) ON DELETE CASCADE,
                       PRIMARY KEY (event,dow) ON CONFLICT IGNORE
                      );
-
--- daily ET information, set up for Agrimet
-DROP TABLE IF EXISTS ET;
-CREATE TABLE ET(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
-		site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
-		date INTEGER, -- time of sample in unix seconds
-		ET0 FLOAT, -- ET0
-		ETr FLOAT, -- ETref for tall alfalfa for Agrimet
-		precip FLOAT, -- precipitation/day in mm/day
-		UNIQUE (site,date) ON CONFLICT REPLACE
-               );
-INSERT INTO webFetch(key,sql,qTable) VALUES 
-	('ET', 'SELECT * FROM ET ORDER BY site,date;',1);
-INSERT INTO webView(sortOrder,key,field,label,itype,qRequired,sql) VALUES
-	(0, 'ET','site','Site', 'list', 1, 'SELECT id,name FROM site ORDER BY name;');
-INSERT INTO webView(sortOrder,key,field,label,itype,qRequired) VALUES
-	(1, 'ET','date','Date', 'date', 1),
-	(2, 'ET','ET0','ET0', 'ET', 0),
-	(3, 'ET','ETr','ET ref', 'ET', 0),
-	(4, 'ET','precip','Precip (in)', 'precip', 0);
-
--- annual ET information
-DROP TABLE IF EXISTS ETannual;
-CREATE TABLE ETannual(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
-		      site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
-		      day INTEGER, -- day of year, [0,366]
-	              ET0 FLOAT, -- ET0 median of sample
-		      ETr FLOAT, -- ETref median for tall alfalfa for Agrimet
-		      precip FLOAT, -- median precipitation/day in mm/day
-		      UNIQUE (site,day) ON CONFLICT REPLACE
-                     );
-INSERT INTO webFetch(key,sql,qTable) VALUES 
-	('ETannual', 'SELECT * FROM ETannual ORDER BY site,day;',1);
-INSERT INTO webView(sortOrder,key,field,label,itype,qRequired,sql) VALUES
-	(0, 'ETannual','site','Site', 'list', 1, 'SELECT id,name FROM site ORDER BY name;');
-INSERT INTO webView(sortOrder,key,field,label,itype,qRequired) VALUES
-	(1, 'ETannual','day','Day of year', 'doy', 1),
-	(2, 'ETannual','ET0','ET0', 'ET', 0),
-	(3, 'ETannual','ETr','ET ref', 'ET', 0),
-	(4, 'ETannual','precip','Precip (in)', 'precip', 0);
-
 
 -- ET information for each station
 DROP TABLE IF EXISTS EtStation;
