@@ -13,6 +13,11 @@
 -- PRAGMA synchronous = FULL;
 -- PRAGMA foreign_keys = ON;
 
+-- To trigger the scheduler to run, add an entry to this table
+DROP TABLE IF EXISTS scheduler;
+CREATE TABLE scheduler(date INTEGER PRIMARY KEY NOT NULL -- When the scheduler so run at
+                      );
+
 -- Interface parameters
 DROP TABLE IF EXISTS params;
 CREATE TABLE params(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
@@ -196,7 +201,7 @@ CREATE TABLE sensor(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                     latitude FLOAT, -- latitude in decimal degrees
                     longitude FLOAT, -- longitude in decimal degrees
                     passiveCurrent FLOAT DEFAULT 0.5, -- current when not activated in mAmps
-                    activeCurrent FLOAT DEFAULT 0.5, -- current when activated in mAmps
+                    activeCurrent FLOAT DEFAULT 25, -- current when activated in mAmps
                     devType INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- dev type
                     driver TEXT, -- device driver
                     addr INTEGER, -- device address in controller space
@@ -396,7 +401,10 @@ INSERT INTO webList(sortOrder,grp,key,label) VALUES
 INSERT INTO webList(sortOrder,grp,key,label) VALUES
 	(0, 'evCel', 'clock', 'Wall Clock'),
 	(1, 'evCel', 'sunrise', 'Sunrise'),
-	(2, 'evCel', 'sunset', 'Sunset');
+	(2, 'evCel', 'sunset', 'Sunset'),
+	(3, 'evCel', 'dawn', 'Dawn'),
+	(4, 'evCel', 'noon', 'Zenith'),
+	(5, 'evCel', 'dusk', 'Dusk');
 
 -- Event Day-of-week sortOrder of Sunday == 0 
 INSERT INTO webList(sortOrder,grp,key,label) VALUES
@@ -445,21 +453,22 @@ INSERT INTO webView(sortOrder,key,field,label,itype,qRequired,sql) VALUES
 	(3, 'program','action','Action', 'list', 1, 
 		'SELECT id,label FROM webList WHERE grp="evAct" ORDER BY sortOrder,label;');
 INSERT INTO webView(sortOrder,key,field,label,itype,sql,listTable,idField) VALUES
-	(4, 'program', 'dow', 'Days of week', 'list',
+	(5, 'program', 'dow', 'Days of week', 'list',
 	 "SELECT id,label FROM webList WHERE grp=='dow' ORDER BY sortOrder,label;", 
          'pgmDOW', 'pgm');
 INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
-	(5, 'program','nDays','# of days between watering', 'nStations'),
-	(6, 'program','refDate','Ref date for every n days', 'date'),
-	(7, 'program','startTime','Starting time', 'time'),
-	(8, 'program','endTime','Stoping time', 'time');
+	(6, 'program','nDays','# of days between watering', 'nStations'),
+	(7, 'program','refDate','Ref date for every n days', 'date'),
+	(8, 'program','startTime','Starting time', 'time'),
+	(9, 'program','endTime','Stoping time', 'time');
 INSERT INTO webView(sortOrder,key,field,label,itype,sql) VALUES
-	(9, 'program','startMode','Start Mode', 'list',
+	(10, 'program','startMode','Start Mode', 'list',
 		'SELECT id,label FROM webList WHERE grp="evCel" ORDER BY sortOrder,label;'),
-	(10,'program','stopMode','Stop Mode', 'list',
+	(11,'program','stopMode','Stop Mode', 'list',
 		'SELECT id,label FROM webList WHERE grp="evCel" ORDER BY sortOrder,label;');
 INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
-	(11, 'program','priority','Priority', 'nStations'),
+	(3, 'program','priority','Priority', 'nStations'),
+	(12, 'program','attractorFrac','Attractor (%)', '%'),
 	(12, 'program','maxStations','Max # Stations', 'nStations'),
 	(13, 'program','maxFlow','Max Flow (GPM)', 'flow'),
 	(14, 'program','etThreshold','High ET Threshold', 'ET');
