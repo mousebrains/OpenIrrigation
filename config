@@ -1,22 +1,24 @@
-#! /usr/bin/python3 -b
+#! /usr/bin/env python3
 #
 # This script builds Makefile.params for the local system
 #
 import argparse
 import sys
 import os
+import grp
 import time
 
 def rewrite(prefixOld,prefixNew,name):
 	if prefixOld != prefixNew:
 		a = os.path.relpath(name, prefixOld)
 		name = os.path.join(prefixNew, a)
-	return os.path.normcase(os.path.normpath(name))
+	return os.path.normcase(os.path.normpath(os.path.expanduser(name)))
 	
 mydir = os.path.dirname(sys.argv[0])
 
-user = 'irrigation'
-prefix = os.path.join('/home', user)
+user = os.getlogin()
+group = grp.getgrgid(os.getgid()).gr_name
+prefix = os.path.expanduser('~')
 webdir = os.path.join(prefix, "public_html")
 
 installCmd = 'install --compare --group=$(GROUP) --owner=$(USER) --backup -D'
@@ -24,7 +26,7 @@ installCmd = 'install --compare --group=$(GROUP) --owner=$(USER) --backup -D'
 parser = argparse.ArgumentParser()
 parser.add_argument('--prefix', help='directory tree prefix', default=prefix)
 parser.add_argument('--user', help='user to set ownership to', default=user)
-parser.add_argument('--group', help='group name to set ownerhip to', default=user)
+parser.add_argument('--group', help='group name to set ownerhip to', default=group)
 parser.add_argument('--logdir', help='Where to store log files', 
 			default=os.path.join(prefix, "logs"))
 parser.add_argument('--bindir', help='Where to store log files', 
