@@ -85,7 +85,6 @@ UPDATE sensor SET longitude=(
 UPDATE sensor SET driver='TDI' WHERE driver IS NULL;
 UPDATE sensor SET installed=strftime('%s', '2012-10-01') WHERE installed IS NULL;
 
-UPDATE sensor SET activeCurrent=25 WHERE activeCurrent IS NULL;
 UPDATE sensor SET make='WeatherTrak' WHERE make IS NULL;
 UPDATE sensor SET model='WT2W-SVD-11' WHERE model IS NULL;
 
@@ -259,7 +258,7 @@ INSERT INTO pgmStn (pgm,stn,mode,runTime) VALUES (
 INSERT INTO pgmStn (pgm,stn,mode,runTime) VALUES (
  (SELECT id FROM program WHERE name='Selva rocio'), 
  (SELECT id FROM station WHERE station==73),
- (SELECT id FROM webList WHERE grp=='pgm' AND key=='off'),
+ (SELECT id FROM webList WHERE grp=='pgm' AND key=='on'),
  2*60
 );
 
