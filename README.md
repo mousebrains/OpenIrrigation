@@ -37,6 +37,7 @@ Enterprise class irrigation control software with a well defined hardware interf
 
   * The non-standard Python modules installed are:
  1. sqlite3
+ 1. Astral
 
   * It is tested on the following system:
  1. A Raspberry Pi 3 running Raspbian Jessie Lite and a MacOS 10.12 system,
