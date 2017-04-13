@@ -3,6 +3,12 @@
 import sqlite3
 import threading
 
+def dict_factory(cursor, row):
+  d = {}
+  for idx, col in enumerate(cursor.description):
+    d[col[0]] = row[idx]
+  return d
+
 class DB(sqlite3.Connection):
     # overlay on top of sqlite for handling thread locking
     def __init__(self, fn):
@@ -29,3 +35,9 @@ class DB(sqlite3.Connection):
         rows = self.__curr.fetchall()
         self.__lock.release()
         return rows
+
+    def mkCursor(self, qDict=False):
+      a = self.cursor()
+      if qDict:
+        a.row_factory = dict_factory
+      return a
