@@ -243,24 +243,17 @@ UPDATE program SET stopMode=(SELECT id FROM webList WHERE grp=='evCel' AND key='
 -- SELECT * FROM pgmDOW;
 
 -- program stations association
-INSERT INTO pgmStn (pgm,stn,mode,runTime) VALUES (
- (SELECT id FROM program WHERE name='Selva plantas'), 
- (SELECT id FROM station WHERE station==71),
- (SELECT id FROM webList WHERE grp=='pgm' AND key=='on'),
- 4*60
-);
-INSERT INTO pgmStn (pgm,stn,mode,runTime) VALUES (
- (SELECT id FROM program WHERE name='Selva goteo'), 
- (SELECT id FROM station WHERE station==72),
- (SELECT id FROM webList WHERE grp=='pgm' AND key=='on'),
- 150*60
-);
-INSERT INTO pgmStn (pgm,stn,mode,runTime) VALUES (
- (SELECT id FROM program WHERE name='Selva rocio'), 
- (SELECT id FROM station WHERE station==73),
- (SELECT id FROM webList WHERE grp=='pgm' AND key=='on'),
- 2*60
-);
+INSERT INTO pgmStn (pgm,stn,runTime) VALUES
+  ((SELECT id FROM program WHERE name='Selva plantas'), 
+   (SELECT id FROM station WHERE station==71), 4*60),
+  ((SELECT id FROM program WHERE name='Selva goteo'), 
+   (SELECT id FROM station WHERE station==72), 150*60),
+  ((SELECT id FROM program WHERE name='Selva rocio'), 
+   (SELECT id FROM station WHERE station==73), 2*60),
+  ((SELECT id FROM program WHERE name='Selva rocio'), 
+   (SELECT id FROM station WHERE station==71), 20*60);
+
+UPDATE pgmStn SET mode=(SELECT id FROM webList WHERE grp=='pgm' AND key=='on') WHERE mode IS NULL;
 
 -- SELECT * FROM programStation;
 

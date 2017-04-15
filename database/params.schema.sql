@@ -165,7 +165,7 @@ CREATE TABLE controller(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                         driver TEXT, -- device driver
                         maxStations INTEGER DEFAULT 1, -- max # of stations on at a time
                         maxCurrent INTEGER DEFAULT 9990, -- max mAmps
-                        delay INTEGER DEFAULT 1, -- delay between truning on stations in s
+                        delay INTEGER DEFAULT 1, -- delay between station actions seconds
                         make TEXT, -- manufacturer
                         model TEXT, -- model
                         installed INTEGER, -- date installed in UTC
@@ -182,7 +182,7 @@ INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
 	(4, 'controller','driver','Driver', 'text'),
 	(5, 'controller','maxStations','Max # Stations', 'nStations'),
 	(6, 'controller','maxCurrent','Max Current (mA)', 'mamps'),
-	(7, 'controller','delay','Delay between stations (sec)', 'sec'),
+	(7, 'controller','delay','Delay between station actions (sec)', 'sec'),
 	(8, 'controller','make','Make', 'text'),
 	(9, 'controller','model','Model', 'text'),
 	(10, 'controller','installed','Installed', 'date'),
@@ -250,8 +250,8 @@ INSERT INTO webView(sortOrder,key,field,label,itype,qRequired,sql) VALUES
 INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
 	(2, 'poc','targetFlow','Target Flow (GPM)', 'flow'),
 	(3, 'poc','maxFlow','Max Flow (GPM)', 'flow'),
-	(4, 'poc','delayOn','Delay On (sec)', 'sec'),
-	(5, 'poc','delayOff','Delay Off (sec)', 'sec');
+	(4, 'poc','delayOn','Delay after On (sec)', 'sec'),
+	(5, 'poc','delayOff','Delay after Off (sec)', 'sec');
 
 -- Point of connect flow
 DROP TABLE IF EXISTS pocFlow;
@@ -328,8 +328,8 @@ INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
 	(5, 'pocPump','model','Model', 'text'),
 	(6, 'pocPump','minFlow','Min Flow (GPM)', 'flow'),
 	(7, 'pocPump','maxFlow','Max Flow (GPM)', 'flow'),
-	(8, 'pocPump','delayOn','Delay On (sec)', 'sec'),
-	(9, 'pocPump','delayOff','Delay Off (sec)', 'sec');
+	(8, 'pocPump','delayOn','Delay before needed (sec)', 'sec'),
+	(9, 'pocPump','delayOff','Delay after needed (sec)', 'sec');
                   
 
 -- Station 
@@ -350,8 +350,8 @@ CREATE TABLE station(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
 		     userFlow FLOAT, -- user input in GPM
                      lowFlowFrac FLOAT DEFAULT 0, -- frac of meas/user flow for alert
                      highFlowFrac FLOAT DEFAULT 3, -- frac of meas/user flow for alert
-                     delayOn INTEGER DEFAULT 60, -- delay after on before flow alerts
-                     delayOff INTEGER DEFAULT 60, -- delay after off before flow alerts
+                     flowDelayOn INTEGER DEFAULT 60, -- delay after on before flow alerts
+                     flowDelayOff INTEGER DEFAULT 60, -- delay after off before flow alerts
 		     UNIQUE (poc, name),
 		     UNIQUE (poc, station)
 		    );
@@ -375,8 +375,8 @@ INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
 	(10, 'station','highFlowFrac','High flow alert fraction', 'Kflow'),
 	(11, 'station','maxCoStations','Max other stations', 'nStations'),
 	(12, 'station','minCycleTime','Min Cycle (min)', 'minute'),
-	(13, 'station','delayOn','Delay On (sec)', 'sec'),
-	(14, 'station','delayOff','Delay Off (sec)', 'sec'),
+	(13, 'station','flowDelayOn','Flow alert delay On (sec)', 'sec'),
+	(14, 'station','flowDelayOff','Flow alert delay Off (sec)', 'sec'),
 	(15, 'station','make','Make', 'text'),
 	(16, 'station','model','Model', 'text');
 
