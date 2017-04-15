@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#! /usr/bin/env python3
 #
 # This script is designed to run as a service and talk to the 
 # TDI irrigation controller via a serial port. 

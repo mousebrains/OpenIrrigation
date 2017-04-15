@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+#! /usr/bin/env python3
 #
 # This script is designed to run as a service and 
 # schedule valves for programs going forwards

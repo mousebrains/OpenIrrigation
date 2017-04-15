@@ -1,4 +1,4 @@
-#! /usr/bin/python3 -b
+# Talk to a Tucor TDI 2-wire controller
 
 import threading
 import queue

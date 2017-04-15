@@ -1,4 +1,4 @@
-#! /usr/bin/python3
+# Access an SQLite3 database with thread locking
 
 import sqlite3
 import threading
