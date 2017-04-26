@@ -11,5 +11,5 @@ install clean: Makefile.params
 	$(MAKE) -C public_html $@
 	$(MAKE) -C service $@
 
-start stop restart status reload: Makefile.params
+enable disable start stop restart status reload: Makefile.params
 	$(MAKE) -C service $@
