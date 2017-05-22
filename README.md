@@ -32,7 +32,7 @@ Enterprise class irrigation control software with a well defined hardware interf
  1. NGINX or Apache software supporting PHP 7.x and CGI scripts,
  2. Python 3.x,
  3. SQLite 3.x,
- 4. PHP 7.x, and
+ 4. PHP 7.x, and php-fpm
  5. Some form of service/crontab process managment.
 
   * The non-standard Python modules installed are:
