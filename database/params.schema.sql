@@ -205,6 +205,7 @@ CREATE TABLE sensor(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                     devType INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- dev type
                     driver TEXT, -- device driver
                     addr INTEGER, -- device address in controller space
+                    wirePath INTEGER, -- which wirepath this device is on
                     make TEXT, -- manufacturer
                     model TEXT, -- model
                     installed INTEGER, -- date installed in UTC
@@ -227,10 +228,11 @@ INSERT INTO webView(sortOrder,key,field,label,itype,sql) VALUES
 INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
 	(8, 'sensor','driver','Driver', 'text'),
 	(9, 'sensor','addr','Address', 'nStations'),
-	(10, 'sensor','make','Make', 'text'),
-	(11, 'sensor','model','Model', 'text'),
-	(12, 'sensor','installed','Installed', 'date'),
-	(13,'sensor','notes','Notes','textarea');
+	(10, 'sensor','wirePath','Wire Path', 'nStations'),
+	(11, 'sensor','make','Make', 'text'),
+	(12, 'sensor','model','Model', 'text'),
+	(13, 'sensor','installed','Installed', 'date'),
+	(14,'sensor','notes','Notes','textarea');
 
 -- Point of connect
 DROP TABLE IF EXISTS poc;
@@ -345,7 +347,7 @@ CREATE TABLE station(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      minCycleTime INTEGER DEFAULT 60, -- minimum cycle time in sec
                      maxCycleTime INTEGER, -- maximum cycle time in sec
                      soakTime INTEGER, -- minimum soak time in sec
-                     maxCoStations INTEGER, -- maximum number of other stations at same time
+                     maxCoStations INTEGER DEFAULT 200, -- max number of stations at same time
 		     measuredFlow FLOAT, -- measured flow in GPM
 		     userFlow FLOAT, -- user input in GPM
                      lowFlowFrac FLOAT DEFAULT 0, -- frac of meas/user flow for alert

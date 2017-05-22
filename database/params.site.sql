@@ -85,6 +85,9 @@ UPDATE sensor SET longitude=(
 UPDATE sensor SET driver='TDI' WHERE driver IS NULL;
 UPDATE sensor SET installed=strftime('%s', '2012-10-01') WHERE installed IS NULL;
 
+UPDATE sensor SET wirePath=0 WHERE addr is NULL AND (addr < 70); -- Two wire path
+UPDATE sensor SET wirePath=1 WHERE addr is NULL AND (addr >= 70); -- Two wire path
+
 UPDATE sensor SET make='WeatherTrak' WHERE make IS NULL;
 UPDATE sensor SET model='WT2W-SVD-11' WHERE model IS NULL;
 
@@ -214,6 +217,8 @@ INSERT INTO program (site,name,priority,action,startTime,endTime) VALUES(
  	strftime('%s', '22:00:00')-strftime('%s','00:00:00')
 	);
 
+UPDATE program SET maxStations=100 where maxStations is 1;
+
 INSERT INTO pgmDOW VALUES(
 	(SELECT id FROM program WHERE name=='Selva plantas'),
 	(SELECT id FROM webList WHERE grp=='dow' AND key=='wed'));
@@ -244,14 +249,10 @@ UPDATE program SET stopMode=(SELECT id FROM webList WHERE grp=='evCel' AND key='
 
 -- program stations association
 INSERT INTO pgmStn (pgm,stn,runTime) VALUES
-  ((SELECT id FROM program WHERE name='Selva plantas'), 
-   (SELECT id FROM station WHERE station==71), 4*60),
-  ((SELECT id FROM program WHERE name='Selva goteo'), 
-   (SELECT id FROM station WHERE station==72), 150*60),
-  ((SELECT id FROM program WHERE name='Selva rocio'), 
-   (SELECT id FROM station WHERE station==73), 2*60),
-  ((SELECT id FROM program WHERE name='Selva rocio'), 
-   (SELECT id FROM station WHERE station==71), 20*60);
+   ((SELECT id FROM program WHERE name='Selva plantas'), (SELECT id FROM station WHERE station==71), 4*60)
+  ,((SELECT id FROM program WHERE name='Selva goteo'),   (SELECT id FROM station WHERE station==72), 150*60)
+  ,((SELECT id FROM program WHERE name='Selva rocio'),   (SELECT id FROM station WHERE station==73), 2*60)
+  ;
 
 UPDATE pgmStn SET mode=(SELECT id FROM webList WHERE grp=='pgm' AND key=='on') WHERE mode IS NULL;
 

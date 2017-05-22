@@ -19,6 +19,9 @@ class DictTable(dict):
       delim = ', '
     return msg
 
+  def __eq__(lhs, rhs):
+      return lhs.key() == rhs.key();
+
   def mkTimedelta(self, fields):
     for field in fields:
       self[field] = datetime.timedelta(seconds=self[field])
@@ -88,12 +91,18 @@ class Site(DictTable):
     DictTable.__init__(self, row, logger)
     self.__astral = None
 
+
+  def __eq__(lhs, rhs):
+    return lhs['name'] == rhs['name']
+
   def astral(self, date): 
     if self.__astral is None: 
       # Elevation is in feet, so convert to meters
       self.__astral = astral.Location((self['name'], 'region', self['latitude'], self['longitude'], 
                                        self['timezone'], self['elevation'] * 0.3048)) 
     return self.__astral.sun(date)
+
+  def key(self): return self['id']
 
 class Sites(DictTables):
   def __init__(self, db, logger):
@@ -102,6 +111,15 @@ class Sites(DictTables):
 class Controller(DictTable):
   def __init__(self, row, logger):
     DictTable.__init__(self, row, logger)
+    self.mkTimedelta(['delay'])
+
+  def __eq__(lhs, rhs):
+    return (lhs['name'] == rhs['name']) and (lhs['site'] == rhs['site'])
+
+  def key(self): return self['id']
+  def delay(self): return self['delay']
+  def maxStations(self): return self['maxStations']
+  def maxCurrent(self): return self['maxCurrent']
 
 class Controllers(DictTables):
   def __init__(self, db, logger, sites):
@@ -113,6 +131,11 @@ class POC(DictTable):
     DictTable.__init__(self, row, logger)
     self.mkTimedelta(['delayOn', 'delayOff'])
 
+  def key(self): return self['id']
+  def delayOn(self): return self['delayOn']
+  def delayOff(self): return self['delayOff']
+  def maxFlow(self): return self['maxFlow']
+
 class POCs(DictTables):
   def __init__(self, db, logger, sites):
     DictTables.__init__(self, 'POC', db, logger, 'SELECT * FROM poc;', POC)
@@ -122,11 +145,12 @@ class Sensor(DictTable):
   def __init__(self, row, logger):
     DictTable.__init__(self, row, logger)
 
-  def activeCurrent(self):
-    return self['activeCurrent']
-
-  def passiveCurrent(self):
-    return self['passiveCurrent']
+  def key(self): return self['id']
+  def controller(self): return self['controller']
+  def delayOn(self): return self.controller().delay()
+  def delayOff(self): return self.controller().delay()
+  def activeCurrent(self): return self['activeCurrent']
+  def passiveCurrent(self): return self['passiveCurrent']
 
 class Sensors(DictTables):
   def __init__(self, db, logger, controllers, lists):
@@ -137,26 +161,33 @@ class Sensors(DictTables):
 class Station(DictTable):
   def __init__(self, row, logger):
     DictTable.__init__(self, row, logger)
-    self.mkTimedelta(['minCycleTime', 'maxCycleTime', 'soakTime', 'delayOn', 'delayOff'])
+    self.mkTimedelta(['minCycleTime', 'maxCycleTime', 'soakTime', 'flowDelayOn', 'flowDelayOff'])
 
-  def coStations(self): return self['maxCoStations']
+  def key(self): return self['id']
+  def name(self): return self['name']
+  def sensor(self): return self['sensor']
+  def poc(self): return self['poc']
+  def controller(self):  return self.sensor().controller()
+  def maxCoStations(self): return self['maxCoStations'] 
   def minCycleTime(self): return self['minCycleTime']
   def maxCycleTime(self): return self['maxCycleTime']
   def soakTime(self): return self['soakTime']
   def minSoakTime(self): 
-    poc = self['poc']
-    return max(self['soakTime'], 
-               self['delayOn'] + self['delayOff'],
-               poc['delayOn'] + poc['delayOff'])
+    poc = self.poc()
+    sensor = self.sensor()
+    return max(self.soakTime(), sensor.delayOn()+sensor.delayOff(), poc.delayOn()+poc.delayOff())
 
   def flow(self):
     return self['userFlow'] if self['userFlow'] is not None else self['measuredFlow']
 
-  def activeCurrent(self):
-    return self['sensor'].activeCurrent()
+  def flowDelayOn(self): return self['flowDelayOn']
+  def flowDelayOff(self): return self['flowDelayOff']
 
-  def passiveCurrent(self):
-    return self['sensor'].passiveCurrent()
+  def delayOn(self): return self.sensor().delayOn()
+  def delayOff(self): return self.sensor().delayOff()
+
+  def activeCurrent(self): return self.sensor().activeCurrent()
+  def passiveCurrent(self): return self.sensor().passiveCurrent()
 
 class Stations(DictTables):
   def __init__(self, db, logger, sensors, pocs):
@@ -170,19 +201,28 @@ class PgmStation(DictTable):
     self.mkTimedelta(['runTime'])
     self['totalTime'] = datetime.timedelta()
 
-  def name(self): return self['stn']['name']
-  def minCycleTime(self): return self['stn'].minCycleTime()
-  def maxCycleTime(self): return self['stn'].maxCycleTime()
-  def soakTime(self): return self['stn'].soakTime()
-  def minSoakTime(self): return self['stn'].minSoakTime()
+  def key(self): return self['id']
+  def label(self): return self.station().name() + "/" + self.program().name()
+  def station(self): return self['stn']
+  def program(self): return self['pgm']
+  def controller(self): return self.station().controller()
+  def poc(self): return self.station().poc()
+  def name(self): return self.station().name()
+  def minCycleTime(self): return self.station().minCycleTime()
+  def maxCycleTime(self): return self.station().maxCycleTime()
+  def soakTime(self): return self.station().soakTime()
+  def minSoakTime(self): return self.station().minSoakTime()
+  def maxCoStations(self): return self.station().maxCoStations()
+  def delayOn(self): return self.station().delayOn()
+  def delayOff(self): return self.station().delayOff()
   def runTime(self): return self['runTime']
   def timeLeft(self): return max(datetime.timedelta(), self.runTime() - self['totalTime'])
-  def sDate(self): return self['pgm'].sDate()
-  def aDate(self): return self['pgm'].aDate()
-  def eDate(self): return self['pgm'].eDate()
-  def flow(self): return self['stn'].flow()
-  def activeCurrent(self): return self['stn'].activeCurrent()
-  def passiveCurrent(self): return self['stn'].passiveCurrent()
+  def sDate(self): return self.program().sDate()
+  def aDate(self): return self.program().aDate()
+  def eDate(self): return self.program().eDate()
+  def flow(self): return self.station().flow()
+  def activeCurrent(self): return self.station().activeCurrent()
+  def passiveCurrent(self): return self.station().passiveCurrent()
 
   def __iadd__(self, dt):
     self['totalTime'] += dt
@@ -213,9 +253,13 @@ class Program(DictTable):
     DictTable.__init__(self, row, logger)
     self.stations = []
 
+  def key(self): return self['id']
+  def name(self): return self['name']
   def sDate(self): return self['sDate']
   def aDate(self): return self['aDate']
   def eDate(self): return self['eDate']
+  def maxStations(self): return self['maxStations']
+  def maxFlow(self): return self['maxFlow']
 
   def qActive(self, date, dow):
     return self.qActiveDay(date, dow) and self.qActiveTime(date)
@@ -287,7 +331,7 @@ class Program(DictTable):
 
   def schedule(self, date, events):
     for stn in self.stations:
-      events.schedule(stn)
+        events.schedule(stn, date)
    
 class Programs(ListTables):
   def __init__(self, db, logger):
