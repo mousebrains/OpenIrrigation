@@ -2,3 +2,4 @@ Makefile.params
 logs
 *~
 .*.swp
+.DS_Store
