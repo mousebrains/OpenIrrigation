@@ -5,7 +5,7 @@
 
 include ../../Makefile.params
 
-SRC = status.js
+SRC = status.js running.js
 DEST = $(SRC:%=$(JSDIR)/%)
 
 .PHONY: install clean

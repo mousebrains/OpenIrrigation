@@ -8,9 +8,15 @@ while ($row = $results->fetchArray()) {
 	echo "sensorMap['" . $row['addr'] . "']={name:'" . $row['name']
 		. "', offset:" . $row['offset'] . ", K:" . $row['K'] . "};\n";
 }
-echo "</script>
-<div id='topnav'>
- <div id='statusBlock'>Status info</div>
+
+echo "</script>\n<div id='topnav'>\n";
+
+$qSim = $parDB->querySingle('SELECT qSimulate FROM simulate LIMIT 1;');
+if ($qSim) {
+  echo "  <div><h1>Simulating</h1></div>\n";
+}
+
+echo "  <div id='statusBlock'>Status info</div>
  <ul>
   <li id='topdropdown'>
     <a href='javascript:void(0)' id='topdropbtn'>&#9776;</a>

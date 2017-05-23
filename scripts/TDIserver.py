@@ -43,11 +43,17 @@ logger.addHandler(ch)
 params = Params.Params(args.params, args.group)
 logger.info(params)
 
+db = DB.DB(args.params)
 if args.simul:
+  db.execute('INSERT INTO simulate VALUES(1);');
   s0 = TDISimulate.Simulate(logger)
   s0.start()
 else:
+  db.execute('INSERT INTO simulate VALUES(0);');
   s0 = serial.Serial(port=params['port'], baudrate=params['baudrate']);
+
+db.commit()
+db = None # Force closing
 
 with DB.DB(args.cmds) as db:
     thrReader = TDI.Reader(s0, logger)

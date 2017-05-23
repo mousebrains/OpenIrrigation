@@ -20,7 +20,7 @@ if (!empty($_POST)) {
 	$stmt = $cmdDB->prepare('INSERT INTO commands (addr,cmd,timestamp,src) '
 			. ' VALUES(:stn,:cmd,:ts,:src);');
 	$stmt->bindValue(':stn', $_POST['id']);
-	$stmt->bindValue(':cmd', 0);
+	$stmt->bindValue(':cmd', array_key_exists('Run', $_POST) ? 0 : 1);
 	$stmt->bindValue(':ts', $stime);
 	$stmt->bindValue(':src', -1);
 	$stmt->execute();
@@ -34,13 +34,23 @@ if (!empty($_POST)) {
 }
 
 function mkRow(array $row) {
-	echo "<tr>\n<th>" . $row['name'] . "</th>\n";
+	$addr = $row['addr'];
+	echo "<tr>\n<th id='n$addr'>" . $row['name'] . "</th>\n";
 	echo "<td>\n";
+        echo "<span id='a$addr' style='display:inline;'>\n";
 	echo "<form method='post'>\n";
-        echo "<input type='hidden' name='id' value='" . $row['addr'] . "'>\n";
-	echo "<input type='number' name='time' min='0' max='300'>\n";
-	echo "<input type='submit' value='Run'>\n";
+        echo "<input type='hidden' name='id' value='$addr'>\n";
+	echo "<input type='number' name='time' min='0' max='300' step='0.1'>\n";
+	echo "<input type='submit' name='Run' value='Run'>\n";
 	echo "</form>\n";
+        echo "</span>\n";
+        echo "<span id='b$addr' style='display:none;'>\n";
+        echo "<span id='bc$addr'></span>\n";
+	echo "<form method='post' style='display:inline;'>\n";
+        echo "<input type='hidden' name='id' value='$addr'>\n";
+	echo "<input type='submit' name='Stop' value='Stop'>\n";
+	echo "</form>\n";
+        echo "</span>\n";
 	echo "</td>\n";
 	echo "</tr>\n";
 }
@@ -49,9 +59,12 @@ $hdr = "<tr><th>Station</th><th>Minutes</th></tr>";
 echo "<center>\n<table>\n";
 echo "<thead>$hdr</thead>\n";
 
+
 $results = $parDB->query("SELECT sensor.addr,pocMV.name FROM pocMV "
 		. "INNER JOIN sensor ON pocMV.sensor==sensor.id ORDER BY pocMV.name;");
-while ($row = $results->fetchArray()) { mkRow($row); }
+while ($row = $results->fetchArray()) { 
+  mkRow($row); 
+}
 
 
 $results = $parDB->query("SELECT sensor.addr,station.name FROM station "
@@ -61,5 +74,6 @@ while ($row = $results->fetchArray()) { mkRow($row); }
 echo "<tfoot>$hdr</tfoot>\n";
 echo "</table>\n</center>\n";
 ?>
+<script src='js/running.js'></script>
 </body>
 </html> 

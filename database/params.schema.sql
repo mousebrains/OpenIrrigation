@@ -13,6 +13,19 @@
 -- PRAGMA synchronous = FULL;
 -- PRAGMA foreign_keys = ON;
 
+-- Are we running in simulation or live mode?
+DROP TABLE IF EXISTS simulate;
+CREATE TABLE simulate(qSimulate);
+
+-- Retain only newest row
+DROP TRIGGER IF EXISTS simulateInsert;
+CREATE TRIGGER simulateInsert
+	AFTER INSERT ON simulate -- For every insertion
+        FOR EACH ROW 
+        BEGIN
+        DELETE FROM simulate WHERE simulate.rowid != NEW.rowid;
+        END;
+
 -- To trigger the scheduler to run, add an entry to this table
 DROP TABLE IF EXISTS scheduler;
 CREATE TABLE scheduler(date INTEGER PRIMARY KEY NOT NULL -- When the scheduler so run at
