@@ -18,7 +18,7 @@ require_once 'php/ParDB.php';
 function fmtTime($t) {
   if ($t < 0) {return '';}
   $t = round($t);
-  return sprintf('%d:%02d:%02d', floor($t / 3600), floor(($t % 3600) / 60), $t % 60);
+  return sprintf('%d:%02d', floor($t / 3600), ceil(($t % 3600) / 60));
 }
 
 $now = time();
