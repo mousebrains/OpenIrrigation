@@ -35,7 +35,10 @@ if (typeof(EventSource) != "undefined") {
 					if (pendingData.has(k)) { pendingData.delete(k); }
 					if (pastData.has(k)) { pastData.delete(k); }
 				}
-				$("#bc" + k).html((c[k]/60).toFixed(1));
+                                let m = Math.ceil((c[k] % 3600) / 60);
+				$("#bc" + k).html(Math.floor(c[k] / 3600).toString() +
+                                                  (m > 10 ? ":" : ":0") +
+                                                  m.toString());
 			}
 		}
 
