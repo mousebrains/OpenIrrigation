@@ -77,7 +77,7 @@ class PgmDOW(dict):
     dict.__init__(self)
     cur = db.mkCursor(True)
     for row in cur.execute('SELECT * FROM pgmDOW;'): 
-      pgm = row['pgm']
+      pgm = row['program']
       if pgm not in self: 
         self[pgm] = set()
       self[pgm].add(lists.dow[row['dow']])
@@ -146,6 +146,7 @@ class Sensor(DictTable):
     DictTable.__init__(self, row, logger)
 
   def key(self): return self['id']
+  def addr(self): return self['addr']
   def controller(self): return self['controller']
   def delayOn(self): return self.controller().delay()
   def delayOff(self): return self.controller().delay()
@@ -202,9 +203,12 @@ class PgmStation(DictTable):
     self['totalTime'] = datetime.timedelta()
 
   def key(self): return self['id']
-  def label(self): return self.station().name() + "/" + self.program().name()
-  def station(self): return self['stn']
-  def program(self): return self['pgm']
+  def label(self): 
+    return ('None' if self.station() is None else self.station().name()) \
+	+ "/" + self.program().name()
+  def station(self): return self['station']
+  def program(self): return self['program']
+  def qSingle(self): return self['qSingle']
   def controller(self): return self.station().controller()
   def poc(self): return self.station().poc()
   def name(self): return self.station().name()
@@ -216,7 +220,6 @@ class PgmStation(DictTable):
   def delayOn(self): return self.station().delayOn()
   def delayOff(self): return self.station().delayOff()
   def runTime(self): return self['runTime']
-  def timeLeft(self): return max(datetime.timedelta(), self.runTime() - self['totalTime'])
   def sDate(self): return self.program().sDate()
   def aDate(self): return self.program().aDate()
   def eDate(self): return self.program().eDate()
@@ -224,9 +227,37 @@ class PgmStation(DictTable):
   def activeCurrent(self): return self.station().activeCurrent()
   def passiveCurrent(self): return self.station().passiveCurrent()
 
+  def timeLeft(self): return max(datetime.timedelta(), self['runTime'] - self['totalTime'])
+
   def __iadd__(self, dt):
     self['totalTime'] += dt
     return self
+
+  def resetRunTimes(self):
+    if not self.qSingle():
+      self['totalTime'] = datetime.timedelta()
+
+  def adjustRunTimes(self, date, events):
+    pgm = self.program()
+    pgm.qActiveTime(date) # Make sDate and eDate
+    sDate = pgm.sDate()
+    eDate = pgm.eDate()
+    stnId = self.key()
+    self['totalTime'] = datetime.timedelta()
+    tOn = None
+    for e in events:
+      if e.stn.key() == stnId: # relavant to myself
+        if e.qOn: # Turning on a station
+          if e.time > eDate: break # No need to go further
+          tOn = None if e.time < sDate else e.time
+        else: # Turning off a station
+          if e.time < sDate: # Too early
+            tOn = None
+          elif e.time <= eDate: # Within interval
+            self['totalTime'] += e.time - tOn
+          else: # Past interval
+            self['totalTime'] += eDate - tOn
+            break
 
 class PgmStations(ListTables):
   def __init__(self, db, logger, lists, programs, stns):
@@ -237,15 +268,15 @@ class PgmStations(ListTables):
                         'ORDER BY priority;', 
                         PgmStation)
     self.fixup('mode', lists)
-    self.fixup('stn', stns)
+    self.fixup('station', stns)
+
     keyIndices = {}
-    for index in range(len(programs)):
-      keyIndices[programs[index]['id']] = index
+    for index in range(len(programs)): keyIndices[programs[index]['id']] = index
 
     for index in range(len(self)):
-      pgm = self[index]['pgm']
+      pgm = self[index]['program']
       jndex = keyIndices[pgm]
-      self[index]['pgm'] = programs[jndex]
+      self[index]['program'] = programs[jndex]
       programs[jndex].stations.append(self[index])
 
 class Program(DictTable):
@@ -307,7 +338,9 @@ class Program(DictTable):
     return eDate > date # End of interval is after date, so yes
 
   def mkTime(self, secs): # Change seconds into day to a datetime.time object
-    return datetime.time(math.floor(secs / 3600), math.floor((secs % 3600) / 60), secs % 60)
+    if secs < 86400:
+      return datetime.time(math.floor(secs / 3600), math.floor((secs % 3600) / 60), secs % 60)
+    return datetime.time(23,59,59,999999);
 
   def mkWallTimes(self, date, sTime, eTime):
     sDate = datetime.datetime.combine(date, sTime)
@@ -331,7 +364,15 @@ class Program(DictTable):
 
   def schedule(self, date, events):
     for stn in self.stations:
-        events.schedule(stn, date)
+      events.schedule(stn, date)
+
+  def resetRunTimes(self):
+    for stn in self.stations:
+      stn.resetRunTimes()
+
+  def adjustRunTimes(self, date, events): # Take into account past/active run times
+    for stn in self.stations:
+      stn.adjustRunTimes(date, events)
    
 class Programs(ListTables):
   def __init__(self, db, logger):
@@ -355,8 +396,20 @@ class Programs(ListTables):
 
   def schedule(self, date, events):
     dow = date.isoweekday() % 7 # Move Sunday from 7 to zero
-    self.logger.info('PGMs::sched date={} dow={} n={}'.format(date, dow, len(events)))
     for pgm in self:
       if pgm.qActive(date, dow):
         pgm.schedule(date, events)
 
+  def resetRunTimes(self):
+    for pgm in self:
+      pgm.resetRunTimes()
+
+  def adjustRunTimes(self, date, events): # Take into account past/active run times
+    for pgm in self:
+      pgm.adjustRunTimes(date, events)
+
+  def findPgmStation(self, addr, pgm):
+    for item in self.pgmStations:
+      if (addr == item.station().sensor().addr()) and (pgm == item.program().key()):
+        return item
+    return None

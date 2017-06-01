@@ -5,15 +5,17 @@
 
 include ../../Makefile.params
 
-PRE = CmdDB.php.pre ParDB.php.pre
+PRE = CmdDB.php.pre ParDB.php.pre ETDB.php.pre
 
 SRC = $(PRE:%.pre=%) 
 SRC+= statusBlock.php navBar.php
-SRC+= webPage.php
+SRC+= webPage.php BaseDB.php MyDB.php
 
 DEST = $(SRC:%=$(PHPDIR)/%)
 
-.PHONY: install clean
+.PHONY: all install clean
+
+all: $(SRC)
 
 install: $(SRC)
 	$(INSTALL) --mode=0644 --target-directory=$(PHPDIR) $(SRC)

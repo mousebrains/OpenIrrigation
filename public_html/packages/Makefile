@@ -7,7 +7,9 @@ include ../../Makefile.params
 
 SRC = Chart.min.js moment.min.js
 
-.PHONY: install clean
+.PHONY: all install clean
+
+all:
 
 install:
 	$(INSTALL) --mode=0444 --target-directory $(JSDIR) $(SRC)

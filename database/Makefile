@@ -11,7 +11,11 @@ DEST = $(SRC:%=$(DBDIR)/%)
 PARAMS = params.web.sql params.schema.sql params.init.sql
 PARAMS+= params.soil.sql params.crop.sql params.site.sql
 
-.PHONY: install clean
+ET = params.web.sql ET.schema.sql ET.codes.sql
+
+.PHONY: all extract install clean
+
+all: $(SRC)
 
 install: $(SRC)
 	$(INSTALL) --target-directory=$(DBDIR) $(SRC)
@@ -22,9 +26,13 @@ clean:
 
 commands.db: commands.schema.sql
 	sqlite3 $@ <$<
+	echo Extra Commands
+	./extractCmd.py $(DBDIR)/commands.db | sqlite3 $@
 
 params.db: $(PARAMS)
 	for i in $^; do echo $$i; sqlite3 $@ <$$i; done
+	echo Extra Params
+	./extractPar.py $(DBDIR)/commands.db | sqlite3 $@
 
-ET.db: ET.schema.sql ET.codes.sql
+ET.db: $(ET)
 	for i in $^; do echo $$i; sqlite3 $@ <$$i; done

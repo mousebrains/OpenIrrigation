@@ -438,6 +438,7 @@ CREATE TABLE program(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      name TEXT UNIQUE COLLATE NOCASE, -- descriptive name
                      onOff INTEGER REFERENCES webList(id) ON DELETE SET NULL,
                      priority INTEGER DEFAULT 0, -- sort order for windows within a program
+                     qHide INTEGER DEFAULT 0, -- should entry be displayed?
                      action INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- action 
                      nDays INTEGER, -- # of days between watering when n-days mode
                      refDate INTEGER, -- reference date for action
@@ -453,9 +454,9 @@ CREATE TABLE program(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
 
 --- program days of week
 DROP TABLE IF EXISTS pgmDOW;
-CREATE TABLE pgmDOW(pgm INTEGER REFERENCES program(id) ON DELETE CASCADE, -- which program
+CREATE TABLE pgmDOW(program INTEGER REFERENCES program(id) ON DELETE CASCADE, -- which program
                     dow INTEGER REFERENCES webList(id) ON DELETE CASCADE,
-                    PRIMARY KEY (pgm,dow) ON CONFLICT IGNORE
+                    PRIMARY KEY (program,dow) ON CONFLICT IGNORE
                    );
 
 INSERT INTO webFetch(key,sql,qTable,keyField) VALUES
@@ -470,7 +471,7 @@ INSERT INTO webView(sortOrder,key,field,label,itype,qRequired,sql) VALUES
 INSERT INTO webView(sortOrder,key,field,label,itype,sql,listTable,idField) VALUES
 	(5, 'program', 'dow', 'Days of week', 'list',
 	 "SELECT id,label FROM webList WHERE grp=='dow' ORDER BY sortOrder,label;", 
-         'pgmDOW', 'pgm');
+         'pgmDOW', 'program');
 INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
 	(6, 'program','nDays','# of days between watering', 'nStations'),
 	(7, 'program','refDate','Ref date for every n days', 'date'),
@@ -491,18 +492,19 @@ INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
 -- stations in each program
 DROP TABLE IF EXISTS pgmStn;
 CREATE TABLE pgmStn(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
-                    pgm REFERENCES program(id) ON DELETE CASCADE, -- program's id
-                    stn REFERENCES station(id) ON DELETE CASCADE, -- station's id
+                    program REFERENCES program(id) ON DELETE CASCADE, -- program's id
+                    station REFERENCES station(id) ON DELETE CASCADE, -- station's id
                     mode INTEGER REFERENCES webList(id) ON DELETE SET NULL,
                     runTime INTEGER DEFAULT 0, -- total runtime in sec
                     priority INTEGER DEFAULT 0, -- run priority
-                    UNIQUE (pgm, stn) -- one station/program pair
+                    qSingle INTEGER DEFAULT 0, -- Only run a single time
+                    UNIQUE (program, station) -- one station/program pair
                    );
 INSERT INTO webFetch(key,tbl, sql,qTable) VALUES
-	('pgmStn', 'pgmStn', 'SELECT * FROM pgmStn ORDER BY pgm,priority,stn;',1);
+	('pgmStn', 'pgmStn', 'SELECT * FROM pgmStn ORDER BY program,priority,station;',1);
 INSERT INTO webView(sortOrder,key,field,label,itype,qRequired,sql) VALUES
-	(0, 'pgmStn','pgm','Program', 'list', 1, 'SELECT id,name FROM program ORDER BY name;'),
-	(1, 'pgmStn','stn','Station', 'list', 1, 'SELECT id,name FROM station ORDER BY name;'),
+	(0, 'pgmStn','program','Program', 'list', 1, 'SELECT id,name FROM program ORDER BY name;'),
+	(1, 'pgmStn','station','Station', 'list', 1, 'SELECT id,name FROM station ORDER BY name;'),
 	(2, 'pgmStn','mode','Mode', 'list', 1, 
 		'SELECT id,label FROM webList WHERE grp="pgm" ORDER BY sortOrder,label;');
 INSERT INTO webView(sortOrder,key,field,label,itype) VALUES

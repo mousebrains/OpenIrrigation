@@ -8,7 +8,9 @@ include ../../Makefile.params
 SRC = irrigation.css
 DEST = $(SRC:%=$(CSSDIR)/%)
 
-.PHONY: install clean
+.PHONY: all install clean
+
+all:
 
 install: $(SRC)
 	$(INSTALL) --target-directory=$(CSSDIR) $(SRC)

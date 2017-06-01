@@ -5,12 +5,14 @@
 
 include ../Makefile.params
 
-LIB = DB.py Params.py TDI.py TDISimulate.py
-BIN = TDIserver.py AgriMet.py
+LIB = DB.py Params.py TDI.py TDISimulate.py Programs.py Events.py
+BIN = TDIserver.py AgriMet.py scheduler.py
 
 DEST = $(LIB:%=$(BINDIR)/%) $(BIN:%=$(BINDIR)/%)
 
-.PHONY: install clean
+.PHONY: all install clean
+
+all:
 
 install: 
 	$(INSTALL) --target-directory=$(BINDIR) --mode=0444 $(LIB)

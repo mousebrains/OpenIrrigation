@@ -15,39 +15,54 @@ require_once 'php/ParDB.php';
 require_once 'php/CmdDB.php';
 
 if (!empty($_POST)) {
-	$stime = time();
-	$etime = $stime + $_POST['time'] * 60;
-	$stmt = $cmdDB->prepare('INSERT INTO commands (addr,cmd,timestamp,src) '
-			. ' VALUES(:stn,:cmd,:ts,:src);');
-	$stmt->bindValue(':stn', $_POST['id']);
-	$stmt->bindValue(':cmd', array_key_exists('Run', $_POST) ? 0 : 1);
-	$stmt->bindValue(':ts', $stime);
-	$stmt->bindValue(':src', -1);
-	$stmt->execute();
-	$stmt->reset();
-	$stmt->bindValue(':stn', $_POST['id']);
-	$stmt->bindValue(':cmd', 1);
-	$stmt->bindValue(':ts', $etime);
-	$stmt->bindValue(':src', -1);
-	$stmt->execute();
-	$stmt->close();
+        if (array_key_exists('Run', $_POST)) { // Update pgmStn
+          $stmt = $parDB->prepare('INSERT OR REPLACE INTO pgmStn'
+		. ' (program,mode,station,runTime,qSingle)'
+		. ' SELECT (SELECT id FROM program WHERE name="Manual")'
+		. ',(SELECT id FROM webList WHERE grp="pgm" AND key="on")'
+		. ',:stn,:rt,1;');
+          $stmt->bindValue(':stn', $_POST['id'], SQLITE3_INTEGER);
+          $stmt->bindValue(':rt', $_POST['time']*60, SQLITE3_INTEGER);
+          $stmt->execute();
+          $stmt->close();
+          $parDB->exec('INSERT OR REPLACE INTO scheduler VALUES(strftime("%s", "NOW"));');
+        } else { // Stop an existing run
+          $stmt = $parDB->prepare('DELETE FROM pgmStn'
+		. ' WHERE program==(SELECT id FROM program WHERE name=="Manual")'
+		. ' AND station==:stn;');
+          $stmt->bindValue(':stn', $_POST['id'], SQLITE3_INTEGER);
+          $stmt->execute();
+          $stmt->close();
+          $pgmId = $parDB->querySingle('SELECT id FROM program WHERE name=="Manual";');
+          $stmt = $parDB->prepare('SELECT sensor.addr FROM sensor'
+		. ' INNER JOIN station ON station.sensor==sensor.id AND station.id==:stn;');
+          $stmt->bindValue(':stn', $_POST['id'], SQLITE3_INTEGER);
+          $addr = $stmt->execute()->fetchArray()['addr'];
+          $stmt->close();
+          $stmt = $cmdDB->prepare('UPDATE commands SET timestamp=:now WHERE addr==:addr AND program==:pgm;');
+          $stmt->bindValue(':now', time());
+          $stmt->bindValue(':addr', $addr, SQLITE3_INTEGER);
+          $stmt->bindValue(':pgm', $pgmId, SQLITE3_INTEGER);
+          $stmt->execute();
+          $stmt->close();
+        }
 }
 
 function mkRow(array $row) {
-	$addr = $row['addr'];
-	echo "<tr>\n<th id='n$addr'>" . $row['name'] . "</th>\n";
+	$id = $row['id'];
+	echo "<tr>\n<th id='n$id'>" . $row['name'] . "</th>\n";
 	echo "<td>\n";
-        echo "<span id='a$addr' style='display:inline;'>\n";
+        echo "<span id='a$id' style='display:inline;'>\n";
 	echo "<form method='post'>\n";
-        echo "<input type='hidden' name='id' value='$addr'>\n";
+        echo "<input type='hidden' name='id' value='$id'>\n";
 	echo "<input type='number' name='time' min='0' max='300' step='0.1'>\n";
 	echo "<input type='submit' name='Run' value='Run'>\n";
 	echo "</form>\n";
         echo "</span>\n";
-        echo "<span id='b$addr' style='display:none;'>\n";
-        echo "<span id='bc$addr'></span>\n";
+        echo "<span id='b$id' style='display:none;'>\n";
+        echo "<span id='bc$id'></span>\n";
 	echo "<form method='post' style='display:inline;'>\n";
-        echo "<input type='hidden' name='id' value='$addr'>\n";
+        echo "<input type='hidden' name='id' value='$id'>\n";
 	echo "<input type='submit' name='Stop' value='Stop'>\n";
 	echo "</form>\n";
         echo "</span>\n";
@@ -60,20 +75,12 @@ echo "<center>\n<table>\n";
 echo "<thead>$hdr</thead>\n";
 
 
-$results = $parDB->query("SELECT sensor.addr,pocMV.name FROM pocMV "
-		. "INNER JOIN sensor ON pocMV.sensor==sensor.id ORDER BY pocMV.name;");
-while ($row = $results->fetchArray()) { 
-  mkRow($row); 
-}
-
-
-$results = $parDB->query("SELECT sensor.addr,station.name FROM station "
-		. "INNER JOIN sensor ON station.sensor==sensor.id ORDER BY station.name");
+$results = $parDB->query("SELECT id,name FROM station ORDER BY station.name");
 while ($row = $results->fetchArray()) { mkRow($row); }
 
 echo "<tfoot>$hdr</tfoot>\n";
 echo "</table>\n</center>\n";
 ?>
-<script src='js/running.js'></script>
+<script src='js/index.js'></script>
 </body>
 </html> 

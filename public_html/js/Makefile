@@ -5,10 +5,12 @@
 
 include ../../Makefile.params
 
-SRC = status.js running.js
+SRC = status.js index.js smonitor.js
 DEST = $(SRC:%=$(JSDIR)/%)
 
-.PHONY: install clean
+.PHONY: all install clean
+
+all:
 
 install: 
 	$(INSTALL) --target-directory=$(JSDIR) $(SRC)

@@ -218,8 +218,14 @@ class InputBuilder
 	}
 
 	function unconvert($value) {
-		if (empty($value)) return $value;
 		$cnv = $this->converter;
+		if (empty($value)) {
+			if (($cnv == 'date') or ($cnv == 'datetime') or ($cnv == 'time')) {
+				return '';
+			}
+			return $value;
+			
+		}
 		$qNumeric = is_numeric($value);
 		if (is_numeric($value) && is_numeric($cnv)) return $value / $cnv;
 		if ($cnv == 'date') return strftime('%Y-%m-%d', $value);

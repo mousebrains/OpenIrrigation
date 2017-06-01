@@ -193,16 +193,23 @@ UPDATE station SET maxCycleTime=maxCycleTime*60; -- minutes to seconds
 
 -- SELECT * FROM station;
 
+-- Specialized programs
+INSERT INTO program (name,priority,startTime,endTime,qHide) VALUES
+	('Manual', -1, 60, 86400-60,1); -- all day
+INSERT INTO program (name,priority,startTime,endTime,qHide) VALUES
+	('Flow Check', 100000, 60, 86400-60,1); -- all day
+INSERT INTO program (name,priority,startTime,endTime,qHide) VALUES
+	('Electrical Check', 1000000, 60, 86400-60,1); -- all day
+
 -- programs
-INSERT INTO program (site,name,priority,action,startTime,endTime) VALUES(
-	(SELECT id FROM site WHERE name=='Casa'), 'Selva plantas', 1,
-	(SELECT id FROM webList WHERE grp=='evAct' AND key=='dow'),
+INSERT INTO program (name,priority,startTime,endTime) VALUES
+	('Selva plantas', 1,
  	strftime('%s', '20:00:00')-strftime('%s','00:00:00'),
  	strftime('%s', '22:00:00')-strftime('%s','00:00:00')
 	);
 
-INSERT INTO program (site,name,priority,action,nDays,refDate,startTime,endTime) VALUES(
-	(SELECT id FROM site WHERE name=='Casa'), 'Selva goteo', 3,
+INSERT INTO program (name,priority,action,nDays,refDate,startTime,endTime) VALUES
+	('Selva goteo', 3,
 	(SELECT id FROM webList WHERE grp=='evAct' AND key=='nDays'), 
 	21,
  	strftime('%s', '2017-04-05 12:00'),
@@ -210,45 +217,35 @@ INSERT INTO program (site,name,priority,action,nDays,refDate,startTime,endTime) 
  	strftime('%s', '22:00:00')-strftime('%s','00:00:00')
 	);
 
-INSERT INTO program (site,name,priority,action,startTime,endTime) VALUES(
-	(SELECT id FROM site WHERE name=='Casa'), 'Selva rocio', 0,
-	(SELECT id FROM webList WHERE grp=='evAct' AND key=='dow'),
+INSERT INTO program (name,priority,startTime,endTime) VALUES
+	('Selva rocio', 0,
  	strftime('%s', '20:00:00')-strftime('%s','00:00:00'),
  	strftime('%s', '22:00:00')-strftime('%s','00:00:00')
 	);
 
 UPDATE program SET maxStations=100 where maxStations is 1;
-
-INSERT INTO pgmDOW VALUES(
-	(SELECT id FROM program WHERE name=='Selva plantas'),
-	(SELECT id FROM webList WHERE grp=='dow' AND key=='wed'));
-
-INSERT INTO pgmDOW VALUES
-	((SELECT id FROM program WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='sun')),
-	((SELECT id FROM program WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='mon')),
-	((SELECT id FROM program WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='tue')),
-	((SELECT id FROM program WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='wed')),
-	((SELECT id FROM program WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='thur')),
-	((SELECT id FROM program WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='fri')),
-	((SELECT id FROM program WHERE name=='Selva rocio'),
-	 (SELECT id FROM webList WHERE grp=='dow' AND key=='sat'));
-
 UPDATE program SET site=(SELECT id FROM site WHERE name=='Casa');
 UPDATE program SET onOff=(SELECT id FROM webList WHERE grp=='onOff' AND key='on');
 UPDATE program SET startMode=(SELECT id FROM webList WHERE grp=='evCel' AND key='clock');
 UPDATE program SET stopMode=(SELECT id FROM webList WHERE grp=='evCel' AND key='clock');
+UPDATE program SET action=(SELECT id FROM webList WHERE grp=='evAct' AND key=='dow') WHERE action IS NULL;
+
+
+INSERT INTO pgmDOW -- All days of the week
+	SELECT program.id,weblist.id FROM program INNER JOIN webList ON program.name=='Manual' AND grp=='dow';
+
+INSERT INTO pgmDOW -- All days of the week
+	SELECT program.id,weblist.id FROM program INNER JOIN webList ON program.name=='Selva rocio' AND grp=='dow';
+
+INSERT INTO pgmDOW  -- Only Wednesday
+	SELECT program.id,weblist.id FROM program INNER JOIN webList ON program.name=='Manual' AND grp=='dow' AND key=='wed';
 
 -- SELECT * FROM program;
 -- SELECT * FROM pgmDOW;
 
 -- program stations association
-INSERT INTO pgmStn (pgm,stn,runTime) VALUES
+
+INSERT INTO pgmStn (program,station,runTime) VALUES
    ((SELECT id FROM program WHERE name='Selva plantas'), (SELECT id FROM station WHERE station==71), 4*60)
   ,((SELECT id FROM program WHERE name='Selva goteo'),   (SELECT id FROM station WHERE station==72), 150*60)
   ,((SELECT id FROM program WHERE name='Selva rocio'),   (SELECT id FROM station WHERE station==73), 2*60)

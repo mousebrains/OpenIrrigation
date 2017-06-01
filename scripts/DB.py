@@ -12,7 +12,9 @@ def dict_factory(cursor, row):
 class DB(sqlite3.Connection):
     # overlay on top of sqlite for handling thread locking
     def __init__(self, fn):
-        sqlite3.Connection.__init__(self, fn, check_same_thread=False, isolation_level=None)
+        sqlite3.Connection.__init__(self, fn, \
+		detect_types=sqlite3.PARSE_DECLTYPES, \
+		check_same_thread=False, isolation_level=None)
         self.__curr = self.cursor()
         self.__lock = threading.Lock()
 

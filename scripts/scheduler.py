@@ -8,6 +8,7 @@
 # given a lot of constraints
 #
 #
+import sys
 import DB
 import Params
 import logging
@@ -16,13 +17,11 @@ import queue
 import time
 import datetime
 import threading
-# import math
-# import astral
 from Programs import Programs
 from Events import Events
 
 
-class Scheduler(threading.Thread):
+class Scheduler(threading.Thread): # When triggered schedule things up
     def __init__(self, args, logger):
         threading.Thread.__init__(self, daemon=True)
         self.name = 'Scheduler'  # For logger
@@ -30,40 +29,64 @@ class Scheduler(threading.Thread):
         self.logger = logger
         self.q = queue.Queue()
 
+    def rmPending(self, db, date):
+      date = datetime.datetime.combine(date, datetime.time())
+      db.execute('DELETE FROM commands WHERE pgmDate>=? AND id IN (' \
+		+ 'SELECT idOn FROM onOffPending' \
+		+ ' UNION ' \
+		+ 'SELECT idOff FROM onOffPending' \
+		+ ');', (date.timestamp(),))
+
+    def rmSingles(self, cmdDB, parDB):
+      ids = []
+      for row in cmdDB.execute('SELECT * FROM pgmStnTbl;'):
+        ids.append(row[0])
+      ids = ','.join([str(x) for x in ids]) # Comma deliminted list of integers
+      parDB.execute("DELETE FROM pgmStn WHERE id IN(" + ids + ");");
+      cmdDB.execute("DELETE FROM pgmStnTbl WHERE pgmStn IN(" + ids + ");");
+
     def run(self):  # Called on thread start
         logger = self.logger.info
         q = self.q
         logger('Starting')
         db = DB.DB(args.params)
+        cmdDB = DB.DB(args.cmds);
 
         while True:
-            # times = q.get();
-            # q.task_done();
+            t = q.get()
+            q.task_done()
             pgm = Programs(db, self.logger)
-            times = [time.time(), time.time() + 7200]
-            sDate = datetime.datetime.fromtimestamp(times[0])
-            eDate = datetime.datetime.fromtimestamp(times[1])
+            sDate = datetime.datetime.now()
+            eDate = sDate + datetime.timedelta(days=5)
             dt = datetime.timedelta(days=1)
             midnight = datetime.time()
-            logger('msg now={} s={} e={}'.format(
-                datetime.datetime.fromtimestamp(time.time()), sDate, eDate))
             events = Events(sDate, eDate, db, self.logger)
-
+            self.rmPending(cmdDB, sDate);
+            self.rmSingles(cmdDB, db);
+            events.loadHistorical(cmdDB, sDate, pgm)
+            events.loadActive(cmdDB, pgm)
+            events.loadPending(cmdDB, pgm)
+            pgm.adjustRunTimes(sDate, events)
             while sDate <= eDate:
                 pgm.schedule(sDate, events)
+                pgm.resetRunTimes()
                 sDate = datetime.datetime.combine(sDate.date() + dt, midnight)
-            print(events)
-            # db.commit()
-            break
-        time.sleep(0.5)  # due to break remove in production
+            for event in events:
+                if event.sDate is not None: # Not already queued
+                    cmdDB.execute('INSERT INTO commands(timestamp,cmd,addr,program,pgmStn,pgmDate) ' \
+				+ 'VALUES(?,?,?,?,?,?);', \
+                              (event.time.timestamp(), \
+                               0 if event.qOn else 1, \
+                               event.stn.station().sensor().addr(), \
+                               event.pgm.key(), \
+                               event.stn.key() if event.stn.qSingle() else None,
+                               event.sDate.timestamp()));
+            cmdDB.commit()
 
-# Wait on events in the scheduler table
-
-
-class Trigger(threading.Thread):
+class Trigger(threading.Thread): # Wait on events in the scheduler table
     def __init__(self, args, logger, q):
         threading.Thread.__init__(self, daemon=True)
-        self.name = 'Scheduler'  # For logger
+        self.name = 'Trigger'  # For logger
         self.args = args
         self.logger = logger
         self.q = q
@@ -74,19 +97,24 @@ class Trigger(threading.Thread):
         db = DB.DB(args.params)
         cur = db.cursor()
         dt0 = 6
+        q.put(time.time()) # Trigger on startup
         while True:
+            dt = dt0
             now = time.time()
-            dt = 6
-            stmt = cur.execute(
-                'SELECT * FROM scheduler WHERE date<=? ORDER BY date;', (now + dt,))
+            stmt = cur.execute('SELECT * FROM scheduler WHERE date<=? ORDER BY date;', (now + dt,))
+            toDrop = []
             for line in stmt:
                 t0 = line[0]
-                t1 = line[0]
-                if t0 < now:
-                    cur.execute('DELETE FROM scheduler WHERE date==?;', (t0,))
-                    q.put([t0, t1])
+                if t0 <= now:
+                    toDrop.append(t0)
                 else:
-                    dt = min(dt0, max(t0 - now, 1))
+                    dt = max(t0 - now, 1)
+                    break
+            if toDrop:
+                q.put(toDrop[-1]) # Last one
+                for t in toDrop:
+                    cur.execute('DELETE FROM scheduler WHERE date==?;', (t,))
+
             time.sleep(dt)
 
 
@@ -94,8 +122,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--params', help='parameter database name', required=True)
 parser.add_argument('--cmds', help='Commands database name', required=True)
 parser.add_argument('--log', help='logfile, if not specified use the console')
-parser.add_argument(
-    '--verbose', help='logging verbosity level', action='store_true')
+parser.add_argument( '--verbose', help='logging verbosity level', action='store_true')
 args = parser.parse_args()
 
 logger = logging.getLogger(__name__)
@@ -108,8 +135,7 @@ else:
 
 ch.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
-formatter = logging.Formatter(
-    '%(asctime)s: %(threadName)s:%(levelname)s - %(message)s')
+formatter = logging.Formatter('%(asctime)s: %(threadName)s:%(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 
 logger.addHandler(ch)

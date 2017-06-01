@@ -5,8 +5,6 @@
 
 include ../Makefile.params
 
-.PHONY: install clean
-
 SRC = index.php status.php site.php user.php email.php
 SRC += monitor.php smonitor.php running.php
 SRC+= controller.php sensor.php
@@ -17,6 +15,10 @@ SRC+= params.php
 SRC+= ET.php ETannual.php ETStn.php
 
 DEST = $(SRC:%=$(WEBDIR)/%)
+
+.PHONY: all install clean
+
+all:
 
 install:: 
 	$(INSTALL) --target-directory=$(WEBDIR) $(SRC)

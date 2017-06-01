@@ -11,11 +11,11 @@
 <body>
 <?php
 require_once 'php/navBar.php';
-require_once 'php/ParDB.php';
+require_once 'php/ETDB.php';
 require_once 'php/webPage.php';
 
 session_start();
-$pb = new PageBuilder('ETannual', $parDB);
+$pb = new PageBuilder('ETannual', $etDB);
 if (!empty($_POST)) $pb->postUp($_POST);
 $pb->mkPage();
 ?>

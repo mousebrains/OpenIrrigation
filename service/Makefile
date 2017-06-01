@@ -6,10 +6,12 @@
 include ../Makefile.params
 
 # Where to install the .service files
-SRC = OITDI.service OIAgriMet.service
+SRC = OITDI.service OIAgriMet.service OISched.service
 DEST = $(SRC:%=$(SERVICEDIR)/%)
 
-.PHONY: install install-services install-logs clean start stop retart status reload enable disable
+.PHONY: all install install-services install-logs clean start stop retart status reload enable disable
+
+all:
 
 install: install-services install-logs
 
@@ -36,7 +38,7 @@ reload:
 	systemctl --no-pager daemon-reload
 
 restart: reload
-	for i in $(SRC); do systemctl --no-pager restart $$i; done
+	systemctl --no-pager restart $(SRC)
 
 enable disable start stop status:
-	for i in $(SRC); do systemctl --no-pager $@ $$i; done
+	systemctl --no-pager $@ $(SRC)

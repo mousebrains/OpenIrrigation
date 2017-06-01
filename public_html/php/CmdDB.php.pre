@@ -1,47 +1,39 @@
 <?php
-class CmdDB extends SQLite3 {
-	function __construct() {
-		parent::__construct('__DBDIR__/commands.db', SQLITE3_OPEN_READWRITE);
-                $this->busyTimeout(2000);
-        }
+require_once 'BaseDB.php';
 
-	function __destruct() {
-                $this->close();
-	}
-
-	function insertCommand($addr, int $cmd, int $t=NULL, int $src=-1) {
+class CmdDB extends BaseDB {
+	function insertCommand($addr, int $cmd, int $t, int $pgm) {
 		if (is_null($t)) {$t = time();}
-        	$sql = "INSERT INTO commands (timestamp,addr,cmd,src) "
-				. "VALUES($t,:addr,$cmd,$src);";
+        	$sql = "INSERT INTO commands (timestamp,addr,cmd,pgm) "
+				. "VALUES($t,:addr,$cmd,$pgm);";
         	$stmt = $this->prepare($sql);
-		$stmt->bindValue(":addr", $addr);
+		$stmt->bindValue(":addr", $addr, SQLITE3_INTEGER);
 		$stmt->execute();
 		$stmt->close();
 	}
 
-	function turnOn($addr, int $t=NULL, int $src=-1) {
-		$this->insertCommand($addr, 0, $t, $src);
+	function turnOnNow(int $addr) {
+		$this->insertCommand($addr, 0, time(), -1);
 	}
 
-	function turnOff($addr=255, int $t=NULL, int $src=-1) {
-		$this->insertCommand($addr, 1, $t, $src);
+	function turnAllOff() {
+		$this->insertCommand(255, 1, time(), -1);
+	}
+
+	function offNow(int $id) {
+		$now = time();
+                $sql = "UPDATE commands SET timestamp=$now WHERE id==:id;";
+		$stmt = $this->prepare($sql);
+                $stmt->bindValue(":id", $id, SQLITE3_INTEGER);
+                $stmt->execute();
+                $stmt->close();
 	}
 
 	function clearAll() {
 		$this->exec('DELETE FROM commands;');
-		$this->turnOff(); // Turn everything off
-	}
-
-	function deletePair($idOn, $idOff=NULL) {
-		if (is_null($idOn) && is_null($idOff)) {return;}
-		$sql = "DELETE FROM commands WHERE id IN (:idOn,:idOff) AND addr!=255;";
-		$stmt = $this->prepare($sql);
-		$stmt->bindValue(':idOn', is_null($idOn) ? $idOn : $idOff);	
-		$stmt->bindValue(':idOff', is_null($idOff) ? $idOff : $idOn);	
-		$stmt->execute();
-		$stmt->close();
+		$this->turnAllOff(); // Turn everything off
 	}
 }
 
-$cmdDB = new CmdDB();
+$cmdDB = new CmdDB('__DBDIR__/commands.db');
 ?>

@@ -1,0 +1,4 @@
+<?php
+require_once 'MyDB.php';
+$etDB = new MyDB('__DBDIR__/ET.db');
+?>
