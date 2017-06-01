@@ -24,15 +24,15 @@ install: $(SRC)
 clean:
 	$(RM) $(SRC) $(DEST)
 
-commands.db: commands.schema.sql
+commands.db: commands.schema.sql $(DBDIR)/commands.db extractCmd.py FetchTable.py
 	sqlite3 $@ <$<
 	echo Extra Commands
 	./extractCmd.py $(DBDIR)/commands.db | sqlite3 $@
 
-params.db: $(PARAMS)
-	for i in $^; do echo $$i; sqlite3 $@ <$$i; done
+params.db: $(PARAMS) $(DBDIR)/params.db extractPar.py FetchTable.py
+	for i in $(PARAMS); do echo $$i; sqlite3 $@ <$$i; done
 	echo Extra Params
-	./extractPar.py $(DBDIR)/commands.db | sqlite3 $@
+	./extractPar.py $(DBDIR)/params.db | sqlite3 $@
 
 ET.db: $(ET)
 	for i in $^; do echo $$i; sqlite3 $@ <$$i; done
