@@ -1,9 +1,7 @@
 #! /usr/bin/env python3
 #
-# Extract information from a database 
-# and generate SQL commands.
-#
-# This is like .dump except it sets field names
+# Extract information from a source database 
+# and save it in a target database via either update or insert
 #
 # May-2017, Pat Welch, pat@mousebrains.com
 
@@ -15,76 +13,145 @@ import time
 
 class FetchTable:
   def __init__(self):
-    if len(sys.argv) != 2:
-      print('Usage:', sys.argv[0], 'sourceDatabase', file=sys.stderr)
+    if len(sys.argv) != 3:
+      print('Usage:', sys.argv[0], 'srcDB tgtDB', file=sys.stderr)
       sys.exit(1)
 
-    self.dbFn = pathlib.Path(sys.argv[1])
+    self.srcFn = pathlib.Path(sys.argv[1])
+    self.tgtFn = pathlib.Path(sys.argv[2])
 
-    if not self.dbFn.exists():
+    if not self.srcFn.exists():
+      print(self.srcFn, 'Does not exist', file=sys.stderr)
       sys.exit(0)
 
+    if not self.tgtFn.exists():
+      print(self.tgtFn, 'Does not exist', file=sys.stderr)
+      sys.exit(1)
+
   def __enter__(self):
-    self.db = sqlite3.connect(self.dbFn.as_posix())
-    self.db.row_factory = sqlite3.Row
-    self.sql = sys.stdout
+    self.src = sqlite3.connect(self.srcFn.as_posix())
+    self.src.row_factory = sqlite3.Row
+    self.tgt = sqlite3.connect(self.tgtFn.as_posix())
     return self
 
   def __exit__(self, type, value, tb):
-    self.db.close()
-    self.sql.close()
+    self.src.close()
+    self.tgt.commit()
+    self.tgt.close()
     return False
 
-  def extract(self, tbl, toSkip = {'id'}, references = {}):
-    stime = time.time()
+  def getReferences(self, references, tbl):
     ref = {}
     refSQL = {}
     for item in references:
       refSQL[item] = re.sub('XXXX', tbl, re.sub('YYYY', item, references[item][1]))
       sql = re.sub('XXXX', tbl, re.sub('YYYY', item, references[item][0]))
-      a = []
-      for row in self.db.execute(sql).fetchall():
-        a.append(row[0])
+      a = {}
+      for row in self.src.execute(sql).fetchall():
+        a[row[0]] = row[1]
       ref[item] = a
- 
-    n = 0
+    return (ref, refSQL)
+
+  def getRows(self, tbl, toSkip, references, keyTo):
+    (ref, refSQL) = self.getReferences(references, tbl)
+    keys = []
+    rows = []
+    formats = []
+    existing = set()
     indices = None
-
-    for row in self.db.execute('SELECT * FROM ' + tbl + ';').fetchall():
+    for row in self.src.execute('SELECT * FROM ' + tbl + ';').fetchall():
       if indices is None:
-        keys = row.keys()
-        keyStr = []
+        a = row.keys()
         indices = []
-        for index in range(len(keys)):
-          key = keys[index]
-          if key in toSkip: continue
-          indices.append(index)
-          keyStr.append(key)
-        if not len(indices): return # Nothing to do
-        self.sql.write('\n-- Generated from ' + tbl + ' on ' + time.asctime() + '\n\n')
-        self.sql.write('INSERT OR REPLACE INTO {} ({}) VALUES\n'.format(tbl, ','.join(keyStr)))
-       
-
-      values = []
-      for index in indices:
+        for index in range(len(a)):
+          key = a[index]
+          if key not in toSkip:
+            keys.append(key)
+            indices.append(index)
+            formats.append(refSQL[key] if key in refSQL else '?')
+        if not indices: return (keys, rows, formats, existing)
+      a = []
+      for i in range(len(indices)):
+        index = indices[i]
         val = row[index]
-        key = keys[index]
-        if val is None: 
-          values.append('NULL')
-        elif key in refSQL:
-          values.append(refSQL[key].format(ref[key][n]))
-        elif isinstance(val, (int, float)):
-          values.append(str(val))
-        elif isinstance(val, str):
-          values.append("'" + re.sub("'", "''", val) + "'")
-        else:
-          sys.exit(1)
+        key = keys[i]
+        if key in ref and val in ref[key]:
+          val = ref[key][val]
+        a.append(val)
+      rows.append(a)
 
-      if n != 0: 
-        self.sql.write(',\n')
-      self.sql.write(' (' + ','.join(values) + ')')
-      n += 1
+    if keyTo is not None:
+      sql = 'SELECT DISTINCT {} FROM {};'.format(','.join(keyTo), tbl);
+      for row in self.tgt.execute(sql).fetchall(): 
+        a = []
+        for index in range(len(keyTo)):
+           key = keyTo[index]
+           val = row[index]
+           if key in ref and val in ref[key]:
+             val = ref[key][val]
+           a.append(val)
+        existing.add(tuple(a))
 
-    msg = 'Extracted {} rows from {} in {:.3f} seconds'.format(n, tbl, time.time()-stime)
-    if n:
-      self.sql.write(';\n\n-- ' + msg + '\n');
+    return (keys, rows, formats, existing)
+
+  def doInserts(self, tbl, keys, rows, formats):
+    if len(rows): 
+      sql = 'INSERT INTO {}({}) VALUES ({});'.format(tbl, ','.join(keys), ','.join(formats))
+      self.tgt.executemany(sql, rows)
+
+  def doUpdates(self, tbl, keyTo, keyIndices, keys, rows, formats):
+    if not len(rows): return # Nothing to do
+    toSet = []
+    fmt = []
+    for index in range(len(keys)):
+      if index not in keyIndices:
+        toSet.append(keys[index])
+        fmt.append(formats[index])
+
+    data = []
+    for row in rows:
+      a = []
+      for index in range(len(row)):
+        if index not in keyIndices: a.append(row[index])
+      for index in keyIndices:
+        a.append(row[index])
+      data.append(a)
+ 
+    keyFormats = []
+    for index in keyIndices:
+      keyFormats.append(formats[index])
+
+    sql = 'UPDATE {} SET ({})=({}) WHERE ({})==({});'.format( \
+		tbl, ','.join(toSet), ','.join(fmt), ','.join(keyTo), ','.join(keyFormats))
+    self.tgt.executemany(sql, data)
+      
+
+  def putRows(self, tbl, keyTo, keys, rows, formats, existing):
+    if not len(rows): return # Nothing to do
+    if keyTo is None: # Insert everything
+       self.doInserts(tbl, keys, rows, formats)
+       return
+    
+    keyIndices = []
+    for key in keyTo: keyIndices.append(keys.index(key))
+
+    toInsert = []
+    toUpdate = []
+    for row in rows:
+      item = []
+      for index in keyIndices:
+        item.append(row[index])
+      if tuple(item) in existing:
+        toUpdate.append(row)
+      else:
+        toInsert.append(row)
+    self.doUpdates(tbl, keyTo, keyIndices, keys, toUpdate, formats)
+    self.doInserts(tbl, keys, toInsert, formats)
+
+  def extract(self, tbl, keyTo=None, toSkip={'id'}, references={}):
+    stime = time.time()
+    if isinstance(keyTo, str): keyTo = [keyTo]
+    (keys, rows, formats, existing) = self.getRows(tbl, toSkip, references, keyTo)
+    self.putRows(tbl, keyTo, keys, rows, formats, existing)
+    print('Extracted', len(rows), 'rows from', tbl, 'in {:.3f} seconds'.format(time.time()-stime), \
+          file=sys.stderr)

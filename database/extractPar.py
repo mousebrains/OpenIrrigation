@@ -10,177 +10,177 @@
 from FetchTable import FetchTable
 
 with FetchTable() as a:
-  a.extract('soil')
-  a.extract('crop')
-  a.extract('user')
-  a.extract('email', {'id'}, { \
+  a.extract('soil', 'name')
+  a.extract('crop', 'name')
+  a.extract('user', 'name')
+  a.extract('email', 'email', {'id'}, { \
 	'user': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
-                ], \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+		"(SELECT id FROM YYYY WHERE name==?)" \
+		], \
 	'format': [ \
-		"SELECT webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
-                "(SELECT id FROM webList WHERE grp=='XXXX' and key='{}')" \
-                ] \
-          })
-  a.extract('emailReports', {}, { \
+		"SELECT webList.id,webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
+		"(SELECT id FROM webList WHERE grp=='XXXX' and key=?)" \
+		] \
+	})
+  a.extract('emailReports', None, {}, { \
 	'email': [ \
-		"SELECT YYYY.YYYY FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE email='{}')" \
-                ], \
+		"SELECT YYYY.id,YYYY.YYYY FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+		"(SELECT id FROM YYYY WHERE email=?)" \
+		], \
 	'report': [ \
-		"SELECT webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
-                "(SELECT id FROM webList WHERE grp=='reports' and key='{}')" \
-                ] \
+		"SELECT webList.id,webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
+		"(SELECT id FROM webList WHERE grp=='reports' and key=?)" \
+		] \
           })
-  a.extract('site')
-  a.extract('controller', {'id'}, { \
+  a.extract('site', 'name')
+  a.extract('controller', 'name', {'id'}, { \
 	'site': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.site;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.site;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ] \
-        })
-  a.extract('sensor', {'id'}, { \
+		})
+  a.extract('sensor', 'name', {'id'}, { \
 	'controller': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ], \
 	'devType': [ \
-		"SELECT webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
-                "(SELECT id FROM webList WHERE grp=='XXXX' and key='{}')" \
+		"SELECT webList.id,webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
+                "(SELECT id FROM webList WHERE grp=='XXXX' and key=?)" \
                 ] \
         })
-  a.extract('poc', {'id'}, { \
+  a.extract('poc', 'name', {'id'}, { \
 	'site': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ] \
         })
-  a.extract('pocFlow', {'id'}, { \
+  a.extract('pocFlow', 'name', {'id'}, { \
 	'poc': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ], \
 	'sensor': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ] \
         })
-  a.extract('pocMV', {'id'}, { \
+  a.extract('pocMV', 'name', {'id'}, { \
 	'poc': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ], \
 	'sensor': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ] \
         })
-  a.extract('pocPump', {'id'}, { \
+  a.extract('pocPump', 'name', {'id'}, { \
 	'poc': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ], \
 	'sensor': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ] \
         })
-  a.extract('station', {'id'}, { \
+  a.extract('station', 'name', {'id'}, { \
 	'poc': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ], \
 	'sensor': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ] \
         })
-  a.extract('program', {'id'}, { \
+  a.extract('program', 'name', {'id'}, { \
 	'site': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ], \
 	'onOff': [ \
-		"SELECT webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
-                "(SELECT id FROM webList WHERE grp=='YYYY' and key='{}')" \
+		"SELECT webList.id,webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
+                "(SELECT id FROM webList WHERE grp=='YYYY' and key=?)" \
                 ], \
 	'action': [ \
-		"SELECT webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
-                "(SELECT id FROM webList WHERE grp=='evAct' and key='{}')" \
+		"SELECT webList.id,webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
+                "(SELECT id FROM webList WHERE grp=='evAct' and key=?)" \
                 ], \
 	'startMode': [ \
-		"SELECT webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
-                "(SELECT id FROM webList WHERE grp=='evCell' and key='{}')" \
+		"SELECT webList.id,webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
+                "(SELECT id FROM webList WHERE grp=='evCell' and key=?)" \
                 ], \
 	'stopMode': [ \
-		"SELECT webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
-                "(SELECT id FROM webList WHERE grp=='evCell' and key='{}')" \
+		"SELECT webList.id,webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
+                "(SELECT id FROM webList WHERE grp=='evCell' and key=?)" \
                 ] \
         })
-  a.extract('pgmDOW', {'id'}, { \
+  a.extract('pgmDOW', None, {'id'}, { \
 	'program': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ], \
 	'dow': [ \
-		"SELECT webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
-                "(SELECT id FROM webList WHERE grp=='YYYY' and key='{}')" \
+		"SELECT webList.id,webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
+                "(SELECT id FROM webList WHERE grp=='YYYY' and key=?)" \
                 ] \
         })
-  a.extract('pgmStn', {'id'}, { \
+  a.extract('pgmStn', ['program', 'station'], {'id'}, { \
 	'program': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ], \
 	'station': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ], \
 	'mode': [ \
-		"SELECT webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
-                "(SELECT id FROM webList WHERE grp=='pgm' and key='{}')" \
+		"SELECT webList.id,webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
+                "(SELECT id FROM webList WHERE grp=='pgm' and key=?)" \
                 ] \
         })
-  a.extract('event', {'id'}, { \
+  a.extract('event', 'name', {'id'}, { \
 	'site': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ], \
 	'action': [ \
-		"SELECT webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
-                "(SELECT id FROM webList WHERE grp=='evAct' and key='{}')" \
+		"SELECT webList.id,webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
+                "(SELECT id FROM webList WHERE grp=='evAct' and key=?)" \
                 ], \
 	'startMode': [ \
-		"SELECT webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
-                "(SELECT id FROM webList WHERE grp=='evCell' and key='{}')" \
+		"SELECT webList.id,webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
+                "(SELECT id FROM webList WHERE grp=='evCell' and key=?)" \
                 ], \
 	'stopMode': [ \
-		"SELECT webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
-                "(SELECT id FROM webList WHERE grp=='evCell' and key='{}')" \
+		"SELECT webList.id,webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
+                "(SELECT id FROM webList WHERE grp=='evCell' and key=?)" \
                 ] \
         })
-  a.extract('eventDOW', {'id'}, { \
+  a.extract('eventDOW', None, {'id'}, { \
 	'event': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
                 ], \
 	'dow': [ \
-		"SELECT webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
-                "(SELECT id FROM webList WHERE grp=='YYYY' and key='{}')" \
+		"SELECT webList.id,webList.key FROM webList INNER JOIN XXXX ON webList.id==XXXX.YYYY;", \
+                "(SELECT id FROM webList WHERE grp=='YYYY' and key=?)" \
                 ] \
         })
-  a.extract('EtStation', {'id'}, { \
-	'station': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
-                ], \
-	'crop': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
-                ], \
-	'soil': [ \
-		"SELECT YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                "(SELECT id FROM YYYY WHERE name='{}')" \
-                ] \
-        })
+  # a.extract('EtStation', {'id'}, { \
+	# 'station': [ \
+		# "SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                # "(SELECT id FROM YYYY WHERE name==?)" \
+               # ], \
+	# 'crop': [ \
+		# "SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                # "(SELECT id FROM YYYY WHERE name==?)" \
+                # ], \
+	# 'soil': [ \
+		# "SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                # "(SELECT id FROM YYYY WHERE name==?)" \
+                # ] \
+        # })

@@ -19,8 +19,8 @@ CREATE TABLE commands(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                       timestamp INTEGER, -- when action should occur
                       cmd INTEGER, -- on=0, off=1, T=2
                       addr INTEGER, -- station address
-                      program INTEGER, -- which program created this entry
-                      pgmStn INTEGER, -- which pgmStn created this entry
+                      program INTEGER, -- which program created this entry, id in params.db
+                      pgmStn INTEGER, -- which pgmStn created this entry, id in params.db
                       pgmDate INTEGER -- Which date this entry was generated for
                      );
 DROP INDEX IF EXISTS commandsTS;
@@ -123,7 +123,7 @@ DROP TRIGGER IF EXISTS pgmStnDelete;
 CREATE TRIGGER pgmStnDelete
 	AFTER DELETE ON commands -- For every deletion in commands
         FOR EACH ROW
-        WHEN OLD.pgmStn IS NOT NULL -- FOr non-null pgmStn enterie in command
+        WHEN OLD.pgmStn IS NOT NULL -- For non-null pgmStn entries in command
         BEGIN
 		INSERT INTO pgmStnTbl VALUES(OLD.pgmStn);
         END;
@@ -132,7 +132,8 @@ CREATE TRIGGER pgmStnDelete
 DROP TABLE IF EXISTS zeeLog;
 CREATE TABLE zeeLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                     timestamp INTEGER, -- Time received
-                    value TEXT -- Message
+                    value TEXT, -- Message
+                    UNIQUE (timestamp,value) ON CONFLICT IGNORE
                    );
 -- DROP INDEX IF EXISTS zeeTS;
 -- CREATE INDEX zeeTS ON zeeLog(timestamp);
@@ -141,7 +142,8 @@ CREATE TABLE zeeLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
 DROP TABLE IF EXISTS numberLog;
 CREATE TABLE numberLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                        timestamp INTEGER, -- Time received
-                       value INTEGER -- number returned
+                       value INTEGER, -- number returned
+                       UNIQUE (timestamp,value) ON CONFLICT IGNORE
                       );
 -- DROP INDEX IF EXISTS numberTS;
 -- CREATE INDEX numberTS ON numberLog(timestamp);
@@ -150,7 +152,8 @@ CREATE TABLE numberLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
 DROP TABLE IF EXISTS versionLog;
 CREATE TABLE versionLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- ID
                         timestamp INTEGER, -- Time received
-                        value TEXT -- version string returned
+                        value TEXT, -- version string returned
+                        UNIQUE (timestamp,value) ON CONFLICT IGNORE
                        );
 -- DROP INDEX IF EXISTS versionTS;
 -- CREATE INDEX versionTS ON versionLog (timestamp);
@@ -159,7 +162,8 @@ CREATE TABLE versionLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- ID
 DROP TABLE IF EXISTS errorLog;
 CREATE TABLE errorLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                       timestamp INTEGER, -- Time received
-                      value INTEGER -- error code returned
+                      value INTEGER, -- error code returned
+                      UNIQUE (timestamp,value) ON CONFLICT IGNORE
                      );
 -- DROP INDEX IF EXISTS errorTS;
 -- CREATE INDEX errorTS ON errorLog (timestamp);
@@ -169,7 +173,8 @@ DROP TABLE IF EXISTS currentLog;
 CREATE TABLE currentLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                         timestamp INTEGER, -- time code was added
                         volts REAL, -- voltage in volts
-                        mAmps INTEGER -- current in mAmps
+                        mAmps INTEGER, -- current in mAmps
+                        UNIQUE (timestamp,volts,mAmps) ON CONFLICT IGNORE
                        );
 DROP INDEX IF EXISTS currentTS;
 CREATE INDEX currentTS ON currentLog (timestamp);
@@ -181,7 +186,8 @@ CREATE TABLE sensorLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                        addr INTEGER, -- sensor address
                        code INTEGER, -- code, typically 4 or 5
                        value INTEGER, -- reading, Hertz*10
-		       flow REAL -- value processed into a physical value
+		       flow REAL, -- value processed into a physical value
+                       UNIQUE (timestamp,addr,code,value) ON CONFLICT IGNORE
                        );
 DROP INDEX IF EXISTS sensorTS;
 CREATE INDEX sensorTS ON sensorLog (timestamp);
@@ -191,7 +197,8 @@ DROP TABLE IF EXISTS twoLog;
 CREATE TABLE twoLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                     timestamp INTEGER, -- time code was added
                     addr INTEGER, -- address
-                    value INTEGER -- reading
+                    value INTEGER, -- reading
+                    UNIQUE (timestamp,addr,value) ON CONFLICT IGNORE
                    );
 -- DROP INDEX IF EXISTS twoTS;
 -- CREATE INDEX twoTS ON twoLog (timestamp);
@@ -201,7 +208,8 @@ DROP TABLE IF EXISTS peeLog;
 CREATE TABLE peeLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                     timestamp INTEGER, -- time code was added
                     addr INTEGER, -- address
-                    value INTEGER -- reading
+                    value INTEGER, -- reading
+                    UNIQUE (timestamp,addr,value) ON CONFLICT IGNORE
                    );
 -- DROP INDEX IF EXISTS peeTS;
 -- CREATE INDEX peeTS ON peeLog (timestamp);
@@ -214,7 +222,8 @@ CREATE TABLE teeLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                     code INTEGER, -- returned code
                     pre INTEGER, -- pre on current in mAmps
                     peak INTEGER, -- peak on current in mAmps
-                    post INTEGER -- post on current in mAmps
+                    post INTEGER, -- post on current in mAmps
+                    UNIQUE (timestamp,addr,code,pre,peak,post) ON CONFLICT IGNORE
                    );
 DROP INDEX IF EXISTS teeTS;
 CREATE INDEX teeTS ON teeLog (timestamp,addr);
@@ -227,7 +236,8 @@ CREATE TABLE onLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                    code INTEGER, -- return code
                    pre INTEGER, -- pre on current in mAmps
                    peak INTEGER, -- peak on current in mAmps
-                   post INTEGER -- post on current in mAmps
+                   post INTEGER, -- post on current in mAmps
+                   UNIQUE (timestamp,addr,code,pre,peak,post) ON CONFLICT IGNORE
                   );
 
 -- Off message results
@@ -235,7 +245,8 @@ DROP TABLE IF EXISTS offLog;
 CREATE TABLE offLog(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                     timestamp INTEGER, -- time code was added
                     addr INTEGER, -- station address
-                    code INTEGER -- return code
+                    code INTEGER, -- return code
+                    UNIQUE (timestamp,addr,code) ON CONFLICT IGNORE
                   );
 
 -- Active stations, i.e. not yet off

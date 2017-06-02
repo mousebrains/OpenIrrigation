@@ -5,34 +5,43 @@
 
 include ../Makefile.params
 
-SRC = commands.db params.db ET.db
-DEST = $(SRC:%=$(DBDIR)/%)
+CMDDB = commands.db
 
 PARAMS = params.web.sql params.schema.sql params.init.sql
 PARAMS+= params.soil.sql params.crop.sql params.site.sql
+PARAMSDB = params.db
 
-ET = params.web.sql ET.schema.sql ET.codes.sql
+ETDB = ET.db
+
+SRC = $(CMDDB) $(PARAMSDB) $(ETDB)
+DEST = $(SRC:%=$(DBDIR)/%)
 
 .PHONY: all extract install clean
 
 all: $(SRC)
 
-install: $(SRC)
-	$(INSTALL) --target-directory=$(DBDIR) $(SRC)
+install: $(DEST)
 	chown -R $(USER):$(GROUP) $(DBDIR)
 
 clean:
 	$(RM) $(SRC) $(DEST)
 
-commands.db: commands.schema.sql $(DBDIR)/commands.db extractCmd.py FetchTable.py
+$(DBDIR)/$(CMDDB): $(CMDDB) extractCmd.py FetchTable.py
+	./extractCmd.py $@ $<
+	$(INSTALL) --target-directory=$(DBDIR) $<
+
+$(CMDDB): commands.schema.sql
 	sqlite3 $@ <$<
-	echo Extra Commands
-	./extractCmd.py $(DBDIR)/commands.db | sqlite3 $@
 
-params.db: $(PARAMS) $(DBDIR)/params.db extractPar.py FetchTable.py
+$(DBDIR)/$(PARAMSDB): $(PARAMSDB) extractPar.py FetchTable.py
+	./extractPar.py $@ $<
+	$(INSTALL) --target-directory=$(DBDIR) $<
+
+$(PARAMSDB): $(PARAMS)
 	for i in $(PARAMS); do echo $$i; sqlite3 $@ <$$i; done
-	echo Extra Params
-	./extractPar.py $(DBDIR)/params.db | sqlite3 $@
 
-ET.db: $(ET)
+$(DBDIR)/$(ETDB): $(ETDB)
+	$(INSTALL) --target-directory=$(DBDIR) $<
+
+$(ETDB): params.web.sql ET.schema.sql ET.codes.sql
 	for i in $^; do echo $$i; sqlite3 $@ <$$i; done
