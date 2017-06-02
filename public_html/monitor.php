@@ -51,7 +51,7 @@ function xlat($key, array $tbl) {
 function mkPast(array $pgm) {
 	global $cmdDB;
 	$results = $cmdDB->query("SELECT * FROM onOffHistorical ORDER BY tOn DESC,addr LIMIT 50;");
-	$hdr = "<tr><th>Station</th><th>Start</th><th>RunTime</th><th>Pgm</th><th>Pre</th><th>Peak</th>"
+	$hdr = "<tr><th>Station</th><th>Start</th><th>RunTime</th><th>Program</th><th>Pre</th><th>Peak</th>"
 		. "<th>Post</th><th>On Code</th><th>Off Code</th></tr>";
 	$qFirst = true;
 	while ($row = $results->fetchArray()) {
