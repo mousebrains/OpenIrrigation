@@ -133,17 +133,20 @@ class MyDB extends BaseDB {
 
 	function loadTable(string $table, string $key, string $value, 
 			string $orderBy=NULL) : array {
+		$sql = "SELECT $key,$value FROM $table";
+		if (!is_null($orderBy)) {$sql .= " ORDER BY $orderBy";}
+		return $this->loadKeyValue($sql . ";");	
+	}
+
+	function loadKeyValue(string $sql) : array {
+		$rows = [];
 		try {
-			$sql = "SELECT $key,$value FROM $table";
-			if (!is_null($orderBy)) {$sql .= " ORDER BY $orderBy";}
-                	$results = $this->query($sql . ";");
-			$rows = [];
-			while ($row = $results->fetchArray()) {$rows[$row[0]] = $row[1];}
-			return $rows;
+			$results = $this->query($sql);
+			while ($row = $results->fetchArray())  {$rows[$row[0]] = $row[1];}
 		} catch (Exception $e) {
-			$this->errMsg($e, "loading table($table) $key, $value, $orderBy");
-			return [];
+			$this->errMsg($e, "loadKeyValue($sql)");
 		}
+		return $rows;
 	}
 }
 ?>

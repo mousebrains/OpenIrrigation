@@ -23,11 +23,8 @@ function procSQL($msg, $db, string $suffix, string $sql, array $stn) {
   return $msg . "\"dt$suffix\":{{$dt}}";
 }
 
-$stn = [];
-$results = $parDB->query('SELECT station.id,sensor.addr FROM sensor INNER JOIN station ON sensor.id==station.sensor;');
-while ($row = $results->fetchArray()) {
-  $stn[$row[1]] = $row[0];
-}
+$stn = $parDB->loadKeyValue('SELECT sensor.addr,station.id'
+		. ' FROM sensor INNER JOIN station ON sensor.id==station.sensor;');
 
 $now = time();
 
