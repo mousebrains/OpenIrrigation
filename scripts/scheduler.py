@@ -99,6 +99,7 @@ class Trigger(threading.Thread): # Wait on events in the scheduler table
         cur = db.cursor()
         dt0 = 6
         q.put(time.time()) # Trigger on startup
+        lastTime = datetime.datetime.now().time() # Current time
         while True:
             dt = dt0
             now = time.time()
@@ -111,6 +112,12 @@ class Trigger(threading.Thread): # Wait on events in the scheduler table
                 else:
                     dt = max(t0 - now, 1)
                     break
+
+            currTime = datetime.datetime.now().time()
+            if currTime < lastTime: # Force a run on first wakeup after midnight
+              toDrop.append(now)
+            lastTime = currTime
+
             if toDrop:
                 q.put(toDrop[-1]) # Last one
                 for t in toDrop:
