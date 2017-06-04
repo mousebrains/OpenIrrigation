@@ -15,7 +15,7 @@ require_once 'php/ParDB.php';
 require_once 'php/webPage.php';
 
 session_start();
-$pb = new PageBuilder('pgmStn', $parDB);
+$pb = new PageBuilder('pgmStn', $parDB, True);
 if (!empty($_POST)) $pb->postUp($_POST);
 $pb->mkPage();
 ?>
