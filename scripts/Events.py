@@ -125,8 +125,8 @@ class Events(list):
     def loadActive(self, db, programs):
       for row in db.execute('SELECT addr,tOn,tOff,program FROM onOffActive;'):
         addr = row[0]
-        tOn  = datetime.datetime.fromtimestamp(row[1])
-        tOff = datetime.datetime.fromtimestamp(row[2])
+        tOn  = datetime.datetime.fromtimestamp(row[1] if row[1] is not None else 0)
+        tOff = datetime.datetime.fromtimestamp(row[2] if row[2] is not None else 0)
         pgm = row[3]
         stn = programs.findPgmStation(addr, pgm)
         if stn is not None: # Found a corresponding station

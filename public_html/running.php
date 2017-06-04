@@ -25,7 +25,6 @@ function procSQL($msg, $db, string $suffix, string $sql, array $stn) {
 
 $stn = $parDB->loadKeyValue('SELECT sensor.addr,station.id'
 		. ' FROM sensor INNER JOIN station ON sensor.id==station.sensor;');
-$done = $cmdDB->loadColumn('SELECT pgmStn FROM pgmStnTbl;');
  
 $now = time();
 
@@ -45,9 +44,8 @@ $msg = procSQL($msg, $cmdDB, "Past",
         . " GROUP BY addr;",
 	$stn);
 
-$sql = "SELECT station,runtime FROM pgmStn WHERE qSingle==1";
-if (!empty($done)) {$sql .= " AND id NOT IN(" . implode($done, ",") . ")";}
-$msg = procSQL($msg, $parDB, "Sched", $sql . ";", []);
+$msg = procSQL($msg, $parDB, "Sched", 
+	"SELECT station,runtime FROM pgmStn WHERE qSingle==1", []);
 
 echo "data: {{$msg}}\n\n";
 flush();

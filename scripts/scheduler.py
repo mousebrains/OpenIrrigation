@@ -31,25 +31,20 @@ class Scheduler(threading.Thread): # When triggered schedule things up
 
     def rmPending(self, db, date):
       date = datetime.datetime.combine(date, datetime.time())
-      db.execute('DELETE FROM commands WHERE pgmDate>=? AND id IN (' \
+      db.execute('DELETE FROM commands WHERE pgmDate IS NOT NULL AND pgmDate>=? AND id IN (' \
 		+ 'SELECT idOn FROM onOffPending' \
 		+ ' UNION ' \
 		+ 'SELECT idOff FROM onOffPending' \
 		+ ');', (date.timestamp(),))
 
-    def rmSingles(self, cmdDB, parDB):
-      ids = []
-      for row in cmdDB.execute('SELECT * FROM pgmStnTbl;'):
-        ids.append(str(row[0]))
+    def rmManual(self, db, ids):
       if len(ids): # Something to delete
         ids = ','.join(ids) # Comma deliminted list of integers
-        parDB.execute("DELETE FROM pgmStn WHERE id IN(" + ids + ");");
-        cmdDB.execute("DELETE FROM pgmStnTbl WHERE pgmStn IN(" + ids + ");");
+        db.execute("DELETE FROM pgmStn WHERE qSingle==1 AND id IN(" + ids + ");");
 
     def run(self):  # Called on thread start
-        logger = self.logger.info
         q = self.q
-        logger('Starting')
+        self.logger.info('Starting')
         db = DB.DB(args.params)
         cmdDB = DB.DB(args.cmds);
 
@@ -61,9 +56,8 @@ class Scheduler(threading.Thread): # When triggered schedule things up
             eDate = sDate + datetime.timedelta(days=5)
             dt = datetime.timedelta(days=1)
             midnight = datetime.time()
+            self.rmPending(cmdDB, sDate)
             events = Events(sDate, eDate, db, self.logger)
-            self.rmPending(cmdDB, sDate);
-            self.rmSingles(cmdDB, db);
             events.loadHistorical(cmdDB, sDate, pgm)
             pgm.resetManualTotalTime()
             events.loadActive(cmdDB, pgm)
@@ -73,16 +67,21 @@ class Scheduler(threading.Thread): # When triggered schedule things up
                 pgm.schedule(sDate, events)
                 pgm.resetRunTimes()
                 sDate = datetime.datetime.combine(sDate.date() + dt, midnight)
+
+            manIDs = set()
             for event in events:
                 if event.sDate is not None: # Not already queued
-                    cmdDB.execute('INSERT INTO commands(timestamp,cmd,addr,program,pgmStn,pgmDate) ' \
-				+ 'VALUES(?,?,?,?,?,?);', \
+                    cmdDB.execute('INSERT INTO commands(timestamp,cmd,addr,program,pgmDate) ' \
+				+ 'VALUES(?,?,?,?,?);', \
                               (event.time.timestamp(), \
                                0 if event.qOn else 1, \
                                event.stn.station().sensor().addr(), \
                                event.pgm.key(), \
-                               event.stn.key() if event.stn.qSingle() else None,
-                               event.sDate.timestamp()));
+                               None if event.stn.qSingle() else event.sDate.timestamp()));
+                    if event.stn.qSingle():
+                      manIDs.add(str(event.stn.key()))
+            self.rmManual(db, manIDs)
+            db.commit()
             cmdDB.commit()
 
 class Trigger(threading.Thread): # Wait on events in the scheduler table

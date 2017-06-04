@@ -15,6 +15,9 @@ require_once 'php/ParDB.php';
 require_once 'php/CmdDB.php';
 
 if (!empty($_POST)) {
+	echo "<pre>";
+	var_dump($_POST);
+	echo "</pre>";
         if (array_key_exists('Run', $_POST)) { // Update pgmStn
           $stmt = $parDB->prepare('INSERT OR REPLACE INTO pgmStn'
 		. ' (program,mode,station,runTime,qSingle)'
@@ -25,8 +28,8 @@ if (!empty($_POST)) {
           $stmt->bindValue(':rt', $_POST['time']*60, SQLITE3_INTEGER);
           $stmt->execute();
           $stmt->close();
-          $now = time();
-          $parDB->exec('INSERT OR REPLACE INTO scheduler VALUES($now);');
+          $runit = time() + 1; // Give time for me to finish and commit the database
+          $parDB->exec('INSERT OR REPLACE INTO scheduler VALUES($runit);');
         } else { // Stop an existing run
           $stmt = $parDB->prepare('DELETE FROM pgmStn'
 		. ' WHERE qSingle==1 AND station==:stn;');
@@ -39,7 +42,7 @@ if (!empty($_POST)) {
           $addr = $stmt->execute()->fetchArray()['addr'];
           $stmt->close();
           $stmt = $cmdDB->prepare('UPDATE commands SET timestamp=:now'
-		. ' WHERE addr==:addr AND pgmStn is NOT NULL;');
+		. ' WHERE addr==:addr AND pgmDate is NULL;');
           $stmt->bindValue(':now', time(), SQLITE3_INTEGER);
           $stmt->bindValue(':addr', $addr, SQLITE3_INTEGER);
           $stmt->execute();
