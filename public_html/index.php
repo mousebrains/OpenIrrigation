@@ -15,9 +15,6 @@ require_once 'php/ParDB.php';
 require_once 'php/CmdDB.php';
 
 if (!empty($_POST)) {
-	echo "<pre>";
-	var_dump($_POST);
-	echo "</pre>";
         if (array_key_exists('Run', $_POST)) { // Update pgmStn
           $stmt = $parDB->prepare('INSERT OR REPLACE INTO pgmStn'
 		. ' (program,mode,station,runTime,qSingle)'
