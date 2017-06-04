@@ -128,9 +128,7 @@ class Events(list):
         tOn  = datetime.datetime.fromtimestamp(row[1])
         tOff = datetime.datetime.fromtimestamp(row[2])
         pgm = row[3]
-        self.logger.info('LA addr {} pgm {} programs {}'.format(addr, pgm, type(programs)))
         stn = programs.findPgmStation(addr, pgm)
-        self.logger.info('LA stn {}'.format(stn))
         if stn is not None: # Found a corresponding station
           self.insertEvent(None, tOn, tOff, stn)
 
