@@ -170,17 +170,33 @@ with FetchTable() as a:
                 "(SELECT id FROM webList WHERE grp=='YYYY' and key=?)" \
                 ] \
         })
-  # a.extract('EtStation', {'id'}, { \
-	# 'station': [ \
-		# "SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                # "(SELECT id FROM YYYY WHERE name==?)" \
-               # ], \
-	# 'crop': [ \
-		# "SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                # "(SELECT id FROM YYYY WHERE name==?)" \
-                # ], \
-	# 'soil': [ \
-		# "SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
-                # "(SELECT id FROM YYYY WHERE name==?)" \
-                # ] \
-        # })
+  a.extract('groups', ['site', 'name'], {'id'}, { \
+	'site': [ \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
+                ] \
+	})
+  a.extract('groupStation', ['groups', 'station'], {}, { \
+	'groups': [ \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+		"(SELECT id FROM YYYY WHERE name=?)" \
+		], \
+	'station': [ \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
+                ] \
+          })
+  a.extract('EtStation', ['station'], {'id'}, { \
+	'station': [ \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
+               ], \
+	'crop': [ \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
+                ], \
+	'soil': [ \
+		"SELECT YYYY.id,YYYY.name FROM YYYY INNER JOIN XXXX ON YYYY.id==XXXX.YYYY;", \
+                "(SELECT id FROM YYYY WHERE name==?)" \
+                ] \
+        })
