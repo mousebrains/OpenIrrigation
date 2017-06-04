@@ -258,9 +258,10 @@ class PageBuilder
 	private $idField;
 	private $keyField;
 
-	function __construct(string $key, $db) {
+	function __construct(string $key, $db, bool $qScheduleButton=False) {
 		$this->key = $key;
 		$this->db = $db;
+		$this->qScheduleButton = $qScheduleButton;
 		$results = $db->query("SELECT * FROM webFetch WHERE key=='$key';");
 		while ($row = $results->fetchArray()) {
 			$this->table = $row['tbl'];
@@ -294,13 +295,6 @@ class PageBuilder
 	}
 
 	function postUp(array $post) {
-		/*	
-		global $_SESSION;
-		echo "<pre>\n";
-		myDump('_SESSION', $_SESSION['prev']);
-		myDump('_POST', $post);
-		echo "</pre>\n";
-		*/
 		return $this->qTable ? $this->postUpArray($post) : $this->postUpSingle($post);
 	}
 
@@ -376,7 +370,7 @@ class PageBuilder
 			$stmt = $this->db->prepare($sql);
 			foreach ($post[$field] as $a) {
 				echo "<pre>$sql, $newID, $id, $a</pre>\n";
-				$stmt->bindValue(":key", $newID);
+				$stmt->bindValue(":key", $newID, SQLITE3_INTEGER);
 				$stmt->bindValue(":value", $a);
 				$stmt->execute();
 				$stmt->reset();
@@ -415,6 +409,12 @@ class PageBuilder
 			}
 			$this->postUpSingle($data);
 		}
+                if (array_key_exists('runSched', $post)) { // run the scheduler
+                  $stmt = $this->db->prepare("INSERT OR REPLACE INTO scheduler VALUES(:now);");
+                  $stmt->bindValue(":now", time(), SQLITE3_INTEGER);
+                  $stmt->execute();
+                  $stmt->close();
+                }
 	}
 
 	function mkPage() {
@@ -437,6 +437,9 @@ class PageBuilder
 		$this->mkTableHeader("tfoot");
 		echo "</table>\n";
 		echo "<input type='submit' value='Update'>\n";
+                if ($this->qScheduleButton) {
+		  echo "<input type='submit' name='runSched' value='Run Scheduler'>\n";
+                }
 		echo "</form>\n";
 		echo "</center>\n";
 	}

@@ -28,7 +28,7 @@ CREATE TRIGGER simulateInsert
 
 -- To trigger the scheduler to run, add an entry to this table
 DROP TABLE IF EXISTS scheduler;
-CREATE TABLE scheduler(date INTEGER PRIMARY KEY NOT NULL -- When the scheduler so run at
+CREATE TABLE scheduler(date INTEGER PRIMARY KEY NOT NULL ON CONFLICT IGNORE -- run the scheduler at
                       );
 
 -- Interface parameters

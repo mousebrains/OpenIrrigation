@@ -295,9 +295,10 @@ class Program(DictTable):
   def eDate(self): return self['eDate']
   def maxStations(self): return self['maxStations']
   def maxFlow(self): return self['maxFlow']
+  def qOn(self): return self['onOff'] != 'off'
 
   def qActive(self, date, dow):
-    return self.qActiveDay(date, dow) and self.qActiveTime(date)
+    return self.qOn() and self.qActiveDay(date, dow) and self.qActiveTime(date)
 
   def qActiveDay(self, date, dow): # Check if this is a day we're going to run on
     id = self['id']
@@ -311,7 +312,6 @@ class Program(DictTable):
     return False
 
   def qActiveTime(self, date): # Will a time window happen between now and the end of the day?
-    logger = self.logger.info
     d = date.date()
     startMode = self['startMode']
     stopMode  = self['stopMode']

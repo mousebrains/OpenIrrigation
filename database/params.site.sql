@@ -212,16 +212,16 @@ INSERT INTO program (name,priority,action,nDays,refDate,startTime,endTime) VALUE
 	('Selva goteo', 3,
 	(SELECT id FROM webList WHERE grp=='evAct' AND key=='nDays'), 
 	21,
- 	strftime('%s', '2017-04-05 12:00'),
+ 	strftime('%s', '2017-04-19 12:00'),
  	strftime('%s', '18:00:00')-strftime('%s','00:00:00'),
  	strftime('%s', '22:00:00')-strftime('%s','00:00:00')
 	);
 
-INSERT INTO program (name,priority,startTime,endTime) VALUES
-	('Selva rocio', 0,
- 	strftime('%s', '20:00:00')-strftime('%s','00:00:00'),
- 	strftime('%s', '22:00:00')-strftime('%s','00:00:00')
-	);
+-- INSERT INTO program (name,priority,startTime,endTime) VALUES
+	-- ('Selva rocio', 0,
+ 	-- strftime('%s', '20:00:00')-strftime('%s','00:00:00'),
+ 	-- strftime('%s', '22:00:00')-strftime('%s','00:00:00')
+	-- );
 
 UPDATE program SET maxStations=100 where maxStations is 1;
 UPDATE program SET site=(SELECT id FROM site WHERE name=='Casa');
@@ -248,7 +248,6 @@ INSERT INTO pgmDOW  -- Only Wednesday
 INSERT INTO pgmStn (program,station,runTime) VALUES
    ((SELECT id FROM program WHERE name='Selva plantas'), (SELECT id FROM station WHERE station==71), 4*60)
   ,((SELECT id FROM program WHERE name='Selva goteo'),   (SELECT id FROM station WHERE station==72), 150*60)
-  ,((SELECT id FROM program WHERE name='Selva rocio'),   (SELECT id FROM station WHERE station==73), 2*60)
   ;
 
 UPDATE pgmStn SET mode=(SELECT id FROM webList WHERE grp=='pgm' AND key=='on') WHERE mode IS NULL;

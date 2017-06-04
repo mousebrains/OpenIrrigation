@@ -83,7 +83,7 @@ function mkCurrent(array $pgm) {
 	$results = $cmdDB->query('SELECT addr,idOn,idOff,tOn,tOff,program,pre,peak,post,codeOn FROM onOffActive ' 
 			. ' ORDER BY tOn,addr;');
 	$hdr = "<tr><th></th><th>Station</th><th>Start</th>"
-		. "<th>RunTime</th><th>Time Left</th><th>Pgm</th>"
+		. "<th>RunTime</th><th>Time Left</th><th>Program</th>"
 		. "<th>Pre</th><th>Peak</th><th>Post</th><th>On Code</th></tr>";
 	$qFirst = true;
 	while ($row = $results->fetchArray()) {
@@ -117,7 +117,7 @@ function mkPending(array $pgm) {
 	global $cmdDB;
 	$results = $cmdDB->query('SELECT * FROM onOffPending ORDER BY tOn,addr;');
 	$hdr = "<tr><th></th><th>Station</th><th>Start</th>"
-		. "<th>RunTime</th><th>Pgm</th></tr>";
+		. "<th>RunTime</th><th>Program</th></tr>";
 	$qFirst = true;
 	while ($row = $results->fetchArray()) {
 		if ($qFirst) {
