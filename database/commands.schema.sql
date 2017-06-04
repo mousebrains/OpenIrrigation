@@ -20,8 +20,7 @@ CREATE TABLE commands(id INTEGER PRIMARY KEY AUTOINCREMENT, -- unique record ID
                       cmd INTEGER, -- on=0, off=1, T=2
                       addr INTEGER, -- station address
                       program INTEGER, -- which program created this entry, id in params.db
-                      pgmStn INTEGER, -- which pgmStn created this entry, id in params.db
-                      pgmDate INTEGER -- Which date this entry was generated for
+                      pgmDate INTEGER -- Which date this entry was generated for, NULL is manual
                      );
 DROP INDEX IF EXISTS commandsTS;
 CREATE INDEX commandsTS ON commands(timestamp);
@@ -112,21 +111,6 @@ CREATE TRIGGER pendingOffUpdate
 	BEGIN
 		UPDATE onOffPending SET (tOff)=NEW.timeStamp WHERE idOff==NEW.id;
 	END;
-
--- Which pgmStn entries have been deleted from commands, which indicate they are being serviced
-
-DROP TABLE IF EXISTS pgmStnTbl;
-CREATE TABLE pgmStnTbl(pgmStn INTEGER id PRIMARY KEY ON CONFLICT IGNORE -- in params.pgmStn
-                      );
-
-DROP TRIGGER IF EXISTS pgmStnDelete;
-CREATE TRIGGER pgmStnDelete
-	AFTER DELETE ON commands -- For every deletion in commands
-        FOR EACH ROW
-        WHEN OLD.pgmStn IS NOT NULL -- For non-null pgmStn entries in command
-        BEGIN
-		INSERT INTO pgmStnTbl VALUES(OLD.pgmStn);
-        END;
 
 -- Zee message log
 DROP TABLE IF EXISTS zeeLog;
