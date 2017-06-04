@@ -25,24 +25,23 @@ if (!empty($_POST)) {
           $stmt->bindValue(':rt', $_POST['time']*60, SQLITE3_INTEGER);
           $stmt->execute();
           $stmt->close();
-          $parDB->exec('INSERT OR REPLACE INTO scheduler VALUES(strftime("%s", "NOW"));');
+          $now = time();
+          $parDB->exec('INSERT OR REPLACE INTO scheduler VALUES($now);');
         } else { // Stop an existing run
           $stmt = $parDB->prepare('DELETE FROM pgmStn'
-		. ' WHERE program==(SELECT id FROM program WHERE name=="Manual")'
-		. ' AND station==:stn;');
+		. ' WHERE qSingle==1 AND station==:stn;');
           $stmt->bindValue(':stn', $_POST['id'], SQLITE3_INTEGER);
           $stmt->execute();
           $stmt->close();
-          $pgmId = $parDB->querySingle('SELECT id FROM program WHERE name=="Manual";');
           $stmt = $parDB->prepare('SELECT sensor.addr FROM sensor'
 		. ' INNER JOIN station ON station.sensor==sensor.id AND station.id==:stn;');
           $stmt->bindValue(':stn', $_POST['id'], SQLITE3_INTEGER);
           $addr = $stmt->execute()->fetchArray()['addr'];
           $stmt->close();
-          $stmt = $cmdDB->prepare('UPDATE commands SET timestamp=:now WHERE addr==:addr AND program==:pgm;');
-          $stmt->bindValue(':now', time());
+          $stmt = $cmdDB->prepare('UPDATE commands SET timestamp=:now'
+		. ' WHERE addr==:addr AND pgmStn is NOT NULL;');
+          $stmt->bindValue(':now', time(), SQLITE3_INTEGER);
           $stmt->bindValue(':addr', $addr, SQLITE3_INTEGER);
-          $stmt->bindValue(':pgm', $pgmId, SQLITE3_INTEGER);
           $stmt->execute();
           $stmt->close();
         }

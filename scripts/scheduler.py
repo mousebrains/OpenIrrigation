@@ -40,10 +40,11 @@ class Scheduler(threading.Thread): # When triggered schedule things up
     def rmSingles(self, cmdDB, parDB):
       ids = []
       for row in cmdDB.execute('SELECT * FROM pgmStnTbl;'):
-        ids.append(row[0])
-      ids = ','.join([str(x) for x in ids]) # Comma deliminted list of integers
-      parDB.execute("DELETE FROM pgmStn WHERE id IN(" + ids + ");");
-      cmdDB.execute("DELETE FROM pgmStnTbl WHERE pgmStn IN(" + ids + ");");
+        ids.append(str(row[0]))
+      if len(ids): # Something to delete
+        ids = ','.join(ids) # Comma deliminted list of integers
+        parDB.execute("DELETE FROM pgmStn WHERE id IN(" + ids + ");");
+        cmdDB.execute("DELETE FROM pgmStnTbl WHERE pgmStn IN(" + ids + ");");
 
     def run(self):  # Called on thread start
         logger = self.logger.info
@@ -64,6 +65,7 @@ class Scheduler(threading.Thread): # When triggered schedule things up
             self.rmPending(cmdDB, sDate);
             self.rmSingles(cmdDB, db);
             events.loadHistorical(cmdDB, sDate, pgm)
+            pgm.resetManualTotalTime()
             events.loadActive(cmdDB, pgm)
             events.loadPending(cmdDB, pgm)
             pgm.adjustRunTimes(sDate, events)

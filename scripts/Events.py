@@ -149,11 +149,12 @@ class Events(list):
         if sDate >= eDate: # No time left
             return True
 
-        if aDate < eDate:  # Forwards or both
-            q = self.goBoth(sDate, aDate, eDate, stn) if aDate > sDate else \
-                self.goForward(sDate, eDate, stn)
-        else:
+        if aDate <= sDate:  # Start at sDate and go forwards
+            q = self.goForward(sDate, eDate, stn)
+        elif aDate >= eDate: # Start at eDate and go backwards
             q = self.goBackward(sDate, eDate, stn)
+        else: # Start inbetween sDate and eDate and go bothways
+            q = self.goBoth(sDate, aDate, eDate, stn)
 
         if not q: # Failed to fit everything in
             self.logger.error('{} left for {}/{} in {} to {}'.format(
@@ -189,9 +190,9 @@ class Events(list):
             if st is None:
                 return False
             st = self.insertEvent(sDate, st, et, stn)
-            if st >= eDate:
-                return False
             tLeft = stn.timeLeft()
+            if (st >= eDate) and (tLeft > self.zeroTime):
+                return False
         return True
 
     def goBackward(self, sDate, eDate, stn):

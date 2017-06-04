@@ -238,6 +238,7 @@ class PgmStation(DictTable):
       self['totalTime'] = datetime.timedelta()
 
   def adjustRunTimes(self, date, events):
+    if self.qSingle(): return # Do nothing with single shots
     pgm = self.program()
     pgm.qActiveTime(date) # Make sDate and eDate
     sDate = pgm.sDate()
@@ -258,6 +259,9 @@ class PgmStation(DictTable):
           else: # Past interval
             self['totalTime'] += eDate - tOn
             break
+
+  def resetManualTotalTime(self):
+    if self.qSingle(): self['totalTime'] = datetime.timedelta()
 
 class PgmStations(ListTables):
   def __init__(self, db, logger, lists, programs, stns):
@@ -374,6 +378,10 @@ class Program(DictTable):
     for stn in self.stations:
       stn.adjustRunTimes(date, events)
    
+  def resetManualTotalTime(self): # Clear total time for manual stations
+    for stn in self.stations:
+      stn.resetManualTotalTime()
+   
 class Programs(ListTables):
   def __init__(self, db, logger):
     self.logger = logger
@@ -407,6 +415,10 @@ class Programs(ListTables):
   def adjustRunTimes(self, date, events): # Take into account past/active run times
     for pgm in self:
       pgm.adjustRunTimes(date, events)
+
+  def resetManualTotalTime(self):
+    for pgm in self:
+      pgm.resetManualTotalTime()
 
   def findPgmStation(self, addr, pgm):
     for item in self.pgmStations:

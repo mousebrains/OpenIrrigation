@@ -9,5 +9,19 @@ class BaseDB extends SQLite3 {
 	function __destruct() {
                 $this->close();
 	}
+
+	function loadColumn(string $sql) {
+		$rows = [];
+		$results = $this->query($sql);
+		while ($row = $results->fetchArray()) {array_push($rows, $row[0]);}
+		return $rows;
+	}
+
+	function loadKeyValue(string $sql) {
+		$rows = [];
+		$results = $this->query($sql);
+		while ($row = $results->fetchArray()) {$rows[$row[0]] = $row[1];}
+		return $rows;
+	}
 }
 ?>

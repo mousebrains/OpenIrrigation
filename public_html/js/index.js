@@ -7,19 +7,19 @@ if (typeof(EventSource) != "undefined") {
 		let data = JSON.parse(event.data);
                 let color = {};
                 let active = {};
-                let a = data['dtPast'];
+                let a = data['dtPast']; // Past entries
                 if (a) { for (let k in a) { color[k] = "#FDDEB3"; } }
-                a = data['dtPending'];
-                if (a) { for (let k in a) { color[k] = "#AFEEEE"; } }
-                a = data['dtSched'];
-                if (a) { 
-			for (let k in a) { 
-				color[k] = "#4F8C4F";
+                a = data['dtPending']; // Pending entries
+                if (a) { for (let k in a) { color[k] = "#DDA0DD"; } }
+                a = data['dtSched']; // to be scheduled entries
+                if (a) {
+			for (let k in a) {
+				color[k] = "#F1DAF1";
 				active[k] = a[k];
-			} 
+			}
 		}
-                a = data['dtActive'];
-                if (a) { 
+                a = data['dtActive']; // Currently running
+                if (a) {  
 			for (let k in a) { 
 				color[k] = "#8FBC8F"; 
 				active[k] = a[k];

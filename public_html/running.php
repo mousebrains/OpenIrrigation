@@ -25,14 +25,12 @@ function procSQL($msg, $db, string $suffix, string $sql, array $stn) {
 
 $stn = $parDB->loadKeyValue('SELECT sensor.addr,station.id'
 		. ' FROM sensor INNER JOIN station ON sensor.id==station.sensor;');
-
+$done = $cmdDB->loadColumn('SELECT pgmStn FROM pgmStnTbl;');
+ 
 $now = time();
 
 $msg = procSQL(NULL, $cmdDB, "Active", "SELECT addr,tOff-$now FROM onOffActive;", $stn);
-$msg = procSQL(NULL, $cmdDB, "pActive", "SELECT addr,$now-tOn FROM onOffActive;", $stn);
-$msg = procSQL($msg, $parDB, "Sched", "SELECT station,runTime FROM pgmStn"
-	. " INNER JOIN program ON pgmStn.program==program.id AND program.name=='Manual';",
-	[]);
+$msg = procSQL($msg, $cmdDB, "pActive", "SELECT addr,$now-tOn FROM onOffActive;", $stn);
 $msg = procSQL($msg, $cmdDB, "Pending", 
 	"SELECT addr,sum(tOff-tOn)"
         . " FROM onOffPending"
@@ -46,6 +44,10 @@ $msg = procSQL($msg, $cmdDB, "Past",
         . " WHERE tOff >= " . ($now - 86400)
         . " GROUP BY addr;",
 	$stn);
+
+$sql = "SELECT station,runtime FROM pgmStn WHERE qSingle==1";
+if (!empty($done)) {$sql .= " AND id NOT IN(" . implode($done, ",") . ")";}
+$msg = procSQL($msg, $parDB, "Sched", $sql . ";", []);
 
 echo "data: {{$msg}}\n\n";
 flush();
