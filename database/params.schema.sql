@@ -604,4 +604,18 @@ INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
 	(15, 'ETStn','soakTime','ET soak time (min)', 'min'),
 	(16, 'ETStn','fracAdjust','Adjust fraction', 'ET');
 
+DROP TABLE IF EXISTS groups;
+CREATE TABLE groups(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
+                    site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site this group belongs to
+                    name TEXT COLLATE NOCASE, -- name of the group
+                    UNIQUE(site,name) ON CONFLICT IGNORE
+                   );
+
+DROP TABLE IF EXISTS groupStation;
+CREATE TABLE groupStation(groups INTEGER REFERENCES groups(id), -- which group this entry is for
+                          station INTEGER REFERENCES station(id), -- which station this entery is for
+                          sortOrder INTEGER DEFAULT 0, -- sorting order
+                          PRIMARY KEY(groups, station) ON CONFLICT REPLACE
+                         );
+
 -- .schema
