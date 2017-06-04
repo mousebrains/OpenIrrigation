@@ -25,7 +25,7 @@ function procSQL($msg, $db, string $suffix, string $sql, array $stn) {
 
 $stn = $parDB->loadKeyValue('SELECT sensor.addr,station.id'
 		. ' FROM sensor INNER JOIN station ON sensor.id==station.sensor;');
- 
+
 $now = time();
 
 $msg = procSQL(NULL, $cmdDB, "Active", "SELECT addr,tOff-$now FROM onOffActive;", $stn);

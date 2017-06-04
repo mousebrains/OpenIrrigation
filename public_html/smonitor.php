@@ -21,16 +21,14 @@ echo "<table>\n";
 echo "<thead>$thead</thead>\n";
 echo "<tbody>\n";
 
-$results = $parDB->query("SELECT sensor.addr,station.name"
-	. " FROM station INNER JOIN sensor ON station.sensor==sensor.id"
-	. " ORDER BY station.name;");
+$results = $parDB->query("SELECT id,name FROM station ORDER BY station.name;");
 while ($row = $results->fetchArray()) {
-  $addr = $row[0];
+  $id = $row[0];
   $name = $row[1];
-  echo "<tr id='r$addr' style='display:none;'>"
-	. "<th id='a$addr'>$name</th>"
-	. "<td id='p$addr'></td>"
-	. "<td id='n$addr'></td>"
+  echo "<tr id='r$id' style='display:none;'>"
+	. "<th id='a$id'>$name</th>"
+	. "<td id='p$id'></td>"
+	. "<td id='n$id'></td>"
 	. "</tr>\n";
 }
 
