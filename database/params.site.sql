@@ -27,6 +27,7 @@ INSERT INTO webList(sortOrder,grp,key,label) VALUES(1,'reports','highFlow', 'Hig
 INSERT INTO webList(sortOrder,grp,key,label) VALUES(2,'reports','electrical', 'Electrical Alerts');
 INSERT INTO webList(sortOrder,grp,key,label) VALUES(3,'reports','controller', 'Controller Alerts');
 INSERT INTO webList(sortOrder,grp,key,label) VALUES(4,'reports','daily', 'Daily Summary Report');
+INSERT INTO webList(sortOrder,grp,key,label) VALUES(5,'reports','systemd', 'Systemd Alerts');
 
 -- which reports/alerts each email receives
 INSERT into emailReports VALUES (
