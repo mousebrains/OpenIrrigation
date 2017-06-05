@@ -75,6 +75,7 @@ INSERT INTO webInput (key,inputType,ph,step,minVal,maxVal) VALUES
 INSERT INTO webInput (key,inputType,ph,minVal,maxVal) VALUES('Ldays','number','100',0,366);
 INSERT INTO webInput (key,inputType,ph,step,minVal,maxVal) VALUES('Kc','number','0.94',0.01,0.1,2);
 INSERT INTO webInput (key,inputType,ph,minVal,maxVal) VALUES('%','number','94',0,100);
+INSERT INTO webInput (key,inputType,ph,minVal,maxVal) VALUES('flowPercentage', 'number','100',0,400);
 INSERT INTO webInput (key,inputType,ph,step,minVal,maxVal) VALUES('height','number','1.3',0.05,0,4);
 INSERT INTO webInput (key,inputType,ph,step,minVal,maxVal) VALUES('depth','number','1.3',0.05,0,4);
 INSERT INTO webInput (key,inputType,ph,step,minVal,maxVal) VALUES

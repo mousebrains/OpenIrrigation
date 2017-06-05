@@ -363,8 +363,8 @@ CREATE TABLE station(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      maxCoStations INTEGER DEFAULT 200, -- max number of stations at same time
 		     measuredFlow FLOAT, -- measured flow in GPM
 		     userFlow FLOAT, -- user input in GPM
-                     lowFlowFrac FLOAT DEFAULT 0, -- frac of meas/user flow for alert
-                     highFlowFrac FLOAT DEFAULT 3, -- frac of meas/user flow for alert
+                     lowFlowFrac INTEGER DEFAULT 0, -- % of meas/user flow for alert
+                     highFlowFrac INTEGER DEFAULT 400, -- % of meas/user flow for alert
                      flowDelayOn INTEGER DEFAULT 60, -- delay after on before flow alerts
                      flowDelayOff INTEGER DEFAULT 60, -- delay after off before flow alerts
 		     UNIQUE (poc, name),
@@ -386,8 +386,8 @@ INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
 	(6, 'station','sortOrder','Sort Order', 'nStations'),
 	(7, 'station','measuredFlow','Measured Flow (GPM)', 'flow'),
 	(8, 'station','userFlow','User Flow (GPM)', 'flow'),
-	(9, 'station','lowFlowFrac','Low flow alert fraction', 'Kflow'),
-	(10, 'station','highFlowFrac','High flow alert fraction', 'Kflow'),
+	(9, 'station','lowFlowFrac','Low flow alert %', 'flowPercentage'),
+	(10, 'station','highFlowFrac','High flow alert %', 'flowPercentage'),
 	(11, 'station','maxCoStations','Max other stations', 'nStations'),
 	(12, 'station','minCycleTime','Min Cycle (min)', 'minute'),
 	(13, 'station','flowDelayOn','Flow alert delay On (sec)', 'sec'),
