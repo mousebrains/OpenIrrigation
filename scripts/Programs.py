@@ -213,9 +213,10 @@ class PgmStation(DictTable):
   def poc(self): return self.station().poc()
   def name(self): return self.station().name()
   def minCycleTime(self): return self.station().minCycleTime()
-  def maxCycleTime(self): return self.station().maxCycleTime()
-  def soakTime(self): return self.station().soakTime()
-  def minSoakTime(self): return self.station().minSoakTime()
+  def maxCycleTime(self):
+    return self.station().maxCycleTime() if not self.qSingle() else datetime.timedelta(days=2)
+  def minSoakTime(self):
+    return self.station().minSoakTime() if not self.qSingle() else datetime.timedelta()
   def maxCoStations(self): return self.station().maxCoStations()
   def delayOn(self): return self.station().delayOn()
   def delayOff(self): return self.station().delayOff()

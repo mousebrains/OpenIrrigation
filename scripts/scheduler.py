@@ -71,13 +71,19 @@ class Scheduler(threading.Thread): # When triggered schedule things up
             manIDs = set()
             for event in events:
                 if event.sDate is not None: # Not already queued
-                    cmdDB.execute('INSERT INTO commands(timestamp,cmd,addr,program,pgmDate) ' \
-				+ 'VALUES(?,?,?,?,?);', \
-                              (event.time.timestamp(), \
-                               0 if event.qOn else 1, \
-                               event.stn.station().sensor().addr(), \
-                               event.pgm.key(), \
-                               None if event.stn.qSingle() else event.sDate.timestamp()));
+                    ts = event.time.timestamp()
+                    cmd = 0 if event.qOn else 1
+                    addr = event.stn.station().sensor().addr()
+                    pgmid = event.pgm.key()
+                    self.logger.info('Event {} {} {} {}'.format(
+                                     event.stn.label(),
+                                     datetime.datetime.fromtimestamp(ts),
+                                     cmd,
+                                     None if event.stn.qSingle() else event.sDate))
+                    cmdDB.execute('INSERT INTO commands (timestamp,cmd,addr,program,pgmDate)' \
+				+ ' VALUES(?,?,?,?,?);', \
+				(ts, cmd, addr, pgmid,
+				 None if event.stn.qSingle() else event.sDate.timestamp()))
                     if event.stn.qSingle():
                       manIDs.add(str(event.stn.key()))
             self.rmManual(db, manIDs)
