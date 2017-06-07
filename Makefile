@@ -1,4 +1,4 @@
-.phony: all install clean start stop restart status
+.phony: all install clean start stop restart status enable disable reload cleanlogs
 
 all: Makefile.params install
 
@@ -13,3 +13,8 @@ install clean: Makefile.params
 
 enable disable start stop restart status reload: Makefile.params
 	$(MAKE) -C service $@
+
+cleanlogs: Makefile.params
+	$(MAKE) stop
+	$(RM) $(LOGDIR)/*.log
+	$(MAKE) start
