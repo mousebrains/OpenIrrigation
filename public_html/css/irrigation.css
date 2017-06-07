@@ -56,4 +56,7 @@ body {margin:0;}
 table { border-collapse: collapse; }
 
 table, th, td { border: 1px solid black; }
-th, td { text-align:right; vertical-align:center;}
+th, td {text-align:center; vertical-align:center;}
+
+tbody tr:nth-of-type(odd) {background-color:#ccc;}
+</style>

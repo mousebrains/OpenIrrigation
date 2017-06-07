@@ -13,6 +13,7 @@ SRC+= soil.php crop.php
 SRC+= station.php program.php event.php programStation.php
 SRC+= params.php webList.php
 SRC+= ET.php ETannual.php ETStn.php
+SRC+= reportDaily.php
 
 DEST = $(SRC:%=$(WEBDIR)/%)
 

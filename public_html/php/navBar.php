@@ -22,6 +22,7 @@ echo "  <div id='statusBlock'>Status info</div>
     <a href='javascript:void(0)' id='topdropbtn'>&#9776;</a>
     <div id='top-dropdown-content'>
       <a href='index.php'>Manual Operations</a>
+      <a href='reportDaily.php'>Daily Summary</a>
       <a href='smonitor.php'>Summary</a>
       <a href='monitor.php'>Monitor Operations</a>
       <a href='program.php'>Programs</a>

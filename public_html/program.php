@@ -7,6 +7,7 @@
 <link rel='stylesheet' type='text/css' href='css/irrigation.css'>
 <script src="js/jquery.min.js"></script>
 <title>Program editor</title>
+<style> tbody tr:nth-of-type(odd) {background-color:#eee;} </style>
 </head>
 <body>
 <?php
