@@ -39,10 +39,10 @@ class ListTables(list):
       msg += "{}({})={}".format(self.name, index, self[index])
     return msg
         
-  def fixup(self, field, values):
+  def fixup(self, field, values, defaultValue = None):
     for item in self:
       oID = item[field]
-      item[field] = values[oID] if oID in values else None
+      item[field] = values[oID] if oID in values else defaultValue
 
 class DictTables(dict):
   def __init__(self, name, db, logger, sql, obj, id='id'):
@@ -297,38 +297,48 @@ class Program(DictTable):
   def maxStations(self): return self['maxStations']
   def maxFlow(self): return self['maxFlow']
   def qOn(self): return self['onOff'] != 'off'
+  def startMode(self): return self['startMode']
+  def stopMode(self): return self['stopMode']
+  def qStartModeClock(self): return self.startMode() == 'clock'
+  def qStopModeClock(self): return self.stopMode() == 'clock'
+  def startTime(self): return self['startTime']
+  def endTime(self): return self['endTime']
+  def action(self): return self['action']
+  def qDOW(self): return self.action() == 'dow'
+  def qnDays(self): return self.action() == 'nDays'
+  def refDate(self): return self['refDate']
+  def nDays(self): return self['nDays']
+  def dow(self): return self['dow']
 
   def qActive(self, date, dow):
     return self.qOn() and self.qActiveDay(date, dow) and self.qActiveTime(date)
 
   def qActiveDay(self, date, dow): # Check if this is a day we're going to run on
-    id = self['id']
-    action = self['action']
-    if action == 'dow':
-      return dow in self['dow']
-    if action == 'nDays':
-      refdate = datetime.date.fromtimestamp(self['refDate'])
-      return (abs(refdate - date.date()).days % self['nDays']) == 0
+    id = self.key()
+    action = self.action()
+    if self.qDOW():
+      return dow in self.dow()
+    if self.qnDays():
+      refdate = datetime.date.fromtimestamp(self.refDate())
+      return (abs(refdate - date.date()).days % self.nDays()) == 0
     self.logger.error('Unrecognized action, {}, in program {}'.format(action, pgm))
     return False
 
   def qActiveTime(self, date): # Will a time window happen between now and the end of the day?
     d = date.date()
-    startMode = self['startMode']
-    stopMode  = self['stopMode']
-    sTime = self.mkTime(self['startTime'])
-    eTime = self.mkTime(self['endTime'])
-    if (startMode == 'clock') and (stopMode == 'clock'): # Two wall clock times
+    sTime = self.mkTime(self.startTime())
+    eTime = self.mkTime(self.endTime())
+    if self.qStartModeClock() and self.qStopModeClock(): # Two wall clock times
       [sDate, eDate] = self.mkWallTimes(d, sTime, eTime)
-    elif (startMode == 'clock'): # Start time is wall clock based
+    elif self.qStartModeClock(): # Start time is wall clock based
       sDate = datetime.datetime.combine(d, sTime)
-      eDate = self.mkCelestial(d, stopMode, eTime)
-    elif (stopMode == 'clock'): # Stop time is wall clock based
-      sDate = self.mkCelestial(d, startMode, sTime)
+      eDate = self.mkCelestial(d, self.stopMode(), eTime)
+    elif self.qStopModeClock(): # Stop time is wall clock based
+      sDate = self.mkCelestial(d, self.startMode(), sTime)
       eDate = datetime.datetime.combine(d, eTime)
     else:
-      sDate = self.mkCelestial(d, startMode, sTime)
-      eDate = self.mkCelestial(d, stopMode, eTime)
+      sDate = self.mkCelestial(d, self.startMode(), sTime)
+      eDate = self.mkCelestial(d, self.stopMode(), eTime)
 
     self['sDate'] = sDate # Store for others to use
     self['eDate'] = eDate
@@ -398,8 +408,8 @@ class Programs(ListTables):
     self.fixup('site', self.sites)
     self.fixup('action', self.lists)
     self.fixup('onOff', self.lists)
-    self.fixup('startMode', self.lists)
-    self.fixup('stopMode', self.lists)
+    self.fixup('startMode', self.lists, 'clock')
+    self.fixup('stopMode', self.lists, 'clock')
     self.pgmStations = PgmStations(db, logger, self.lists, self, self.stations)
     self.pgmDOW = PgmDOW(db, self, self.lists)
 

@@ -42,6 +42,11 @@ class Scheduler(threading.Thread): # When triggered schedule things up
         ids = ','.join(ids) # Comma deliminted list of integers
         db.execute("DELETE FROM pgmStn WHERE qSingle==1 AND id IN(" + ids + ");");
 
+    def updateRefDate(self, db, ids):
+      if len(ids): # Some programs to update refDate for
+        db.execute("UPDATE program SET refDate=? WHERE id IN (" + ','.join(ids) + ");", 
+                   (datetime.datetime.combine(datetime.date.today(), datetime.time()).timestamp(),))
+
     def run(self):  # Called on thread start
         q = self.q
         self.logger.info('Starting')
@@ -69,6 +74,8 @@ class Scheduler(threading.Thread): # When triggered schedule things up
                 sDate = datetime.datetime.combine(sDate.date() + dt, midnight)
 
             manIDs = set()
+            refIDs = set()
+            today = datetime.date.today()
             for event in events:
                 if event.sDate is not None: # Not already queued
                     ts = event.time.timestamp()
@@ -86,7 +93,10 @@ class Scheduler(threading.Thread): # When triggered schedule things up
 				 None if event.stn.qSingle() else event.sDate.timestamp()))
                     if event.stn.qSingle():
                       manIDs.add(str(event.stn.key()))
+                    if event.pgm.qnDays() and (event.time.date() == today):
+                      refIDs.add(str(event.pgm.key()))
             self.rmManual(db, manIDs)
+            self.updateRefDate(db, refIDs)
             db.commit()
             cmdDB.commit()
 
