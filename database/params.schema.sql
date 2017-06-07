@@ -611,11 +611,25 @@ CREATE TABLE groups(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                     UNIQUE(site,name) ON CONFLICT IGNORE
                    );
 
+INSERT INTO webFetch(key,sql,qTable) VALUES
+	('groups', 'SELECT * FROM groups ORDER BY name;', 1);
+INSERT INTO webView(sortOrder,key,field,label,itype,qRequired,sql) VALUES
+	(0, 'groups', 'site', 'Site', 'list', 1, 'SELECT id,name FROM site ORDER BY name;');
+INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
+	(1, 'groups','name','Name', 'date');
+
 DROP TABLE IF EXISTS groupStation;
 CREATE TABLE groupStation(groups INTEGER REFERENCES groups(id), -- which group this entry is for
                           station INTEGER REFERENCES station(id), -- which station this entery is for
                           sortOrder INTEGER DEFAULT 0, -- sorting order
                           PRIMARY KEY(groups, station) ON CONFLICT REPLACE
                          );
+INSERT INTO webFetch(key,tbl, sql,qTable) VALUES
+	('groupStation', 'groupStation', 'SELECT * FROM groupStation ORDER BY groups,station;',1);
+INSERT INTO webView(sortOrder,key,field,label,itype,qRequired,sql) VALUES
+	(0, 'groupStation','groups','Group', 'list', 1, 'SELECT id,name FROM groups ORDER BY name;'),
+	(1, 'groupStation','station','Station', 'list', 1, 'SELECT id,name FROM station ORDER BY name;');
+INSERT INTO webView(sortOrder,key,field,label,itype) VALUES
+	(3, 'groupStation','sortOrder','Sort Order', 'n');
 
 -- .schema

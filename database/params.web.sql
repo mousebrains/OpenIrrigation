@@ -108,3 +108,11 @@ CREATE TABLE webList(id INTEGER PRIMARY KEY AUTOINCREMENT, -- id
                      label TEXT, -- menu item name
                      UNIQUE(grp,key) -- grp/key must be unique
                     );
+
+INSERT INTO webFetch(key,sql,qTable) VALUES ('webList','SELECT * FROM webList ORDER BY grp,sortOrder,key;',1);
+INSERT INTO webView(sortOrder,key,field,label,qRequired) VALUES
+	(0,'webList','grp','Group Name', 1),
+	(1,'webList','key','Key name', 1),
+	(2,'webList','label','Label', 1),
+	(3,'webList','sortOrder','Sort Order', 0);
+
