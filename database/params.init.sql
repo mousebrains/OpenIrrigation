@@ -23,5 +23,8 @@ INSERT INTO params(grp,name,val) VALUES('AGRIMET', 'times', '0:00,2:00,4:00,18:0
 INSERT INTO params(grp,name,val) VALUES('AGRIMET', 'statDayOfMonth', '3');
 INSERT INTO params(grp,name,val) VALUES('AGRIMET', 'statHourOfDay', '4:30');
 INSERT INTO params(grp,name,val) VALUES('AGRIMET', 'earliestDate', '1990-04-01');
+
+-- Scheduler parameters
+INSERT INTO params(grp,name,val) VALUES('SCHED', 'nDays', 10);
 	
 -- SELECT * FROM params;

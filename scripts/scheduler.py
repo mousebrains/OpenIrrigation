@@ -47,6 +47,12 @@ class Scheduler(threading.Thread): # When triggered schedule things up
         db.execute("UPDATE program SET refDate=? WHERE id IN (" + ','.join(ids) + ");", 
                    (datetime.datetime.combine(datetime.date.today(), datetime.time()).timestamp(),))
 
+    def getNForward(self, db):
+      n = db.execute('SELECT val FROM params WHERE grp=="SCHED" AND name=="nDays";'). fetchone()[0];
+      if n is None: return 5
+      if isinstance(n, str) and n.isnumeric(): return int(n)
+      return n 
+
     def run(self):  # Called on thread start
         q = self.q
         self.logger.info('Starting')
@@ -56,9 +62,10 @@ class Scheduler(threading.Thread): # When triggered schedule things up
         while True:
             t = q.get()
             q.task_done()
+            nFwd = self.getNForward(db)
             pgm = Programs(db, self.logger)
             sDate = datetime.datetime.now()
-            eDate = sDate + datetime.timedelta(days=5)
+            eDate = sDate + datetime.timedelta(days=self.getNForward(db))
             dt = datetime.timedelta(days=1)
             midnight = datetime.time()
             self.rmPending(cmdDB, sDate)
