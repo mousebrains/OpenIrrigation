@@ -1,52 +1,90 @@
 <?php
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
+header('X-Accel-Buffering: no');
 
 require_once 'php/CmdDB.php';
 require_once 'php/ParDB.php';
 
-function procSQL($msg, $db, string $suffix, string $sql, array $stn) {
-  $dt = NULL;
-  $results = $db->query($sql);
-  while ($row = $results->fetchArray()) {
-    $addr = $row[0];
-    if (!is_null($dt)) { $dt .= ","; }
-    if (array_key_exists($addr, $stn)) { $addr = $stn[$addr]; }
-    $dt .= "\"$addr\":" . $row[1];
+class Query {
+  private $tBack = 86400;
+  private $tFwd = 86400;
+  private $previous = NULL;
+
+  function __construct($cmdDB, $parDB) {
+    $this->cmdDB = $cmdDB;
+    $this->parDB = $parDB;
+    $this->stn = $parDB->loadKeyValue('SELECT sensor.addr,station.id'
+			. ' FROM sensor INNER JOIN station ON sensor.id==station.sensor;');
+    ob_end_clean();
   }
-  if (is_null($dt)) {return $msg;}
-  if (is_null($msg)) {
-    $msg = "";
-  } else {
-    $msg .= ",";
+
+  function sendIt() {
+    $now = time();
+    $msg = [];
+    $fActive = [];
+    $pActive = [];
+    $pending = [];
+    $past = [];
+    $sched = [];
+
+    $results = $this->cmdDB->query("SELECT addr,sum(tOff-$now),sum($now-tOn)"
+		. " FROM onOffActive GROUP BY addr;");
+    while ($row = $results->fetchArray()) {
+      $addr = $row[0];
+      if (array_key_exists($addr, $this->stn)) {
+        $addr = $this->stn[$addr];
+        array_push($fActive, '"' . $addr . '":' . $row[1]);
+        array_push($pActive, '"' . $addr . '":' . $row[2]);
+      }
+    }
+    if (!empty($fActive)) {
+      array_push($msg, '"dtActive":{' . implode(",", $fActive) . '}');
+      array_push($msg, '"dtpActive":{' . implode(",", $pActive) . '}');
+    }
+
+    $tLimit = $now + $this->tFwd;
+    $results = $this->cmdDB->query("SELECT addr,sum(tOff-tOn) FROM onOffPending"
+		. " WHERE tOn<=$tLimit GROUP BY addr;");
+    while ($row = $results->fetchArray()) {
+      $addr = $row[0];
+      if (array_key_exists($addr, $this->stn)) {
+        array_push($pending, '"' . $this->stn[$addr] . '":' . $row[1]);
+      }
+    }
+    if (!empty($pending)) {array_push($msg, '"dtPending":{' . implode(",", $pending) . '}');}
+
+    $tLimit = $now - $this->tBack;
+    $results = $this->cmdDB->query("SELECT addr,sum(tOff-tOn) FROM onOffHistorical"
+		. " WHERE tOff>=$tLimit GROUP BY addr;");
+    while ($row = $results->fetchArray()) {
+      $addr = $row[0];
+      if (array_key_exists($addr, $this->stn)) {
+        array_push($past, '"' . $this->stn[$addr] . '":' . $row[1]);
+      }
+    }
+    if (!empty($past)) {array_push($msg, '"dtPast":{' . implode(",", $past) . '}');}
+
+    $results = $this->parDB->query("SELECT station,sum(runtime) FROM pgmStn"
+		. " WHERE qSingle==1 GROUP by station;");
+    while ($row = $results->fetchArray()) {
+      array_push($sched, '"' . $row[0] . '":' . $row[1]);
+    }
+    if (!empty($sched)) {array_push($msg, '"dtSched":{' . implode(",", $sched) . '}');}
+
+    if (!empty($msg) and ($msg != $this->previous)) {
+      $this->previous = $msg;
+      echo "data: {" . implode(",", $msg) . "}\n\n";
+      ob_flush();
+      flush();
+    }
   }
-  return $msg . "\"dt$suffix\":{{$dt}}";
 }
 
-$stn = $parDB->loadKeyValue('SELECT sensor.addr,station.id'
-		. ' FROM sensor INNER JOIN station ON sensor.id==station.sensor;');
+$query = new Query($cmdDB, $parDB);
 
-$now = time();
-
-$msg = procSQL(NULL, $cmdDB, "Active", "SELECT addr,tOff-$now FROM onOffActive;", $stn);
-$msg = procSQL($msg, $cmdDB, "pActive", "SELECT addr,$now-tOn FROM onOffActive;", $stn);
-$msg = procSQL($msg, $cmdDB, "Pending", 
-	"SELECT addr,sum(tOff-tOn)"
-        . " FROM onOffPending"
-        . " WHERE tOn <= " . ($now + 86400)
-        . " GROUP BY addr;",
-	$stn);
-$msg = procSQL($msg, $cmdDB, "Past", 
-	"SELECT"
-        . " addr,sum(tOff-max(tOn," . ($now-86400) . "))"
-        . " FROM onOffHistorical"
-        . " WHERE tOff >= " . ($now - 86400)
-        . " GROUP BY addr;",
-	$stn);
-
-$msg = procSQL($msg, $parDB, "Sched", 
-	"SELECT station,runtime FROM pgmStn WHERE qSingle==1", []);
-
-echo "data: {{$msg}}\n\n";
-flush();
+while (True) {
+  $query->sendIt();
+  sleep(1);
+}
 ?>

@@ -1,40 +1,78 @@
 <?php
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
+header('X-Accel-Buffering: no');
 
 require_once 'php/CmdDB.php';
 
-$tLimit = time() - 3600;
+class Query {
+  private $nActive = NULL;
+  private $nPending = NULL;
+  private $current = NULL;
+  private $sensor = NULL;
 
-# Pick up current/voltage
-$msg = 'data: {"curr":[';
-$a = $cmdDB->query('SELECT timestamp,volts,mAmps FROM currentLog '
-	. "WHERE timeStamp>$tLimit ORDER BY timeStamp DESC LIMIT 1;");
-if ($row = $a->fetchArray()) {
-	$msg .= $row[0] . ',' . $row[1] . ',' . $row[2];
-	$qFirst = false;
+  function __construct($db) {
+    $this->db = $db;
+    $this->tPrev = time() - 86400;
+    ob_end_clean(); // Turn off output buffering
+  }
+
+  function sendIt() {
+    $content = [];
+    $tLimit = $this->tPrev;
+    $db = $this->db;
+    $now = time();
+    $a = $db->query('SELECT timestamp,volts,mAmps FROM currentLog '
+		. "WHERE timeStamp>=$tLimit ORDER BY timeStamp DESC LIMIT 1;");
+    if ($row = $a->fetchArray()) {
+      $current = '"curr":[' . $row[0] . "," . $row[1] . "," . $row[2] . "]";
+      if ($current != $this->current) {
+        $this->current = $current;
+        array_push($content, $current);
+      }
+    }
+
+    # Get sensors
+    $a = $db->query('SELECT timestamp,addr,value FROM sensorLog '
+		. " WHERE timestamp>=$tLimit GROUP BY addr ORDER BY addr;");
+    $sensor = [];
+    while ($row = $a->fetchArray()) {
+      array_push($sensor, '[' . $row[0] . ',' . $row[1] . ',' . $row[2] . ']');
+    }
+    if (!empty($sensor) and ($sensor != $this->sensor)) {
+      $this->sensor = $sensor;
+      array_push($content, '"sensor":[' . implode(",", $sensor) . "]");
+    }
+
+    $n = $db->querySingle('SELECT count(DISTINCT addr) FROM onOffActive;');
+    if (is_null($n)) {$n = 0;}
+    if ($n != $this->nActive) {
+      array_push($content, '"nOn":' . $n);
+      $this->nActive = $n;
+    }
+
+    $tLimit = $now + 86400; // Look forward one day for pending
+    $n = $db->querySingle("SELECT count(DISTINCT addr) FROM onOffPending WHERE tOn<$tLimit;");
+    if (is_null($n)) {$n = 0;}
+    if ($n != $this->nPending) {
+      array_push($content, '"nPend":' . $n);
+      $this->nPending = $n;
+    }
+
+    $this->tPrev = $now;
+
+    if (!empty($content)) {
+      echo "data: {" . implode(",", $content) . "}\n\n";
+      ob_flush();
+      flush();
+    }
+  }
 }
 
-$msg .= '],"sensor":[';
+$query = new Query($cmdDB);
 
-# Get sensors
-$a = $cmdDB->query('SELECT timestamp,addr,value FROM sensorLog '
-	. " WHERE timestamp>$tLimit GROUP BY addr ORDER BY addr;");
-$cnt = 0;
-while ($row = $a->fetchArray()) {
-	if ($cnt++ != 0) { $msg .= ','; }
-	$msg .= '[' . $row[0] . ',' . $row[1] . ',' . $row[2] . ']';
+while (True) {
+  $query->sendIt();
+  sleep(1);
 }
-
-$msg .= '],"nOn":';
-
-$n = $cmdDB->querySingle('SELECT count(DISTINCT addr) FROM onOffActive;');
-$msg .= is_null($n) ? 0 : $n;
-$msg .= ',"nPend":';
-$tLimit = time() + 86400;
-$n = $cmdDB->querySingle("SELECT count(DISTINCT addr) FROM onOffPending WHERE tOn<$tLimit;");
-$msg .= is_null($n) ? 0 : $n;
-$msg .= "}\n\n";
-echo $msg;
-flush();
 ?>
