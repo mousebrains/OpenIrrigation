@@ -9,14 +9,18 @@ while ($row = $results->fetchArray()) {
 		. "', offset:" . $row['offset'] . ", K:" . $row['K'] . "};\n";
 }
 
-echo "</script>\n<div id='topnav'>\n";
+echo "</script>\n<div id='topnav'><div>\n";
 
 $qSim = $parDB->querySingle('SELECT qSimulate FROM simulate LIMIT 1;');
 if ($qSim) {
-  echo "  <div><h1>Simulating</h1></div>\n";
+  echo "  <span>Simulating</span>";
 }
 
-echo "  <div id='statusBlock'>Status info</div>
+echo "
+ <span id='statusCurrent'></span>
+ <span id='statusFlow'></span>
+ <span id='statusActive'></span>
+ <span id='statusPending'></span>
  <ul>
   <li id='topdropdown'>
     <a href='javascript:void(0)' id='topdropbtn'>&#9776;</a>
@@ -48,6 +52,7 @@ echo "  <div id='statusBlock'>Status info</div>
     </div>
   </li>
  </ul>
+</div>
 </div>
 
 <script src='js/status.js'></script>

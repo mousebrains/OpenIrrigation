@@ -1,7 +1,7 @@
-var statusCurrent = "";
-var statusSensor = "";
-var statusnOn = 0;
-var statusnPending = 0;
+var statusCurrent;
+var statusSensor;
+var statusnOn;
+var statusnPending;
 
 if (typeof(EventSource) != "undefined") {
 	var statusSource = new EventSource("status.php");
@@ -11,7 +11,11 @@ if (typeof(EventSource) != "undefined") {
                 if ('curr' in data) {
                   let a = data['curr'];
                   let t = new Date(a[0] * 1000);
-                  statusCurrent = t.toTimeString().substr(0,9) + a[1] + " V " + a[2] + " mA";
+                  let msg = t.toTimeString().substr(0,9) + a[1] + " V " + a[2] + " mA";
+                  if (msg != statusCurrent) {
+                    $("#statusCurrent").html(msg);
+                    statusCurrent = msg;
+                  }
                 }
                 if ('sensor' in data) {
                   let a = data['sensor'];
@@ -29,16 +33,18 @@ if (typeof(EventSource) != "undefined") {
                       msg += "sensor(" + key + ")=" + b[2];
                     }
                   }
-                  statusSensor = msg;
+                  if (msg != statusSensor) {
+                    $("#statusFlow").html(statusSensor);
+                    statusSensor = msg;
+                  }
                 }
-                if ('nOn' in data) {
+                if (('nOn' in data) && (data['nOn'] != statusOn)) {
                   statusnOn = data['nOn'];
+                  $("#statusActive").html("#On=" + statusOn);
                 }
-                if ('nPend' in data) {
-                  statusnOPending = data['nPend'];
+                if (('nPend' in data) && (data['nPend'] != statusnPending)) {
+                  statusnPending = data['nPend'];
+                  $("#statusPending").html("#Pending=" + statusnPending);
                 }
-                $("#statusBlock").html(statusCurrent + " " + statusSensor 
-			+ " nOn=" + statusnOn
-			+ " nPending=" + statusnPending);
 	};
 }

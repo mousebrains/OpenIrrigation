@@ -26,7 +26,7 @@ class Query {
 		. "WHERE timeStamp>=$tLimit ORDER BY timeStamp DESC LIMIT 1;");
     if ($row = $a->fetchArray()) {
       $current = '"curr":[' . $row[0] . "," . $row[1] . "," . $row[2] . "]";
-      if ($current != $this->current) {
+      if (is_null($this->current) or ($current != $this->current)) {
         $this->current = $current;
         array_push($content, $current);
       }
@@ -39,14 +39,14 @@ class Query {
     while ($row = $a->fetchArray()) {
       array_push($sensor, '[' . $row[0] . ',' . $row[1] . ',' . $row[2] . ']');
     }
-    if (!empty($sensor) and ($sensor != $this->sensor)) {
+    if (!empty($sensor) and (($sensor != $this->sensor) or is_null($this->sensor))) {
       $this->sensor = $sensor;
       array_push($content, '"sensor":[' . implode(",", $sensor) . "]");
     }
 
     $n = $db->querySingle('SELECT count(DISTINCT addr) FROM onOffActive;');
     if (is_null($n)) {$n = 0;}
-    if ($n != $this->nActive) {
+    if (is_null($this->nActive) or ($n != $this->nActive)) {
       array_push($content, '"nOn":' . $n);
       $this->nActive = $n;
     }
@@ -54,7 +54,7 @@ class Query {
     $tLimit = $now + 86400; // Look forward one day for pending
     $n = $db->querySingle("SELECT count(DISTINCT addr) FROM onOffPending WHERE tOn<$tLimit;");
     if (is_null($n)) {$n = 0;}
-    if ($n != $this->nPending) {
+    if (is_null($this->nPending) or ($n != $this->nPending)) {
       array_push($content, '"nPend":' . $n);
       $this->nPending = $n;
     }
