@@ -1,7 +1,7 @@
 var statusCurrent;
 var statusSensor;
-var statusnOn;
-var statusnPending;
+var statusOn;
+var statusPending;
 
 if (typeof(EventSource) != "undefined") {
 	var statusSource = new EventSource("status.php");
@@ -39,12 +39,12 @@ if (typeof(EventSource) != "undefined") {
                   }
                 }
                 if (('nOn' in data) && (data['nOn'] != statusOn)) {
-                  statusnOn = data['nOn'];
+                  statusOn = data['nOn'];
                   $("#statusActive").html("#On=" + statusOn);
                 }
-                if (('nPend' in data) && (data['nPend'] != statusnPending)) {
-                  statusnPending = data['nPend'];
-                  $("#statusPending").html("#Pending=" + statusnPending);
+                if (('nPend' in data) && (data['nPend'] != statusPending)) {
+                  statusPending = data['nPend'];
+                  $("#statusPending").html("#Pending=" + statusPending);
                 }
 	};
 }
