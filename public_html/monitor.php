@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta http-equiv='Content-Language' content='en'>
 <meta name='viewport' content='width=device-width, initial-scale=1'>
-<meta http-equiv='refresh', content='15'>
 <link rel='stylesheet' type='text/css' href='css/irrigation.css'>
 <script src="js/jquery.min.js"></script>
 <title>Monitor</title>
