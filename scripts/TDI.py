@@ -322,8 +322,9 @@ class Command(threading.Thread):
 		sqlOff = 'INSERT INTO offLog (timestamp,addr) VALUES(?,?);'
 		logger.info('Starting');
 		while True:
+			stime = math.ceil(time.time() + 0.5);
 			try:
-				rows = db.read(sql, (math.ceil(time.time()+0.5),))
+				rows = db.read(sql, (stime,))
 				ids = []
 				for row in rows:
 					ids.append(row[0])
@@ -342,3 +343,6 @@ class Command(threading.Thread):
 					db.write(deln.format(','.join(map(str, ids))))
 			except Exception as e:
 				logger.error('Exception {}'.format(e))
+			dt = max(1, stime + 1 - time.time())
+			time.sleep(dt)
+
