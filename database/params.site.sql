@@ -145,7 +145,7 @@ INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (19,'Isl
 INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (20,'Isla/sur', 1.4, 75,15);
 INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (21,'Abeto Douglas', 1.1, 90,15);
 INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (22,'Sala/patio abierto', 0.3, 50,20);
-INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (23,'Sala/patio cuierto', 0.3, 60,15);
+INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (23,'Sala/patio cubierto', 0.3, 60,15);
 INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (24,'Hierbas', 2.7, 80,15);
 INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (28,'Sala', 0.5, 70,20);
 INSERT INTO station(station,name,userFlow,maxCycleTime,soakTime) VALUES (29,'Comedor/patio', 0.5, 50,20);

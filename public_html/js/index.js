@@ -4,7 +4,6 @@ var colorEntries = {};
 if (typeof(EventSource) != "undefined") {
   var runningSource = new EventSource("running.php");
   runningSource.onmessage = function(event) {
-                console.log(new Date(), event);
 		let data = JSON.parse(event.data);
                 let color = {};
                 let active = {};
