@@ -4,8 +4,8 @@ var statusOn;
 var statusPending;
 
 if (typeof(EventSource) != "undefined") {
-	var statusSource = new EventSource("status.php");
-	statusSource.onmessage = function(event) {
+  var statusSource = new EventSource("status.php");
+  statusSource.onmessage = function(event) {
 		let data = JSON.parse(event.data);
                 let msg = '';
                 if ('curr' in data) {

@@ -10,13 +10,13 @@ class Query {
   private $tBack = 86400;
   private $tFwd = 86400;
   private $previous = NULL;
+  private $tPrevMsg = 0;
 
   function __construct($cmdDB, $parDB) {
     $this->cmdDB = $cmdDB;
     $this->parDB = $parDB;
     $this->stn = $parDB->loadKeyValue('SELECT sensor.addr,station.id'
 			. ' FROM sensor INNER JOIN station ON sensor.id==station.sensor;');
-    ob_end_clean();
   }
 
   function sendIt() {
@@ -72,11 +72,13 @@ class Query {
     }
     if (!empty($sched)) {array_push($msg, '"dtSched":{' . implode(",", $sched) . '}');}
 
-    if (!empty($msg) and ($msg != $this->previous)) {
+    // There is a 60 second timeout in NGINX, so generate a new message at least every ~50 seconds
+    if (!empty($msg) and (($msg != $this->previous) or (($this->tPrevMsg + 50) < $now))) {
       $this->previous = $msg;
       echo "data: {" . implode(",", $msg) . "}\n\n";
-      ob_flush();
+      if (ob_get_length()) {ob_flush();} // Flush output buffer
       flush();
+      $this->tPrevMsg = $now;
     }
   }
 }

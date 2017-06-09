@@ -10,11 +10,11 @@ class Query {
   private $nPending = NULL;
   private $current = NULL;
   private $sensor = NULL;
+  private $tPrevMsg = 0;
 
   function __construct($db) {
     $this->db = $db;
     $this->tPrev = time() - 86400;
-    ob_end_clean(); // Turn off output buffering
   }
 
   function sendIt() {
@@ -59,13 +59,19 @@ class Query {
       $this->nPending = $n;
     }
 
-    $this->tPrev = $now;
-
     if (!empty($content)) {
       echo "data: {" . implode(",", $content) . "}\n\n";
-      ob_flush();
+      if (ob_get_length()) {ob_flush();}  // Flush output buffer
       flush();
+      $this->tPrevMsg = $now;
+    } else if (($this->tPrevMsg + 50) < $now) { // Heartbeat
+      echo "data: {}\n\n";
+      if (ob_get_length()) {ob_flush();}  // Flush output buffer
+      flush();
+      $this->tPrevMsg = $now;
     }
+
+    $this->tPrev = $now;
   }
 }
 
