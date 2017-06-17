@@ -1,18 +1,18 @@
 <?php
-require_once 'php/ParDB.php';
+require_once 'php/DB.php';
 
 echo "<script>
 var sensorMap = new Object();\n";
-$results = $parDB->query('SELECT addr,pocFlow.name,toHertz*K as K,offset FROM pocFlow INNER JOIN sensor ON pocFlow.sensor==sensor.id;');
+$results = $db->execute("SELECT addr,pocFlow.name,toHertz*K as K,flowOffset "
+	. "FROM pocFlow INNER JOIN sensor ON pocFlow.sensor=sensor.id;");
 while ($row = $results->fetchArray()) {
 	echo "sensorMap['" . $row['addr'] . "']={name:'" . $row['name']
-		. "', offset:" . $row['offset'] . ", K:" . $row['K'] . "};\n";
+		. "', offset:" . $row['flowoffset'] . ", K:" . $row['k'] . "};\n";
 }
 
 echo "</script>\n<div id='topnav'><div>\n";
 
-$qSim = $parDB->querySingle('SELECT qSimulate FROM simulate LIMIT 1;');
-if ($qSim) {
+if ($db->querySingle("SELECT qSimulate FROM simulate LIMIT 1;")) {
   echo "  <span>Simulating</span>";
 }
 

@@ -11,8 +11,6 @@
 <body>
 <?php
 require_once 'php/navBar.php';
-require_once 'php/CmdDB.php';
-require_once 'php/ParDB.php';
 
 $thead = "<tr><th>Station</th><th>Prev<br>24 hrs</th><th>Next<br>24 hrs</th></tr>";
 echo "<center>\n";
@@ -20,15 +18,19 @@ echo "<table>\n";
 echo "<thead>$thead</thead>\n";
 echo "<tbody>\n";
 
-$results = $parDB->query("SELECT id,name FROM station ORDER BY station.name;");
-while ($row = $results->fetchArray()) {
-  $id = $row[0];
-  $name = $row[1];
-  echo "<tr id='r$id' style='display:none;'>"
+try {
+  $results = $db->execute("SELECT id,name FROM station ORDER BY station.name;");
+  while ($row = $results->fetchArray()) {
+    $id = $row[0];
+    $name = $row[1];
+    echo "<tr id='r$id' style='display:none;'>"
 	. "<th id='a$id'>$name</th>"
 	. "<td id='p$id'></td>"
 	. "<td id='n$id'></td>"
 	. "</tr>\n";
+  }
+} catch (Exception $e) {
+  echo "<div><pre>" . $e->getMessage() . "</pre></div>\n";
 }
 
 echo "</tbody>\n";

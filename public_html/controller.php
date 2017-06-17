@@ -11,11 +11,9 @@
 <body>
 <?php
 require_once 'php/navBar.php';
-require_once 'php/ParDB.php';
-require_once 'php/webPage.php';
+require_once 'php/mkPage.php';
 
-session_start();
-$pb = new PageBuilder('controller', $parDB);
+$pb = new PageBuilder('controller', $db, ['orderBy'=>'name', 'qTable'=>False]);
 if (!empty($_POST)) $pb->postUp($_POST);
 $pb->mkPage();
 ?>

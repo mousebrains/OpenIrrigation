@@ -5,11 +5,9 @@
 
 include ../../Makefile.params
 
-PRE = CmdDB.php.pre ParDB.php.pre ETDB.php.pre
-
-SRC = $(PRE:%.pre=%) 
-SRC+= statusBlock.php navBar.php
-SRC+= webPage.php BaseDB.php MyDB.php
+SRC = DB.php
+SRC+= navBar.php
+SRC+= mkPage.php
 
 DEST = $(SRC:%=$(PHPDIR)/%)
 
@@ -23,6 +21,3 @@ install: $(SRC)
 
 clean:
 	$(RM) $(PRE:%.pre=%) $(DEST)
-
-%.php: %.php.pre
-	sed -e 's?__DBDIR__?$(DBDIR)?g' <$< >$@

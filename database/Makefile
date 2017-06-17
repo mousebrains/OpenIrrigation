@@ -5,43 +5,35 @@
 
 include ../Makefile.params
 
-CMDDB = commands.db
+DBNAME = irrigation
 
-PARAMS = params.web.sql params.schema.sql params.init.sql
-PARAMS+= params.soil.sql params.crop.sql params.site.sql
-PARAMSDB = params.db
+SQL = db.schema.sql
+SQL+= db.funcs.sql
+SQL+= db.list.sql
+SQL+= db.params.sql
+SQL+= db.ET.sql
+SQL+= db.soil.sql
+SQL+= db.crop.sql
+SQL+= db.site.sql
 
-ETDB = ET.db
+.PHONY: all extract install clean mkdb recreatedb dropdb createdb dumpdb
 
-SRC = $(CMDDB) $(PARAMSDB) $(ETDB)
-DEST = $(SRC:%=$(DBDIR)/%)
+all:
 
-.PHONY: all extract install clean
-
-all: $(SRC)
-
-install: $(DEST)
-	chown -R $(USER):$(GROUP) $(DBDIR)
+install:
 
 clean:
-	$(RM) $(SRC) $(DEST)
 
-$(DBDIR)/$(CMDDB): $(CMDDB) extractCmd.py FetchTable.py
-	./extractCmd.py $@ $<
-	$(INSTALL) --target-directory=$(DBDIR) $<
+mkdb: $(SQL)
+	for i in $^; do echo $$i; psql --quiet $(DBNAME) <$$i; done
 
-$(CMDDB): commands.schema.sql
-	sqlite3 $@ <$<
+recreatedb: dropdb createdb
 
-$(DBDIR)/$(PARAMSDB): $(PARAMSDB) extractPar.py FetchTable.py
-	./extractPar.py $@ $<
-	$(INSTALL) --target-directory=$(DBDIR) $<
+dropdb:
+	dropdb $(DBNAME)
 
-$(PARAMSDB): $(PARAMS)
-	for i in $(PARAMS); do echo $$i; sqlite3 $@ <$$i; done
+createdb:
+	createdb $(DBNAME)
 
-$(DBDIR)/$(ETDB): $(ETDB)
-	$(INSTALL) --target-directory=$(DBDIR) $<
-
-$(ETDB): params.web.sql ET.schema.sql ET.codes.sql
-	for i in $^; do echo $$i; sqlite3 $@ <$$i; done
+dumpdb:
+	pg_dump $(DBNAME) | gzip -v9 >$(DBNAME).dump.gz

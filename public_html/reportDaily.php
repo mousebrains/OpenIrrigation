@@ -11,64 +11,66 @@
 <body>
 <?php
 require_once 'php/navBar.php';
-require_once 'php/CmdDB.php';
-require_once 'php/ParDB.php';
 
 function mkRT($dt) {
   return sprintf('%d:%02d', floor($dt / 3600), intval(($dt % 3600) / 60));
 }
 
-$nBack = 8;
-$nFwd = 8;
+try {
+  $nBack = 8;
+  $nFwd = 8;
 
-$name = [];
-$addr = [];
-$results = $parDB->query("SELECT sensor.addr,station.name FROM station"
-	. " INNER JOIN sensor ON station.sensor==sensor.id"
-	. " ORDER by station.name;");
-while ($row = $results->fetchArray()) {
-  array_push($addr, $row[0]); 
-  array_push($name, $row[1]); 
-}
+  $now = new DateTimeImmutable();
+  $format = 'Y-m-d H:i:s';
 
-$past = [];
-$future = [];
+  $names = $db->loadKeyValue("SELECT id,name FROM station;");
+  $stations = [];
+  $past = [];
+  $future = [];
 
-$now = time();
-$earliest = $now - ($nBack+1) * 86400;
-$latest = $now + ($nFwd+1) * 86400;
+  // currently active entries
+  $results = $db->execute("SELECT station,sum($1-tOn),sum(tOff-$1) FROM active GROUP BY station;",
+			  [$now->format($format)]);
+  while ($row = $results->fetchRow()) {
+    $a = $row[0];
+    $past[$a][0] = $row[1];
+    $future[$a][0] = $row[2];
+    array_push($stations, $a);
+  }
 
-// currently active entries
-$results = $cmdDB->query("SELECT addr,sum($now-tOn),sum(tOff-$now)"
-		. " FROM onOffActive GROUP BY addr;");
-while ($row = $results->fetchArray()) {
-  $a = $row[0];
-  $past[$a][0] = $row[1];
-  $future[$a][0] = $row[2];
-}
+  // Past enteries
+  $results = $db->execute("SELECT station,sum(tOff-tOn),date_trunc('day',tOn)"
+		. " FROM historical"
+		. " WHERE tOn>=$1"
+		. " GROUP BY station,date_trunc('day',tOn);",
+		[$now->sub(new DateInterval("P" . $nBack . "D"))->format($format)]);
 
-// Past enteries
-$results = $cmdDB->query("SELECT addr,sum(tOff-tOn),min(tOn) FROM onOffHistorical"
-		. " WHERE tOn >= $earliest"
-		. " GROUP BY addr,date(tOn,'unixepoch','localtime');");
-while ($row = $results->fetchArray()) {
-  $a = $row[0];
-  if (!array_key_exists($a, $past)) {$past[$a] = [];}
-  $n = intval(floor(($now - $row[2]) / 86400));
-  if (!array_key_exists($n, $past[$a])) {$past[$a][$n] = 0;}
-  $past[$a][$n] += $row[1];
-}
+  while ($row = $results->fetchArray()) {
+    $a = $row[0];
+    if (!array_key_exists($a, $past)) {$past[$a] = [];}
+    $n = intval(floor(($now - $row[2]) / 86400));
+    if (!array_key_exists($n, $past[$a])) {$past[$a][$n] = 0;}
+    $past[$a][$n] += $row[1];
+    array_push($stations, $a);
+  }
 
-// Future enteries
-$results = $cmdDB->query("SELECT addr,sum(tOff-tOn),max(tOn) FROM onOffPending"
-		. " WHERE tOn <= $latest"
-		. " GROUP BY addr,date(tOn,'unixepoch','localtime');");
-while ($row = $results->fetchArray()) {
-  $a = $row[0];
-  if (!array_key_exists($a, $future)) {$future[$a] = [];}
-  $n = intval(floor(($row[2]-$now) / 86400));
-  if (!array_key_exists($n, $future[$a])) {$future[$a][$n] = 0;}
-  $future[$a][$n] += $row[1];
+  // Future enteries
+  $results = $db->execute("SELECT station,sum(tOff-tOn),date_trunc('day',tOn)"
+		  . " FROM pending"
+		  . " WHERE tOn<=$1"
+		  . " GROUP BY station,date_trunc('day',tOn);",
+		  [$now->add(new DateInterval("P" . $nFwd . "D"))->format($format)]);
+  while ($row = $results->fetchArray()) {
+    $a = $row[0];
+    if (!array_key_exists($a, $future)) {$future[$a] = [];}
+    $n = intval(floor(($row[2]-$now) / 86400));
+    if (!array_key_exists($n, $future[$a])) {$future[$a][$n] = 0;}
+    $future[$a][$n] += $row[1];
+    array_push($stations, $a);
+  }
+
+} catch (Exception $e) {
+  echo "<div><pre>" . $e->getMessage() . "</pre></div>\n";
 }
 
 $thead0 = "<tr><th colspan='$nBack'>Recent</th><th rowspan='2'>Station</th><th colspan='$nFwd'>Future</th></tr>";
@@ -94,14 +96,19 @@ echo "<table>\n";
 echo "<thead>$thead0\n$thead1\n</thead>\n";
 echo "<tbody>\n";
 
-for ($i = 0; $i < count($addr); $i++) {
-  $a = $addr[$i];
-  if (!array_key_exists($a, $past) and !array_key_exists($a, $future)) { continue; }
+$stations = array_unique($stations);
+$entries = [];
+foreach ($stations as $stn) {
+  if (array_key_exists($stn, $names)) {$entries[$names[$stn]] = $stn;}
+}
+ksort($entries);
+
+foreach ($entries as $name => $stn) {
   echo "<tr>\n";
-  if (array_key_exists($a, $past)) {
+  if (array_key_exists($stn, $past)) {
     for ($j = $nBack-1; $j >= 0; $j--) {
-      if (array_key_exists($j, $past[$a])) {
-        echo "<td>" . mkRT($past[$a][$j]) . "</td>\n";
+      if (array_key_exists($j, $past[$stn])) {
+        echo "<td>" . mkRT($past[$stn][$j]) . "</td>\n";
       } else {
         echo "<td></td>\n";
       }
@@ -111,11 +118,11 @@ for ($i = 0; $i < count($addr); $i++) {
       echo "<td></td>\n";
     }
   }
-  echo "<th>" . $name[$i] . "</th>\n";
-  if (array_key_exists($a, $future)) {
+  echo "<th>$name</th>\n";
+  if (array_key_exists($stn, $future)) {
     for ($j = 0; $j < $nFwd; $j++) {
-      if (array_key_exists($j, $future[$a])) {
-        echo "<td>" . mkRT($future[$a][$j]) . "</td>\n";
+      if (array_key_exists($j, $future[$stn])) {
+        echo "<td>" . mkRT($future[$stn][$j]) . "</td>\n";
       } else {
         echo "<td></td>\n";
       }

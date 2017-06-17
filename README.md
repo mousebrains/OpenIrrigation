@@ -53,3 +53,9 @@ Enterprise class irrigation control software with a well defined hardware interf
  5. an HTML5 interface layer to the database.
 
 ## The non-web user visible processing is written entirely in English.
+
+  * PostgreSQL
+  1. Due to concurrency issues, the underlying database is PostgreSQL.
+  2. Install PostgreSQL.
+  3. Create roll, irrigation.
+  4. Create database, irrigation.

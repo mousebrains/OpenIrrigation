@@ -3,77 +3,76 @@ header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('X-Accel-Buffering: no');
 
-require_once 'php/CmdDB.php';
-require_once 'php/ParDB.php';
+require_once 'php/DB.php';
 
 class Query {
-  private $tBack = 86400;
-  private $tFwd = 86400;
+  private $tBack;
+  private $tFwd;
+  private $dt;
+  private $tPrevMsg;
   private $previous = NULL;
-  private $tPrevMsg = 0;
 
-  function __construct($cmdDB, $parDB) {
-    $this->cmdDB = $cmdDB;
-    $this->parDB = $parDB;
-    $this->stn = $parDB->loadKeyValue('SELECT sensor.addr,station.id'
-			. ' FROM sensor INNER JOIN station ON sensor.id==station.sensor;');
+  function __construct($db) {
+    $this->tBack = new DateInterval("P1D");
+    $this->tFwd  = new DateInterval("P1D");
+    $this->dt    = new DateInterval("PT50S");
+    $this->tPrevMsg = new DateTimeImmutable();
+    $this->active = $db->prepare("SELECT station,sum(tOff-$1),sum($1-tOn) FROM active"
+		. " GROUP BY station;");
+    $this->past = $db->prepare("SELECT station,sum(tOff-tOn) FROM historical"
+		. " WHERE tOff>=$1"
+		. " GROUP BY station;");
+    $this->pend = $db->prepare("SELECT station,sum(tOff-tOn) FROM pending"
+		. " WHERE tOn<=$1"
+		. " GROUP BY station;");
+    $this->sched = $db->prepare("SELECT station,sum(runTime) FROM pgmStn"
+		. " WHERE qSingle=True GROUP BY station;");
   }
 
   function sendIt() {
-    $now = time();
+    $format = 'Y-m-d H:i:s';
+    $now = new DateTimeImmutable();
     $msg = [];
-    $fActive = [];
-    $pActive = [];
-    $pending = [];
-    $past = [];
+
+    {
+      $fActive = [];
+      $pActive = [];
+      $results = $this->active->execute([$now->format($format)]);
+      while ($row = $results->fetchRow()) {
+        $stn = $row[0];
+        array_push($fActive, '"' . $stn . '":' . $row[1]);
+        array_push($pActive, '"' . $stn . '":' . $row[2]);
+      }
+      if (!empty($fActive)) {
+        array_push($msg, '"dtActive":{' . implode(",", $fActive) . '}');
+        array_push($msg, '"dtpActive":{' . implode(",", $pActive) . '}');
+     }
+    }
+
+    {
+      $pending = [];
+      $tLimit = $now->add($this->tFwd);
+      $results = $this->pend->execute([$now->add($this->tFwd)->format($format)]);
+      while ($row = $results->fetchRow()) {array_push($pending, '"' . $row[0] . '":' . $row[1]);}
+      if (!empty($pending)) {array_push($msg, '"dtPending":{' . implode(",", $pending) . '}');}
+    }
+
+    {
+      $past = [];
+      $results = $this->past->execute([$now->sub($this->tBack)->format($format)]);
+      while ($row = $results->fetchArray()) {array_push($past, '"' . $row[0] . '":' . $row[1]);}
+      if (!empty($past)) {array_push($msg, '"dtPast":{' . implode(",", $past) . '}');}
+    }
+
+    {
     $sched = [];
-
-    $results = $this->cmdDB->query("SELECT addr,sum(tOff-$now),sum($now-tOn)"
-		. " FROM onOffActive GROUP BY addr;");
-    while ($row = $results->fetchArray()) {
-      $addr = $row[0];
-      if (array_key_exists($addr, $this->stn)) {
-        $addr = $this->stn[$addr];
-        array_push($fActive, '"' . $addr . '":' . $row[1]);
-        array_push($pActive, '"' . $addr . '":' . $row[2]);
-      }
+      $results = $this->sched->execute();
+      while ($row = $results->fetchArray()) {array_push($sched, '"' . $row[0] . '":' . $row[1]);}
+      if (!empty($sched)) {array_push($msg, '"dtSched":{' . implode(",", $sched) . '}');}
     }
-    if (!empty($fActive)) {
-      array_push($msg, '"dtActive":{' . implode(",", $fActive) . '}');
-      array_push($msg, '"dtpActive":{' . implode(",", $pActive) . '}');
-    }
-
-    $tLimit = $now + $this->tFwd;
-    $results = $this->cmdDB->query("SELECT addr,sum(tOff-tOn) FROM onOffPending"
-		. " WHERE tOn<=$tLimit GROUP BY addr;");
-    while ($row = $results->fetchArray()) {
-      $addr = $row[0];
-      if (array_key_exists($addr, $this->stn)) {
-        array_push($pending, '"' . $this->stn[$addr] . '":' . $row[1]);
-      }
-    }
-    if (!empty($pending)) {array_push($msg, '"dtPending":{' . implode(",", $pending) . '}');}
-
-    $tLimit = $now - $this->tBack;
-    $results = $this->cmdDB->query("SELECT addr,sum(tOff-tOn) FROM onOffHistorical"
-		. " WHERE tOff>=$tLimit GROUP BY addr;");
-    while ($row = $results->fetchArray()) {
-      $addr = $row[0];
-      if (array_key_exists($addr, $this->stn)) {
-        array_push($past, '"' . $this->stn[$addr] . '":' . $row[1]);
-      }
-    }
-    if (!empty($past)) {array_push($msg, '"dtPast":{' . implode(",", $past) . '}');}
-
-    $results = $this->parDB->query("SELECT station,sum(runtime) FROM pgmStn"
-		. " WHERE qSingle==1 GROUP by station;");
-    while ($row = $results->fetchArray()) {
-      array_push($sched, '"' . $row[0] . '":' . $row[1]);
-    }
-    if (!empty($sched)) {array_push($msg, '"dtSched":{' . implode(",", $sched) . '}');}
 
     // There is a 60 second timeout in NGINX, so generate a new message at least every ~50 seconds
-    if (!empty($msg) and (($msg != $this->previous) or (($this->tPrevMsg + 50) < $now))) {
+    if ((!empty($msg) and ($msg != $this->previous)) or ($this->tPrevMsg->add($this->dt) < $now)) {
       $this->previous = $msg;
       echo "data: {" . implode(",", $msg) . "}\n\n";
       if (ob_get_length()) {ob_flush();} // Flush output buffer
@@ -83,10 +82,10 @@ class Query {
   }
 }
 
-$query = new Query($cmdDB, $parDB);
+$query = new Query($db);
 
-while (True) {
+# while (True) {
   $query->sendIt();
-  sleep(1);
-}
+  # sleep(1);
+# }
 ?>
