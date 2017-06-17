@@ -5,7 +5,7 @@
 
 include ../Makefile.params
 
-DBNAME = irrigation
+DBNAME ?= irrigation
 
 SQL = db.schema.sql
 SQL+= db.funcs.sql

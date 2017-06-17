@@ -31,8 +31,8 @@ parser.add_argument('--logdir', help='Where to store log files',
 			default=os.path.join(prefix, "logs"))
 parser.add_argument('--bindir', help='Where to store log files', 
 			default=os.path.join(prefix, "bin"))
-parser.add_argument('--dbdir', help='Where to store log files', 
-			default=os.path.join(prefix, "database"))
+parser.add_argument('--dbname', help='Name of database in server', 
+			default='irrigation')
 parser.add_argument('--webdir', help='Where to store log files', default=webdir)
 parser.add_argument('--phpdir', help='Where to store log files', 
 			default=os.path.join(webdir, "php"))
@@ -53,10 +53,10 @@ with open(os.path.join(mydir, "Makefile.params"), "w") as f:
   f.write("#  " + " ".join(sys.argv) + "\n\n")
   f.write("USER = " + args.user + "\n")
   f.write("GROUP = " + args.group + "\n")
+  f.write("DBNAME = " + args.dbname + "\n")
   f.write("USERDIR = " + rewrite(prefix,prefix,args.prefix) + "\n")
   f.write("LOGDIR = " + rewrite(prefix, args.prefix, args.logdir) + "\n")
   f.write("BINDIR = " + rewrite(prefix, args.prefix, args.bindir) + "\n")
-  f.write("DBDIR = " + rewrite(prefix, args.prefix, args.dbdir) + "\n")
   f.write("WEBDIR = " + rewrite(prefix, args.prefix, args.webdir) + "\n")
   f.write("PHPDIR = " + rewrite(prefix, args.prefix, args.phpdir) + "\n")
   f.write("CSSDIR = " + rewrite(prefix, args.prefix, args.cssdir) + "\n")
