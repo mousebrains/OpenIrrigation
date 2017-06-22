@@ -58,7 +58,7 @@ function xlat($key, array $tbl) {
 
 function mkPast($db, array $pgm, array $station) {
 	$results = $db->execute("SELECT"
-			. " date_trunc('seconds',CAST(tOn AS TIME)) AS tOn"
+			. " date_trunc('seconds',tOn) AS tOn"
 			. ",date_trunc('seconds',tOff-tOn) AS dt"
 			. ",historical.sensor,program"
 			. ",onLog.code AS codeOn,pre,peak,post"
@@ -97,7 +97,7 @@ function mkPast($db, array $pgm, array $station) {
 function mkCurrent($db, array $pgm, array $station) {
 	$now = time();
 	$results = $db->execute("SELECT active.id"
-			. ",date_trunc('seconds',CAST(tOn AS TIME)) AS tOn"
+			. ",date_trunc('seconds',(CAST(tOn AS TIME))) AS t"
 			. ",date_trunc('seconds',CURRENT_TIMESTAMP-tOn) AS dtDone"
 			. ",date_trunc('seconds',tOff-CURRENT_TIMESTAMP) AS dtLeft"
 			. ",active.sensor,program,code,pre,peak,post"
@@ -120,7 +120,7 @@ function mkCurrent($db, array $pgm, array $station) {
 			. "<input type='submit' name='off' value='Off'>\n"
 			. "</form>\n"
 			. "</td>\n<th>" . xlat($row['sensor'], $station)
-			. "</th>\n<td>" . $row['ton']
+			. "</th>\n<td>" . $row['t']
 			. "</td>\n<td>" . $row['dtdone']
 			. "</td>\n<td>" . $row['dtleft']
 			. "</td>\n<td>" . xlat($row['program'], $pgm)
@@ -137,7 +137,7 @@ function mkCurrent($db, array $pgm, array $station) {
 
 function mkPending($db, array $pgm, array $station) {
 	$results = $db->execute("SELECT id,sensor,program"
-			. ",date_trunc('seconds',CAST(tOn AS TIME)) AS tOn"
+			. ",date_trunc('seconds',tOn) AS tOn"
 			. ",date_trunc('seconds',tOff-tOn) AS dt"
 			. " FROM pending"
 			. " ORDER BY tOn,sensor;");
