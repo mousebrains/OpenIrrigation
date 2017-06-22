@@ -278,9 +278,10 @@ class PgmStations(ListTables):
 
     for index in range(len(self)):
       pgm = self[index]['program']
-      jndex = keyIndices[pgm]
-      self[index]['program'] = programs[jndex]
-      programs[jndex].stations.append(self[index])
+      if pgm in keyIndices:
+        jndex = keyIndices[pgm]
+        self[index]['program'] = programs[jndex]
+        programs[jndex].stations.append(self[index])
 
 class Program(DictTable):
   def __init__(self, row, logger):
