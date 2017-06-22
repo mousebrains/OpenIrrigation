@@ -15,7 +15,7 @@ OnFailure=OINotify@%n.service
 User=__USER__
 Group=__GROUP__
 WorkingDirectory=__LOGDIR__
-ExecStart=__BINDIR__/scheduler.py --params=__DBDIR__/params.db --cmds=__DBDIR__/commands.db --log=__LOGDIR__/Scheduler.log
+ExecStart=__BINDIR__/scheduler.py --db irrigation --log=__LOGDIR__/Scheduler.log
 RestartSec=120 
 Restart=always
 
