@@ -13,7 +13,7 @@
 require_once 'php/navBar.php';
 require_once 'php/mkPage.php';
 
-$pb = new PageBuilder('pgmStn', $db, ['orderBy'=>'program,station']);
+$pb = new PageBuilder('pgmStn', $db, ['orderBy'=>'program,priority,station', 'qScheduler' => True]);
 if (!empty($_POST)) $pb->postUp($_POST);
 $pb->mkPage();
 ?>

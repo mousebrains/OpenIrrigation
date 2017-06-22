@@ -193,7 +193,6 @@ class Events(list):
             return (et + offset) if qFwd else (st - offset)
 
         actionId += 1
-        print('actionId', actionId)
         evOn  = Event(sDate, st, True, stn, actionId)
         evOff = Event(sDate, et, False, stn, actionId)
         n = len(self)

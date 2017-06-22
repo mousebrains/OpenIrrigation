@@ -22,9 +22,9 @@ class DictTable(dict):
   def __eq__(lhs, rhs):
       return lhs.key() == rhs.key();
 
-  def mkTimedelta(self, fields):
+  def mkTimedelta(self, fields, normalization=1):
     for field in fields:
-      self[field] = datetime.timedelta(seconds=self[field])
+      self[field] = datetime.timedelta(seconds=self[field]*normalization)
 
 class ListTables(list):
   def __init__(self, name, cur, logger, sql, obj):
@@ -170,9 +170,9 @@ class Station(DictTable):
   def poc(self): return self['poc']
   def controller(self):  return self.sensor().controller()
   def maxCoStations(self): return self['maxcostations'] 
-  def minCycleTime(self): return self['mincycletime']
-  def maxCycleTime(self): return self['maxcycletime']
-  def soakTime(self): return self['soaktime']
+  def minCycleTime(self): return self['mincycletime'] * 60
+  def maxCycleTime(self): return self['maxcycletime'] * 60
+  def soakTime(self): return self['soaktime'] * 60
   def minSoakTime(self): 
     poc = self.poc()
     sensor = self.sensor()
@@ -199,7 +199,7 @@ class Stations(DictTables):
 class PgmStation(DictTable):
   def __init__(self, row, logger):
     DictTable.__init__(self, row, logger)
-    self.mkTimedelta(['runtime'])
+    self.mkTimedelta(['runtime'],60)
     self['totalTime'] = datetime.timedelta()
 
   def key(self): return self['id']
@@ -228,7 +228,7 @@ class PgmStation(DictTable):
   def activeCurrent(self): return self.station().activeCurrent()
   def passiveCurrent(self): return self.station().passiveCurrent()
 
-  def timeLeft(self): return max(datetime.timedelta(), self['runtime'] - self['totalTime'])
+  def timeLeft(self): return max(datetime.timedelta(), self.runTime() - self['totalTime'])
 
   def __iadd__(self, dt):
     self['totalTime'] += dt

@@ -297,6 +297,10 @@ class PageBuilder {
     }
 
     if (!empty($this->multipleInfo)) $this->postMultiple($post);
+
+    if (array_key_exists('scheduler', $post)) {
+      $this->db->execute('INSERT INTO scheduler VALUES(CURRENT_TIMESTAMP);');
+    }
   }
 
   function postUpSingle(array $row) {
