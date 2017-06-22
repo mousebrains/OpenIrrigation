@@ -6,6 +6,7 @@ import datetime
 import math
 import sys
 
+actionId = 0
 
 class Counter(dict):
     def __init__(self, name, fmt):
@@ -22,14 +23,14 @@ class Counter(dict):
             items.append(('{}:{' + self.fmt + '}').format(key, self[key]))
         return self.name + "={" + ",".join(items) + "}"
 
-
 class Event:
-    def __init__(self, sDate, time, qOn, stn):
+    def __init__(self, sDate, time, qOn, stn, actionId=None):
         self.sDate = None if sDate is None else \
 		datetime.datetime.combine(sDate.date(), datetime.time()) # Midnight
         self.time = time
         self.qOn = qOn
         self.stn = stn
+        self.actionId = actionId
         self.nOn = 0  # Total number on
         self.nCtl = Counter('nCtl', ':0d')  # by controller
         self.aI = Counter('aI', ':.0f')  # Current by controller
@@ -89,9 +90,9 @@ class Event:
 
 
 class Events(list):
-    def __init__(self, sDate, eDate, db, logger):
+    def __init__(self, sDate, eDate, cur, logger):
         list.__init__(self)
-        self.db = db
+        self.cur = cur
         self.logger = logger
         self.zeroTime = datetime.timedelta()
 
@@ -101,35 +102,18 @@ class Events(list):
             msg += "\nEVENT: {}".format(item)
         return msg
 
-    def loadHistorical(self, db, date, programs):
-      for row in db.execute('SELECT addr,tOn,tOff,program FROM onOffHistorical WHERE tOff>?;', 
-				(date.timestamp()-86400,)):
-        addr = row[0]
-        tOn  = datetime.datetime.fromtimestamp(row[1])
-        tOff = datetime.datetime.fromtimestamp(row[2])
-        pgm = row[3]
-        stn = programs.findPgmStation(addr, pgm)
-        if stn is not None: # Found a corresponding station
-          self.insertEvent(None, tOn, tOff, stn)
-
-    def loadPending(self, db, programs):
-      for row in db.execute('SELECT addr,tOn,tOff,program FROM onOffPending;'):
-        addr = row[0]
-        tOn  = datetime.datetime.fromtimestamp(row[1])
-        tOff = datetime.datetime.fromtimestamp(row[2])
-        pgm = row[3]
-        stn = programs.findPgmStation(addr, pgm)
-        if stn is not None: # Found a corresponding station
-          self.insertEvent(None, tOn, tOff, stn)
-
-    def loadActive(self, db, programs):
-      for row in db.execute('SELECT addr,tOn,tOff,program FROM onOffActive;'):
-        addr = row[0]
-        tOn  = datetime.datetime.fromtimestamp(row[1] if row[1] is not None else 0)
-        tOff = datetime.datetime.fromtimestamp(row[2] if row[2] is not None else 0)
-        pgm = row[3]
-        stn = programs.findPgmStation(addr, pgm)
-        if stn is not None: # Found a corresponding station
+    def loadQueued(self, cur, date, programs):
+      cur.execute("SELECT * FROM action WHERE tOff>%s", (date - datetime.timedelta(days=1),))
+      sensors = {} # sensor to station map
+      for row in cur:
+        sensor = row['sensor']
+        pgm = row['program']
+        tOn  = row['ton']
+        tOff = row['toff']
+        stn = programs.findPgmStation(sensor,pgm)
+        if stn is None:
+          self.logger.error('Queued sensor({}) not found, {} '.format(sensor, row))
+        else:
           self.insertEvent(None, tOn, tOff, stn)
 
     def schedule(self, stn, date):
@@ -202,13 +186,16 @@ class Events(list):
         return False
 
     def insertEvent(self, sDate, st, et, stn, qFwd = True):
+        global actionId
         if et <= st:
             self.logger.error('Time Reversal for {}, {} {}'.format(stn.label(), st, et))
             offset = max(stn.minSoakTime(), stn.delayOn())
             return (et + offset) if qFwd else (st - offset)
 
-        evOn  = Event(sDate, st, True, stn)
-        evOff = Event(sDate, et, False, stn)
+        actionId += 1
+        print('actionId', actionId)
+        evOn  = Event(sDate, st, True, stn, actionId)
+        evOff = Event(sDate, et, False, stn, actionId)
         n = len(self)
         if (not n) or (st >= self[-1].time): # Nothing or past end, so append
             self.append(evOn)

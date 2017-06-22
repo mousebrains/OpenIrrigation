@@ -113,7 +113,6 @@ INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,placeholder,valMin,va
 		'Slope infiltration rate (mm/hr/%)', 0.5, 0, 100, 0.01),
 	('soil', 'rootnorm',  4, False, 'Root norm', 1, 0.05, 2, 0.05);
 
-
 DROP TABLE IF EXISTS crop CASCADE;
 CREATE TABLE crop(
 	id SERIAL PRIMARY KEY, -- id
@@ -259,7 +258,8 @@ CREATE TABLE sensor(
 	model TEXT, -- model
 	installed DATE, -- date installed in UTC
 	notes TEXT, -- Extra information
-	UNIQUE (controller, name)
+	UNIQUE (controller,name),
+	UNIQUE (controller,devType,addr)
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
 	('sensor','controller',   1, 'Controller', 'controller');
@@ -662,114 +662,207 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 	('ETannual', 'value',   3,'ET Value (in/day)', '0.23', 0, 20, 0.01),
 	('ETannual', 'n',       4,'# samples', '123', 0, NULL, NULL);
 
+-- Get the controler id given a site and controller name
+CREATE OR REPLACE FUNCTION siteID(siteName TEXT) RETURNS INTEGER AS $$
+  SELECT id FROM site WHERE name=siteName;
+  $$ LANGUAGE SQL;
+
+-- Get the controler id given a site and controller name
+CREATE OR REPLACE FUNCTION ctlID(siteName TEXT, ctlName TEXT) RETURNS INTEGER AS $$
+  SELECT id FROM controller WHERE name=ctlName AND site=siteID(siteName);
+  $$ LANGUAGE SQL;
+
+-- Get the sensor id given an addr, device type, site and controller name
+CREATE OR REPLACE FUNCTION sensorID(address INTEGER, siteName TEXT, ctlName TEXT,
+                                    devName TEXT DEFAULT 'solenoid')
+	RETURNS INTEGER AS $$
+  SELECT id FROM sensor 
+	WHERE addr=address 
+	AND controller=ctlID(siteName, ctlName)
+	AND devType=(SELECT id FROM webList WHERE grp='sensor' AND key=devName);
+  $$ LANGUAGE SQL;
+
+-- Get the sensor id given an addr, device type, site and controller name
+CREATE OR REPLACE FUNCTION pocFlowID(address INTEGER, siteName TEXT, ctlName TEXT)
+	RETURNS INTEGER AS $$
+  SELECT id FROM pocFlow 
+	WHERE poc IN (SELECT id FROM poc WHERE site=siteID(siteName))
+	AND sensor=sensorID(address,siteName,ctlName,'flow');
+  $$ LANGUAGE SQL;
+
 -- Zee message log
 DROP TABLE IF EXISTS zeeLog;
 CREATE TABLE zeeLog(
 	id SERIAL PRIMARY KEY, -- id
-	timestamp TIMESTAMP, -- Time received
-	value TEXT, -- Message
-	UNIQUE (timestamp,value)
+        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- Time received
+	value TEXT NOT NULL, -- Message
+	UNIQUE (controller,timestamp,value)
 	);
 DROP INDEX IF EXISTS zeeTS;
 CREATE INDEX zeeTS ON zeeLog(timestamp);
+
+-- Insert a record looking up site and controller
+CREATE OR REPLACE FUNCTION zeeInsert(value TEXT, site TEXT, controller TEXT) RETURNS VOID AS $$
+  INSERT INTO zeeLog(value,controller) VALUES (value, ctlID(site, controller));
+  $$ LANGUAGE SQL;
 
 -- Number message log
 DROP TABLE IF EXISTS numberLog;
 CREATE TABLE numberLog(
 	id SERIAL PRIMARY KEY, -- id
-	timestamp TIMESTAMP, -- Time received
-	value INTEGER, -- number returned
-	UNIQUE (timestamp,value)
+        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- Time received
+	value INTEGER NOT NULL, -- number returned
+	UNIQUE (controller,timestamp,value)
 	);
 DROP INDEX IF EXISTS numberTS;
 CREATE INDEX numberTS ON numberLog(timestamp);
+
+-- Insert a record looking up site and controller
+CREATE OR REPLACE FUNCTION numberInsert(value INTEGER, site TEXT, controller TEXT) RETURNS VOID AS $$
+  INSERT INTO numberLog(value,controller) VALUES (value, ctlID(site, controller));
+  $$ LANGUAGE SQL;
 
 -- Version message results
 DROP TABLE IF EXISTS versionLog;
 CREATE TABLE versionLog(
 	id SERIAL PRIMARY KEY, -- id
-	timestamp TIMESTAMP, -- Time received
-	value TEXT, -- version string returned
-	UNIQUE (timestamp,value)
+        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- Time received
+	value TEXT NOT NULL, -- version string returned
+	UNIQUE (controller,timestamp,value)
 	);
 DROP INDEX IF EXISTS versionTS;
 CREATE INDEX versionTS ON versionLog (timestamp);
+
+-- Insert a record looking up site and controller
+CREATE OR REPLACE FUNCTION versionInsert(value TEXT, site TEXT, controller TEXT) RETURNS VOID AS $$
+  INSERT INTO versionLog(value,controller) VALUES (value, ctlID(site, controller));
+  $$ LANGUAGE SQL;
 
 -- Error message results
 DROP TABLE IF EXISTS errorLog;
 CREATE TABLE errorLog(
 	id SERIAL PRIMARY KEY, -- id
-	timestamp TIMESTAMP, -- Time received
-	value INTEGER, -- error code returned
-	UNIQUE (timestamp,value)
+        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- Time received
+	value INTEGER NOT NULL, -- error code returned
+	UNIQUE (controller,timestamp,value)
 	);
 DROP INDEX IF EXISTS errorTS;
 CREATE INDEX errorTS ON errorLog (timestamp);
 
--- Current message results
-DROP TABLE IF EXISTS currentLog;
-CREATE TABLE currentLog(
-	id SERIAL PRIMARY KEY, -- unique record ID
-	timestamp TIMESTAMP, -- time code was added
-	volts FLOAT, -- voltage in volts
-	mAmps INTEGER, -- current in mAmps
-	UNIQUE (timestamp,volts,mAmps)
-	);
-DROP INDEX IF EXISTS currentTS;
-CREATE INDEX currentTS ON currentLog (timestamp);
-
--- Sensor message results
-DROP TABLE IF EXISTS sensorLog;
-CREATE TABLE sensorLog(
-	id SERIAL PRIMARY KEY, -- unique record ID
-	timestamp TIMESTAMP, -- time code was added
-	addr INTEGER, -- sensor address
-	code INTEGER, -- code, typically 4 or 5
-	value INTEGER, -- reading, Hertz*10
-	flow FLOAT, -- value processed into a physical value
-	UNIQUE (timestamp,addr,code,value)
-	);
-DROP INDEX IF EXISTS sensorTS;
-CREATE INDEX sensorTS ON sensorLog (timestamp);
+-- Insert a record looking up site and controller
+CREATE OR REPLACE FUNCTION errorInsert(value INTEGER, site TEXT, controller TEXT) RETURNS VOID AS $$
+  INSERT INTO errorLog(value,controller) VALUES (value, ctlID(site, controller));
+  $$ LANGUAGE SQL;
 
 -- Two message results
 DROP TABLE IF EXISTS twoLog;
 CREATE TABLE twoLog(
 	id SERIAL PRIMARY KEY, -- unique record ID
-	timestamp TIMESTAMP, -- time code was added
-	addr INTEGER, -- address
-	value INTEGER, -- reading
-	UNIQUE (timestamp,addr,value)
+        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
+	addr INTEGER NOT NULL, -- address
+	value INTEGER NOT NULL, -- reading
+	UNIQUE (controller,timestamp,addr,value)
 	);
 DROP INDEX IF EXISTS twoTS;
 CREATE INDEX twoTS ON twoLog (timestamp);
+
+-- Insert a record looking up site and controller
+CREATE OR REPLACE FUNCTION twoInsert(addr INTEGER, value INTEGER, site TEXT, controller TEXT)
+	RETURNS VOID AS $$
+  INSERT INTO twoLog(addr,value,controller) VALUES (addr, value, ctlID(site, controller));
+  $$ LANGUAGE SQL;
 
 -- Pee message results
 DROP TABLE IF EXISTS peeLog;
 CREATE TABLE peeLog(
 	id SERIAL PRIMARY KEY, -- unique record ID
-	timestamp TIMESTAMP, -- time code was added
-	addr INTEGER, -- address
-	value INTEGER, -- reading
-	UNIQUE (timestamp,addr,value)
+        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
+	addr INTEGER NOT NULL, -- address
+	value INTEGER NOT NULL, -- reading
+	UNIQUE (controller,timestamp,addr,value)
 	);
 DROP INDEX IF EXISTS peeTS;
 CREATE INDEX peeTS ON peeLog (timestamp);
+
+-- Insert a record looking up site and controller
+CREATE OR REPLACE FUNCTION peeInsert(addr INTEGER, value INTEGER, site TEXT, controller TEXT)
+	RETURNS VOID AS $$
+  INSERT INTO peeLog(addr,value,controller) VALUES (addr, value, ctlID(site, controller));
+  $$ LANGUAGE SQL;
+
+-- Current message results
+DROP TABLE IF EXISTS currentLog;
+CREATE TABLE currentLog(
+	id SERIAL PRIMARY KEY, -- unique record ID
+        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
+	volts FLOAT NOT NULL, -- voltage in volts
+	mAmps INTEGER NOT NULL, -- current in mAmps
+	UNIQUE (controller,timestamp,volts,mAmps)
+	);
+DROP INDEX IF EXISTS currentTS;
+CREATE INDEX currentTS ON currentLog (timestamp);
+
+-- Insert a record looking up site and controller
+CREATE OR REPLACE FUNCTION currentInsert(volts FLOAT, mAmps INTEGER, site TEXT, controller TEXT)
+	RETURNS VOID AS $$
+  INSERT INTO currentLog(volts,mAmps,controller) VALUES (volts, mAmps, ctlID(site, controller));
+  $$ LANGUAGE SQL;
+
+-- Sensor message results
+DROP TABLE IF EXISTS sensorLog;
+CREATE TABLE sensorLog(
+	id SERIAL PRIMARY KEY, -- unique record ID
+        pocFlow INTEGER REFERENCES pocFlow(id) ON DELETE CASCADE NOT NULL, -- which flow sensor
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
+	value INTEGER NOT NULL, -- reading, Hertz*10
+	flow FLOAT NOT NULL, -- value processed into a physical value
+	UNIQUE (pocFlow,timestamp)
+	);
+DROP INDEX IF EXISTS sensorTS;
+CREATE INDEX sensorTS ON sensorLog (timestamp,pocFlow);
+
+-- Insert a record looking up site and controller
+CREATE OR REPLACE FUNCTION sensorInsert(address INTEGER, value INTEGER, site TEXT, controller TEXT)
+	RETURNS VOID AS $$
+  DECLARE flowID INTEGER;
+  BEGIN
+    SELECT * FROM pocFlowID(address, site, controller) INTO flowID;
+    INSERT INTO sensorLog(pocFlow,value,flow) VALUES 
+	(flowID,value,
+	 (SELECT GREATEST(0,(value*toHertz*K) - flowOffset) FROM pocFlow WHERE id=flowID));
+  END;
+  $$ LANGUAGE plpgSQL;
 
 -- Tee message results
 DROP TABLE IF EXISTS teeLog;
 CREATE TABLE teeLog(
 	id SERIAL PRIMARY KEY, -- unique record ID
-	timestamp TIMESTAMP, -- time code was added
-	addr INTEGER, -- station address
-	code INTEGER, -- returned code
-	pre INTEGER, -- pre on current in mAmps
-	peak INTEGER, -- peak on current in mAmps
-	post INTEGER, -- post on current in mAmps
-	UNIQUE (timestamp,addr,code,pre,peak,post)
+        sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- which flow sensor
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
+	code INTEGER NOT NULL, -- returned code
+	pre INTEGER NOT NULL, -- pre on current in mAmps
+	peak INTEGER NOT NULL, -- peak on current in mAmps
+	post INTEGER NOT NULL, -- post on current in mAmps
+	UNIQUE (sensor,timestamp)
 );
 DROP INDEX IF EXISTS teeTS;
-CREATE INDEX teeTS ON teeLog (timestamp,addr);
+CREATE INDEX teeTS ON teeLog (timestamp,sensor);
+
+-- Insert a record looking up site and controller
+CREATE OR REPLACE FUNCTION teeInsert(address INTEGER, code INTEGER, 
+				     pre INTEGER, peak INTEGER, post INTEGER, 
+				     site TEXT, controller TEXT)
+	RETURNS VOID AS $$
+  INSERT INTO teeLog(code,pre,peak,post,sensor) VALUES
+	(code,pre,peak,post,sensorID(address,site,controller));
+  $$ LANGUAGE SQL;
 
 -- The following actually control controller actions
 --
@@ -790,33 +883,50 @@ CREATE INDEX teeTS ON teeLog (timestamp,addr);
 DROP TABLE IF EXISTS onLog CASCADE;
 CREATE TABLE onLog(
 	id SERIAL PRIMARY KEY, -- unique record ID
-	timestamp TIMESTAMP, -- time code was added
-	addr INTEGER, -- station address
-	code INTEGER, -- return code
+        sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- sensor
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
+	code INTEGER NOT NULL, -- return code
 	pre INTEGER, -- pre on current in mAmps
 	peak INTEGER, -- peak on current in mAmps
 	post INTEGER, -- post on current in mAmps
-	UNIQUE (timestamp,addr,code,pre,peak,post)
+	UNIQUE (sensor,timestamp,code,pre,peak,post)
 	);
+DROP INDEX IF EXISTS onLogTS;
+CREATE INDEX onLogTS ON onLog(timestamp);
+
+-- Insert a record looking up sensor id
+CREATE OR REPLACE FUNCTION onLogInsert(addr INTEGER, code INTEGER, 
+				       pre INTEGER, peak INTEGER, post INTEGER, 
+				       site TEXT, controller TEXT)
+	RETURNS VOID AS $$
+  INSERT INTO onLog(code,pre,peak,post,sensor) VALUES
+	(code,pre,peak,post,sensorID(addr,site,controller));
+  $$ LANGUAGE SQL;
 
 -- Off message results
 DROP TABLE IF EXISTS offLog CASCADE;
 CREATE TABLE offLog(
 	id SERIAL PRIMARY KEY, -- unique record ID
-	timestamp TIMESTAMP, -- time code was added
-	addr INTEGER, -- station address
-	code INTEGER, -- return code
-	UNIQUE (timestamp,addr,code)
+        sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- sensor
+	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
+	code INTEGER NOT NULL, -- return code
+	UNIQUE (sensor,timestamp,code)
 	);
+
+-- Insert a record looking up sensor id
+CREATE OR REPLACE FUNCTION offLogInsert(addr INTEGER, code INTEGER, site TEXT, controller TEXT)
+	RETURNS VOID AS $$
+  INSERT INTO offLog(code,sensor) VALUES (code,sensorID(addr,site,controller));
+  $$ LANGUAGE SQL;
 
 -- Command queue
 DROP TABLE IF EXISTS command CASCADE;
 CREATE TABLE command(
 	id SERIAL PRIMARY KEY, -- id
-	station INTEGER REFERENCES station(id) ON DELETE SET NULL, -- Which station to work on
+	sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- sensor to work on
 	action INTEGER, -- id of generating row in action, a forward reference, look at triggers
-	timestamp TIMESTAMP, -- when action should occur
-	cmd INTEGER CONSTRAINT cmdChk CHECK (cmd IN (0,1,2)) -- on=0, off=1, T=2
+	timestamp TIMESTAMP NOT NULL, -- when action should occur
+	cmd INTEGER CONSTRAINT cmdChk CHECK (cmd IN (0,1,2)) NOT NULL -- on=0, off=1, T=2
 	);
 DROP INDEX IF EXISTS commandTS;
 CREATE INDEX commandTS ON command(timestamp);
@@ -825,41 +935,42 @@ CREATE INDEX commandTS ON command(timestamp);
 DROP TABLE IF EXISTS action CASCADE;
 CREATE TABLE action(
 	id SERIAL PRIMARY KEY, -- unique record ID
-	cmd INTEGER CONSTRAINT actChk CHECK (cmd IN (0,2)), -- on/off=0, T=2
-	tOn TIMESTAMP, -- when on action should occur
-	tOff TIMESTAMP, -- when off action should occur
+	sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- sensor to work on
+	cmd INTEGER CONSTRAINT actChk CHECK (cmd IN (0,2)) NOT NULL, -- on/off=0, T=2
+	tOn TIMESTAMP NOT NULL, -- when on action should occur
+	tOff TIMESTAMP NOT NULL, -- when off action should occur
         cmdOn INTEGER REFERENCES command(id) ON DELETE SET NULL, -- on command entry
 	cmdOff INTEGER REFERENCES command(id) ON DELETE SET NULL, -- off command entry
         onLog INTEGER REFERENCES onLog(id) ON DELETE SET NULL, -- on log entry
         offLog INTEGER REFERENCES offLog(id) ON DELETE SET NULL, -- off log entry
-	station INTEGER REFERENCES station(id) ON DELETE SET NULL, -- Which station to work on
-	program INTEGER REFERENCES program(id) ON DELETE SET NULL, -- generating program 
+	program INTEGER REFERENCES program(id) ON DELETE CASCADE NOT NULL, -- generating program 
 	pgmStn INTEGER REFERENCES pgmStn(id) ON DELETE SET NULL, -- generating program/station
-	pgmDate DATE, -- program date this command is for
-	addr INTEGER, -- Address returned in onLog and offLog
+	pgmDate DATE NOT NULL, -- program date this command is for
 	CHECK (tOn<tOff) -- Causality, Off after On
 	);
 DROP INDEX IF EXISTS actionTS;
 CREATE INDEX actionTS ON action(tOn, tOff);
+DROP INDEX IF EXISTS actionOn;
+CREATE INDEX actionOn ON action(cmd,sensor,cmdOn,onLog);
+DROP INDEX IF EXISTS actionOff;
+CREATE INDEX actionOff ON action(cmd,sensor,cmdOff,offLog);
 
 -- When an on/off row is inserted into action
 CREATE OR REPLACE FUNCTION actionOnOffInsert() RETURNS TRIGGER AS $$
+        DECLARE onID INTEGER;
+        DECLARE offID INTEGER;
 	BEGIN
-	INSERT INTO command(timestamp,cmd,station,action) VALUES
-		(NEW.tOn, 0,NEW.station,NEW.id),
-		(NEW.tOff,1,NEW.station,NEW.id);
-        UPDATE action SET
-		cmdOn =(SELECT id FROM command WHERE action=NEW.id AND cmd=0),
-		cmdOff=(SELECT id FROM command WHERE action=NEW.id AND cmd=1),
-		addr=(SELECT addr FROM sensor 
-			WHERE id=(SELECT sensor FROM station WHERE id=NEW.station))
-		WHERE id=NEW.id;
+ 	INSERT INTO command(timestamp,cmd,sensor,action) VALUES (NEW.tOn,0,NEW.sensor,NEW.id)
+		RETURNING id INTO onID;
+ 	INSERT INTO command(timestamp,cmd,sensor,action) VALUES (NEW.tOff,1,NEW.sensor,NEW.id)
+		RETURNING id INTO offID;
+        UPDATE action SET cmdOn=onID, cmdOff=offID WHERE id=NEW.id;
 	RETURN NEW;
 	END;
 	$$
 	LANGUAGE plpgSQL;
 
-DROP TRIGGER IF EXISTS actionOnOffInsert ON action CASCADE;
+DROP TRIGGER IF EXISTS actionnOffInsert ON action CASCADE;
 CREATE TRIGGER actionOnOffInsert 
 	AFTER INSERT ON action -- For every insert where cmd=0
 	FOR EACH ROW WHEN (NEW.cmd=0)
@@ -867,18 +978,17 @@ CREATE TRIGGER actionOnOffInsert
 
 -- When a Test command row is inserted into action
 CREATE OR REPLACE FUNCTION actionTeeInsert() RETURNS TRIGGER AS $$
+        DECLARE onID INTEGER;
 	BEGIN
-	INSERT INTO command(timestamp,cmd,station,action) VALUES
-		(NEW.tOn, NEW.cmd,NEW.station,NEW.id);
-        UPDATE action SET 
-		cmdOn =(SELECT id FROM command WHERE action=NEW.id AND cmd=NEW.cmd),
-		addr=(SELECT addr FROM sensor 
-			WHERE id=(SELECT sensor FROM station WHERE id=NEW.station))
-		WHERE id=NEW.id;
+        INSERT INTO command(timestamp,cmd,sensor,action) VALUES
+			(NEW.tOn,NEW.cmd,NEW.sensor,NEW.id) RETURNING id INTO onID;
+        UPDATE action SET cmdOn=onID WHERE id=NEW.id;
 	RETURN NEW;
 	END;
 	$$
 	LANGUAGE plpgSQL;
+
+-- (SELECT id FROM command WHERE action=NEW.id AND cmd=NEW.cmd),
 
 DROP TRIGGER IF EXISTS actionTeeInsert ON action CASCADE;
 CREATE TRIGGER actionTeeInsert 
@@ -897,7 +1007,7 @@ CREATE OR REPLACE FUNCTION actionOnOffDelete() RETURNS TRIGGER AS $$
 
 DROP TRIGGER IF EXISTS actionOnOffDelete ON action CASCADE;
 CREATE TRIGGER actionOnOffDelete 
-	BEFORE DELETE ON action -- For every delete where cmd=0
+	AFTER DELETE ON action -- For every delete where cmd=0
 	FOR EACH ROW WHEN ((OLD.cmd=0) AND (OLD.cmdOn IS NOT NULL) AND (OLD.cmdOff IS NOT NULL))
 	EXECUTE PROCEDURE actionOnOffDelete();
 
@@ -912,7 +1022,7 @@ CREATE OR REPLACE FUNCTION actionTeeDelete() RETURNS TRIGGER AS $$
 
 DROP TRIGGER IF EXISTS actionTeeDelete ON action CASCADE;
 CREATE TRIGGER actionTeeDelete 
-	BEFORE DELETE ON action -- For every delete where cmd!=0
+	AFTER DELETE ON action -- For every delete where cmd!=0
 	FOR EACH ROW WHEN ((OLD.cmd!=0) AND (OLD.cmdOn IS NOT NULL))
 	EXECUTE PROCEDURE actionTeeDelete();
 
@@ -950,10 +1060,9 @@ CREATE TRIGGER actionOffUpdate
 CREATE OR REPLACE FUNCTION onLogInsert() RETURNS TRIGGER AS $$
 	BEGIN
         UPDATE action SET onLog=NEW.id,tOn=NEW.timestamp
-		WHERE addr=NEW.addr AND cmdOn IS NULL AND onLog IS NULL;
+		WHERE cmd=0 AND sensor=NEW.sensor AND cmdOn IS NULL AND onLog IS NULL;
 	DELETE FROM pgmStn 
-		WHERE qSingle=True 
-		AND id IN (SELECT pgmStn FROM action WHERE onLog=NEW.id AND tOn=NEW.timestamp);
+		WHERE qSingle=True AND id IN (SELECT pgmStn FROM action WHERE onLog=NEW.id);
 	RETURN NEW;
 	END;
 	$$
@@ -969,7 +1078,7 @@ CREATE TRIGGER onLogInsert
 CREATE OR REPLACE FUNCTION offLogInsert() RETURNS TRIGGER AS $$
 	BEGIN
         UPDATE action SET offLog=NEW.id,tOff=NEW.timestamp
-		WHERE addr=NEW.addr AND cmdOff IS NULL AND offLog IS NULL;
+		WHERE cmd=0 AND sensor=NEW.sensor AND cmdOff IS NULL AND offLog IS NULL;
 	RETURN NEW;
 	END;
 	$$

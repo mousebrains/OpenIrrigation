@@ -1,16 +1,7 @@
 <?php
 require_once 'php/DB.php';
 
-echo "<script>
-var sensorMap = new Object();\n";
-$results = $db->execute("SELECT addr,pocFlow.name,toHertz*K as K,flowOffset "
-	. "FROM pocFlow INNER JOIN sensor ON pocFlow.sensor=sensor.id;");
-while ($row = $results->fetchArray()) {
-	echo "sensorMap['" . $row['addr'] . "']={name:'" . $row['name']
-		. "', offset:" . $row['flowoffset'] . ", K:" . $row['k'] . "};\n";
-}
-
-echo "</script>\n<div id='topnav'><div>\n";
+echo "<div id='topnav'><div>\n";
 
 if ($db->querySingle("SELECT qSimulate FROM simulate LIMIT 1;")) {
   echo "  <span>Simulating</span>";

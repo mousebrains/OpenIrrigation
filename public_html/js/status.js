@@ -10,8 +10,13 @@ if (typeof(EventSource) != "undefined") {
                 let msg = '';
                 if ('curr' in data) {
                   let a = data['curr'];
-                  let t = new Date(a[0] * 1000);
-                  let msg = t.toTimeString().substr(0,9) + a[1] + " V " + a[2] + " mA";
+                  let msg = '';
+                  for (let i = 0; i < a.length; ++i) {
+                    let b = a[i];
+                    let t = new Date(b[1] * 1000);
+                    if (i != 0) {msg += ", ";}
+                    msg += b[0] + " " + t.toTimeString().substr(0,9) + " " + b[2] + " V " + b[3] + " mA";
+                  }
                   if (msg != statusCurrent) {
                     $("#statusCurrent").html(msg);
                     statusCurrent = msg;
@@ -22,16 +27,9 @@ if (typeof(EventSource) != "undefined") {
                   let msg = '';
                   for (let i = 0; i < a.length; ++i) {
                     let b = a[i];
-                    let t = new Date(b[0] * 1000);
-                    let key = b[1];
+                    let t = new Date(b[1] * 1000);
                     if (i != 0) { msg += ", "; }
-                    if (key in sensorMap) {
-                      let info = sensorMap[key];
-                      let flow = (b[2] * info['K']) - info['offset'];
-                      msg += info['name'] + "=" + Math.max(0,flow).toFixed(1);
-                    } else {
-                      msg += "sensor(" + key + ")=" + b[2];
-                    }
+                    msg += b[0] + " " + t.toTimeString().substr(0,9) + " " + b[2] + " GPM";
                   }
                   if (msg != statusSensor) {
                     $("#statusFlow").html(statusSensor);

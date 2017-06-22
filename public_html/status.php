@@ -16,16 +16,20 @@ class Query {
     $this->dt = new DateInterval("PT50S");
     $this->tPrev = (new DateTimeImmutable())->sub($this->oneDay);
     if (is_null($this->tPrevMsg)) {$this->tPrevMsg = $this->tPrev;}
-    $this->current = $db->prepare("SELECT timestamp,volts,mAmps FROM currentLog" 
-		. " WHERE timeStamp>=$1 ORDER BY timeStamp DESC LIMIT 1;");
-    $this->sensor = $db->prepare("SELECT timestamp,addr,value FROM sensorLog"
-		. " WHERE (timestamp,addr) IN ("
-		. "SELECT max(timestamp),addr FROM sensorLog"
-		.	" WHERE timestamp>$1 GROUP BY addr"
-		. ") ORDER BY addr;");
+    $this->current = $db->prepare("SELECT controller.name,currentLog.timestamp,currentLog.volts,currentLog.mAmps FROM currentLog"
+		. " INNER JOIN controller ON currentLog.timeStamp>=$1 AND controller.id=currentLog.controller"
+		. " ORDER BY timeStamp;");
+    $this->sensor = $db->prepare("SELECT poc.name,sensorLog.timestamp,round(CAST(sensorLog.flow AS NUMERIC),1) FROM sensorLog"
+		. " INNER JOIN pocFlow ON sensorLog.timeStamp>=$1 AND pocFlow.id=sensorLog.pocFlow"
+		. " INNER JOIN poc ON poc.id=pocFlow.poc"
+		. " ORDER BY timeStamp;");
 
-    $this->nOn = $db->prepare("SELECT count(DISTINCT station) FROM active;");
-    $this->nPending = $db->prepare("SELECT count(DISTINCT station) FROM pending WHERE tOn<=$1;");
+    $this->nOn = $db->prepare("SELECT count(DISTINCT sensor) FROM active;");
+    $this->nPending = $db->prepare("SELECT count(DISTINCT sensor) FROM pending WHERE tOn<=$1;");
+    $this->prevCurrent = NULL;
+    $this->prevSensor = NULL;
+    $this->nActive = NULL;
+    $this->nPend = NULL;
   }
 
   function sendIt() {
@@ -33,24 +37,23 @@ class Query {
     $tLimit = $this->tPrev->format("Y-m-d H:i:s");
     $now = new DateTimeImmutable();
     $a = $this->current->execute([$tLimit]);
-    if ($row = $a->fetchArray()) {
-      var_dump($row);
-      $current = '"curr":[' . $row[0] . "," . $row[1] . "," . $row[2] . "]";
-      if (is_null($this->current) or ($current != $this->current)) {
-        $this->current = $current;
-        array_push($content, $current);
-      }
+    $current = [];
+    while ($row = $a->fetchArray()) {
+      $current[$row[0]] = '["' . $row[0] . '",' . strtotime($row[1]) . "," . $row[2] . "," . $row[3] . "]";
+    }
+    if (!empty($current) and (($current != $this->prevCurrent) or is_null($this->prevCurrent))) {
+      $this->prevCurrent = $current;
+      array_push($content, '"curr":[' . implode(",", $current) . "]");
     }
 
     # Get sensors
     $a = $this->sensor->execute([$tLimit]);
     $sensor = [];
     while ($row = $a->fetchArray()) {
-      var_dump($row);
-      array_push($sensor, '[' . $row[0] . ',' . $row[1] . ',' . $row[2] . ']');
+      $sensor[$row[0]] = '["' . $row[0] . '",' . strtotime($row[1]) . ',' . $row[2] . ']';
     }
-    if (!empty($sensor) and (($sensor != $this->sensor) or is_null($this->sensor))) {
-      $this->sensor = $sensor;
+    if (!empty($sensor) and (($sensor != $this->prevSensor) or is_null($this->prevSensor))) {
+      $this->prevSensor = $sensor;
       array_push($content, '"sensor":[' . implode(",", $sensor) . "]");
     }
 
@@ -88,8 +91,8 @@ class Query {
 
 $query = new Query($db);
 
-# while (True) {
+while (True) {
   $query->sendIt();
-  # sleep(1);
-# }
+  sleep(1);
+}
 ?>

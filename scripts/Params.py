@@ -12,24 +12,24 @@
 #            a float, or 
 #            leading/trailing blanks are stripped off
 
-import sqlite3
+import psycopg2 
 
 class Params(dict): # Parameters loaded from a database
-    def __init__(self, dbfn, grp):
+    def __init__(self, dbname, grp):
         dict.__init__(self)
-        db = sqlite3.connect(dbfn)
-        for row in db.execute('SELECT name,val FROM params WHERE grp=?;', (grp,)):
-            val = row[1]
-            if ',' in val:
-                a = []
-                for item in val.split(','):
-                    a.append(self.__toNum(item))
-                val = a
-            else:
-                val = self.__toNum(val)
-
-            self[row[0]] = val
-        db.close()
+        db = psycopg2.connect(dbname=dbname) # For transaction safety 1 connection/thread
+        with db.cursor() as c:
+          c.execute('SELECT name,val FROM params WHERE grp=%s', [grp])
+          for row in c:
+              val = row[1]
+              if ',' in val:
+                  a = []
+                  for item in val.split(','):
+                      a.append(self.__toNum(item))
+                  val = a
+              else:
+                  val = self.__toNum(val)
+              self[row[0]] = val
 
     def __toNum(self, val):
         try:

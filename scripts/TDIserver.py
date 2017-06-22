@@ -8,7 +8,7 @@
 # the tty device to use
 # the name of the output log file
 #
-import DB 
+import psycopg2 
 import TDI 
 import TDISimulate 
 import Params
@@ -17,8 +17,9 @@ import logging
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--params', help='parameter database name', required=True)
-parser.add_argument('--cmds', help='commands database name', required=True)
+parser.add_argument('--db', help='database name', required=True)
+parser.add_argument('--site', help='Site name', required=True)
+parser.add_argument('--controller', help='controller name', required=True)
 parser.add_argument('--log', help='logfile, if not specified use the console')
 parser.add_argument('--group', help='parameter group name to use', default='TDI')
 parser.add_argument('--simul', help='simulate controller', action='store_true')
@@ -40,44 +41,42 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
-params = Params.Params(args.params, args.group)
+params = Params.Params(args.db, args.group)
 logger.info(params)
 
-db = DB.DB(args.params)
-if args.simul:
-  db.execute('INSERT INTO simulate VALUES(1);');
-  s0 = TDISimulate.Simulate(logger)
-  s0.start()
-else:
-  db.execute('INSERT INTO simulate VALUES(0);');
-  s0 = serial.Serial(port=params['port'], baudrate=params['baudrate']);
+with psycopg2.connect(dbname=args.db) as db:
+  db.set_session(autocommit=True)
 
-db.commit()
-db = None # Force closing
+  with db.cursor() as cur:
+    cur.execute('INSERT INTO simulate(qSimulate) VALUES(%s);', [True if args.simul else False]);
+  if args.simul:
+    s0 = TDISimulate.Simulate(logger)
+    s0.start()
+  else:
+    s0 = serial.Serial(port=params['port'], baudrate=params['baudrate']);
 
-with DB.DB(args.cmds) as db:
-    thrReader = TDI.Reader(s0, logger)
-    thrWriter = TDI.Writer(s0, logger)
-    thrBuilder = TDI.Builder(s0, logger, thrReader.q, thrWriter.q)
+  thrReader = TDI.Reader(s0, logger)
+  thrWriter = TDI.Writer(s0, logger)
+  thrBuilder = TDI.Builder(s0, logger, thrReader.q, thrWriter.q)
 
-    thr = []
-    thr.append(TDI.Consumer(db, logger, thrBuilder.q))
-    thr.append(TDI.Number(params, logger, thrWriter.q))
-    thr.append(TDI.Version(params, logger, thrWriter.q))
-    thr.append(TDI.Error(params, logger, thrWriter.q))
-    thr.append(TDI.Current(params, logger, thrWriter.q))
-    thr.append(TDI.Sensor(params, logger, thrWriter.q))
-    thr.append(TDI.Two(params, logger, thrWriter.q))
-    thr.append(TDI.Pee(params, logger, thrWriter.q))
-    thr.append(TDI.Command(db, logger, thrWriter.q))
+  thr = []
+  thr.append(TDI.Consumer(args, db, logger, thrBuilder.q))
+  thr.append(TDI.Number(params, logger, thrWriter.q))
+  thr.append(TDI.Version(params, logger, thrWriter.q))
+  thr.append(TDI.Error(params, logger, thrWriter.q))
+  thr.append(TDI.Current(params, logger, thrWriter.q))
+  thr.append(TDI.Sensor(params, logger, thrWriter.q))
+  thr.append(TDI.Two(params, logger, thrWriter.q))
+  thr.append(TDI.Pee(params, logger, thrWriter.q))
+  thr.append(TDI.Command(db, logger, thrWriter.q))
 
-    thrReader.start()
-    thrWriter.start()
-    thrBuilder.start()
+  thrReader.start()
+  thrWriter.start()
+  thrBuilder.start()
 
-    for i in range(len(thr)):
-        thr[i].start()
+  for i in range(len(thr)):
+    thr[i].start()
 
-    thrReader.join()
+  thrReader.join()
 
-s0.close()
+  s0.close()

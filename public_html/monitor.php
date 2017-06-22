@@ -45,9 +45,9 @@ echo "</pre>";
   }
 }
 
-function mkRT(int $stime, int $etime = NULL) {
+function mkRT(string $stime, string $etime = NULL) {
 	if (is_null($stime) or is_null($etime)) { return ''; }
-	$dt = $etime - $stime;
+	$dt = strtotime($etime) - strtotime($stime);
 	if ($dt < 3600) {return sprintf('%d:%02d', floor($dt / 60), $dt % 60);}
 	return sprintf('%d:%02d:%02d', floor($dt / 3600), floor(($dt % 3600) / 60), $dt % 60);
 }
@@ -57,13 +57,16 @@ function xlat($key, array $tbl) {
 }
 
 function mkPast($db, array $pgm, array $station) {
-	$results = $db->execute("SELECT historical.id,tOn,tOff,station,program,"
-			. "onLog.code AS codeOn,pre,peak,post,"
-			. "offLog.code AS codeOff"
+	$results = $db->execute("SELECT"
+			. " date_trunc('seconds',CAST(tOn AS TIME)) AS tOn"
+			. ",date_trunc('seconds',tOff-tOn) AS dt"
+			. ",historical.sensor,program"
+			. ",onLog.code AS codeOn,pre,peak,post"
+			. ",offLog.code AS codeOff"
 			. " FROM historical"
 			. " INNER JOIN onLog ON onLog=onLog.id"
 			. " INNER JOIN offLog ON offLog=offLog.id"
-			. " ORDER BY tOn DESC,station"
+			. " ORDER BY tOn DESC,sensor"
 			. " LIMIT 100;");
 	$hdr = "<tr><th>Station</th><th>Start</th><th>RunTime</th><th>Program</th><th>Pre</th><th>Peak</th>"
 		. "<th>Post</th><th>On Code</th><th>Off Code</th></tr>";
@@ -75,9 +78,9 @@ function mkPast($db, array $pgm, array $station) {
 			echo "<center>\n<table>\n";
 			echo "<thead>$hdr</thead>\n<tbody>\n";
 		}
-		echo "<tr>\n<th>" . xlat($row['station'], $station)
-			. "</th>\n<td>" . strftime('%m/%d %H:%M:%S', $row['ton'])
-			. "</td>\n<td>" . mkRT($row['ton'], $row['toff'])
+		echo "<tr>\n<th>" . xlat($row['sensor'], $station)
+			. "</th>\n<td>" . $row['ton']
+			. "</td>\n<td>" . $row['dt']
 			. "</td>\n<td>" . xlat($row['program'], $pgm)
 			. "</td>\n<td>" . $row['pre']
 			. "</td>\n<td>" . $row['peak']
@@ -93,10 +96,14 @@ function mkPast($db, array $pgm, array $station) {
 
 function mkCurrent($db, array $pgm, array $station) {
 	$now = time();
-	$results = $db->execute("SELECT active.id,tOn,tOff,station,program,code,pre,peak,post"
+	$results = $db->execute("SELECT active.id"
+			. ",date_trunc('seconds',CAST(tOn AS TIME)) AS tOn"
+			. ",date_trunc('seconds',CURRENT_TIMESTAMP-tOn) AS dtDone"
+			. ",date_trunc('seconds',tOff-CURRENT_TIMESTAMP) AS dtLeft"
+			. ",active.sensor,program,code,pre,peak,post"
 			. " FROM active"
 			. " INNER JOIN onLOG ON onLog=onLog.id" 
-			. " ORDER BY tOn,station;");
+			. " ORDER BY tOn,sensor;");
 	$hdr = "<tr><th></th><th>Station</th><th>Start</th>"
 		. "<th>RunTime</th><th>Time Left</th><th>Program</th>"
 		. "<th>Pre</th><th>Peak</th><th>Post</th><th>On Code</th></tr>";
@@ -112,10 +119,10 @@ function mkCurrent($db, array $pgm, array $station) {
 			. "<input type='hidden' name='id' value='" . $row['id'] . "'>\n"
 			. "<input type='submit' name='off' value='Off'>\n"
 			. "</form>\n"
-			. "</td>\n<th>" . xlat($row['station'], $station)
-			. "</th>\n<td>" . strftime('%m/%d %H:%M:%S', $row['ton'])
-			. "</td>\n<td>" . mkRT($row['ton'], $now)
-			. "</td>\n<td>" . mkRT($now, $row['toff'])
+			. "</td>\n<th>" . xlat($row['sensor'], $station)
+			. "</th>\n<td>" . $row['ton']
+			. "</td>\n<td>" . $row['dtdone']
+			. "</td>\n<td>" . $row['dtleft']
 			. "</td>\n<td>" . xlat($row['program'], $pgm)
 			. "</td>\n<td>" . $row['pre']
 			. "</td>\n<td>" . $row['peak']
@@ -129,9 +136,11 @@ function mkCurrent($db, array $pgm, array $station) {
 }
 
 function mkPending($db, array $pgm, array $station) {
-	$results = $db->execute("SELECT id,tOn,tOff,station,program"
+	$results = $db->execute("SELECT id,sensor,program"
+			. ",date_trunc('seconds',CAST(tOn AS TIME)) AS tOn"
+			. ",date_trunc('seconds',tOff-tOn) AS dt"
 			. " FROM pending"
-			. " ORDER BY tOn,station;");
+			. " ORDER BY tOn,sensor;");
 	$hdr = "<tr><th></th><th>Station</th><th>Start</th>"
 		. "<th>RunTime</th><th>Program</th></tr>";
 	$qFirst = true;
@@ -147,9 +156,9 @@ function mkPending($db, array $pgm, array $station) {
 			. "<input type='hidden' name='id' value='" . $row['id'] . "'>\n"
 			. "<input type='submit' name='delete' value='Delete'>\n"
 			. "</form>\n"
-			. "</td>\n<th>" . xlate($row['station'], $station)
-			. "</th>\n<td>" . strftime('%m/%d %H:%M:%S', $row['ton'])
-			. "</td>\n<td>" . mkRT($row['ton'], $row['toff'])
+			. "</td>\n<th>" . xlat($row['sensor'], $station)
+			. "</th>\n<td>" . $row['ton']
+			. "</td>\n<td>" . $row['dt']
 			. "</td>\n<td>" . xlat($row['program'], $pgm)
 			. "</td>\n</tr>\n";
 	}
@@ -160,7 +169,7 @@ function mkPending($db, array $pgm, array $station) {
 
 try {
   $pgm = $db->loadKeyValue("SELECT id,name FROM program ORDER BY name;");
-  $station = $db->loadKeyValue("SELECT id,name FROM station ORDER BY name;");
+  $station = $db->loadKeyValue("SELECT sensor,name FROM station ORDER BY name;");
   $masterValve = $db->loadKeyValue("SELECT id,name FROM pocMV ORDER BY name;");
 
   echo "<table>\n<tr>\n";

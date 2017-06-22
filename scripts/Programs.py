@@ -27,11 +27,11 @@ class DictTable(dict):
       self[field] = datetime.timedelta(seconds=self[field])
 
 class ListTables(list):
-  def __init__(self, name, db, logger, sql, obj):
+  def __init__(self, name, cur, logger, sql, obj):
     list.__init__(self)
     self.name = name
-    cur = db.mkCursor(True)
-    for row in cur.execute(sql): self.append(obj(row, logger))
+    cur.execute(sql)
+    for row in cur: self.append(obj(row, logger))
 
   def __repr__(self):
     msg = ""
@@ -45,11 +45,11 @@ class ListTables(list):
       item[field] = values[oID] if oID in values else defaultValue
 
 class DictTables(dict):
-  def __init__(self, name, db, logger, sql, obj, id='id'):
+  def __init__(self, name, cur, logger, sql, obj, id='id'):
     dict.__init__(self)
     self.name = name
-    cur = db.mkCursor(True)
-    for row in cur.execute(sql): self[row[id]] = obj(row, logger)
+    cur.execute(sql)
+    for row in cur: self[row[id]] = obj(row, logger)
 
   def __repr__(self):
     msg = ""
@@ -63,20 +63,20 @@ class DictTables(dict):
       self[id][field] = values[oID] if oID in values else None
 
 class WebLists(dict):
-  def __init__(self, db):
+  def __init__(self, cur):
     dict.__init__(self)
     self.dow = {}
-    cur = db.mkCursor(True)
-    for row in cur.execute('SELECT * FROM webList;'): 
+    cur.execute('SELECT * FROM webList;') 
+    for row in cur:
       id = row['id']
       self[id] = row['key']
-      if row['grp'] == 'dow': self.dow[id] = row['sortOrder']
+      if row['grp'] == 'dow': self.dow[id] = row['sortorder']
 
 class PgmDOW(dict):
-  def __init__(self, db, pgms, lists):
+  def __init__(self, cur, pgms, lists):
     dict.__init__(self)
-    cur = db.mkCursor(True)
-    for row in cur.execute('SELECT * FROM pgmDOW;'): 
+    cur.execute('SELECT * FROM pgmDOW;')
+    for row in cur:
       pgm = row['program']
       if pgm not in self: 
         self[pgm] = set()
@@ -105,8 +105,8 @@ class Site(DictTable):
   def key(self): return self['id']
 
 class Sites(DictTables):
-  def __init__(self, db, logger):
-    DictTables.__init__(self, 'Site', db, logger, 'SELECT * FROM site;', Site)
+  def __init__(self, cur, logger):
+    DictTables.__init__(self, 'Site', cur, logger, 'SELECT * FROM site;', Site)
 
 class Controller(DictTable):
   def __init__(self, row, logger):
@@ -118,27 +118,27 @@ class Controller(DictTable):
 
   def key(self): return self['id']
   def delay(self): return self['delay']
-  def maxStations(self): return self['maxStations']
-  def maxCurrent(self): return self['maxCurrent']
+  def maxStations(self): return self['maxstations']
+  def maxCurrent(self): return self['maxcurrent']
 
 class Controllers(DictTables):
-  def __init__(self, db, logger, sites):
-    DictTables.__init__(self, 'CTL', db, logger, 'SELECT * FROM controller;', Controller)
+  def __init__(self, cur, logger, sites):
+    DictTables.__init__(self, 'CTL', cur, logger, 'SELECT * FROM controller;', Controller)
     self.fixup('site', sites)
 
 class POC(DictTable):
   def __init__(self, row, logger):
     DictTable.__init__(self, row, logger)
-    self.mkTimedelta(['delayOn', 'delayOff'])
+    self.mkTimedelta(['delayon', 'delayoff'])
 
   def key(self): return self['id']
-  def delayOn(self): return self['delayOn']
-  def delayOff(self): return self['delayOff']
-  def maxFlow(self): return self['maxFlow']
+  def delayOn(self): return self['delayon']
+  def delayOff(self): return self['delayoff']
+  def maxFlow(self): return self['maxflow']
 
 class POCs(DictTables):
-  def __init__(self, db, logger, sites):
-    DictTables.__init__(self, 'POC', db, logger, 'SELECT * FROM poc;', POC)
+  def __init__(self, cur, logger, sites):
+    DictTables.__init__(self, 'POC', cur, logger, 'SELECT * FROM poc;', POC)
     self.fixup('site', sites)
 
 class Sensor(DictTable):
@@ -150,39 +150,39 @@ class Sensor(DictTable):
   def controller(self): return self['controller']
   def delayOn(self): return self.controller().delay()
   def delayOff(self): return self.controller().delay()
-  def activeCurrent(self): return self['activeCurrent']
-  def passiveCurrent(self): return self['passiveCurrent']
+  def activeCurrent(self): return self['activecurrent']
+  def passiveCurrent(self): return self['passivecurrent']
 
 class Sensors(DictTables):
-  def __init__(self, db, logger, controllers, lists):
-    DictTables.__init__(self, 'Sensor', db, logger, 'SELECT * FROM sensor;', Sensor)
+  def __init__(self, cur, logger, controllers, lists):
+    DictTables.__init__(self, 'Sensor', cur, logger, 'SELECT * FROM sensor;', Sensor)
     self.fixup('controller', controllers)
-    self.fixup('devType', lists)
+    self.fixup('devtype', lists)
 
 class Station(DictTable):
   def __init__(self, row, logger):
     DictTable.__init__(self, row, logger)
-    self.mkTimedelta(['minCycleTime', 'maxCycleTime', 'soakTime', 'flowDelayOn', 'flowDelayOff'])
+    self.mkTimedelta(['mincycletime', 'maxcycletime', 'soaktime', 'flowdelayon', 'flowdelayoff'])
 
   def key(self): return self['id']
   def name(self): return self['name']
   def sensor(self): return self['sensor']
   def poc(self): return self['poc']
   def controller(self):  return self.sensor().controller()
-  def maxCoStations(self): return self['maxCoStations'] 
-  def minCycleTime(self): return self['minCycleTime']
-  def maxCycleTime(self): return self['maxCycleTime']
-  def soakTime(self): return self['soakTime']
+  def maxCoStations(self): return self['maxcostations'] 
+  def minCycleTime(self): return self['mincycletime']
+  def maxCycleTime(self): return self['maxcycletime']
+  def soakTime(self): return self['soaktime']
   def minSoakTime(self): 
     poc = self.poc()
     sensor = self.sensor()
     return max(self.soakTime(), sensor.delayOn()+sensor.delayOff(), poc.delayOn()+poc.delayOff())
 
   def flow(self):
-    return self['userFlow'] if self['userFlow'] is not None else self['measuredFlow']
+    return self['userflow'] if self['userflow'] is not None else self['measuredflow']
 
-  def flowDelayOn(self): return self['flowDelayOn']
-  def flowDelayOff(self): return self['flowDelayOff']
+  def flowDelayOn(self): return self['flowdelayon']
+  def flowDelayOff(self): return self['flowdelayoff']
 
   def delayOn(self): return self.sensor().delayOn()
   def delayOff(self): return self.sensor().delayOff()
@@ -191,15 +191,15 @@ class Station(DictTable):
   def passiveCurrent(self): return self.sensor().passiveCurrent()
 
 class Stations(DictTables):
-  def __init__(self, db, logger, sensors, pocs):
-    DictTables.__init__(self, 'STN', db, logger, 'SELECT * FROM station;', Station)
+  def __init__(self, cur, logger, sensors, pocs):
+    DictTables.__init__(self, 'STN', cur, logger, 'SELECT * FROM station;', Station)
     self.fixup('sensor', sensors)
     self.fixup('poc', pocs)
 
 class PgmStation(DictTable):
   def __init__(self, row, logger):
     DictTable.__init__(self, row, logger)
-    self.mkTimedelta(['runTime'])
+    self.mkTimedelta(['runtime'])
     self['totalTime'] = datetime.timedelta()
 
   def key(self): return self['id']
@@ -208,7 +208,7 @@ class PgmStation(DictTable):
 	+ "/" + self.program().name()
   def station(self): return self['station']
   def program(self): return self['program']
-  def qSingle(self): return self['qSingle']
+  def qSingle(self): return self['qsingle']
   def controller(self): return self.station().controller()
   def poc(self): return self.station().poc()
   def name(self): return self.station().name()
@@ -220,7 +220,7 @@ class PgmStation(DictTable):
   def maxCoStations(self): return self.station().maxCoStations()
   def delayOn(self): return self.station().delayOn()
   def delayOff(self): return self.station().delayOff()
-  def runTime(self): return self['runTime']
+  def runTime(self): return self['runtime']
   def sDate(self): return self.program().sDate()
   def aDate(self): return self.program().aDate()
   def eDate(self): return self.program().eDate()
@@ -228,7 +228,7 @@ class PgmStation(DictTable):
   def activeCurrent(self): return self.station().activeCurrent()
   def passiveCurrent(self): return self.station().passiveCurrent()
 
-  def timeLeft(self): return max(datetime.timedelta(), self['runTime'] - self['totalTime'])
+  def timeLeft(self): return max(datetime.timedelta(), self['runtime'] - self['totalTime'])
 
   def __iadd__(self, dt):
     self['totalTime'] += dt
@@ -265,12 +265,10 @@ class PgmStation(DictTable):
     if self.qSingle(): self['totalTime'] = datetime.timedelta()
 
 class PgmStations(ListTables):
-  def __init__(self, db, logger, lists, programs, stns):
-    ListTables.__init__(self, 'PSTN', db, logger, 
-                        'SELECT * FROM pgmStn ' +
-                        'WHERE mode IS NOT ' +
-                        '(SELECT id FROM webList WHERE grp=="pgm" AND key=="off") ' +
-                        'ORDER BY priority;', 
+  def __init__(self, cur, logger, lists, programs, stns):
+    ListTables.__init__(self, 'PSTN', cur, logger, 
+                        "SELECT * FROM pgmStn WHERE mode!=getListId('pgm', 'off')"
+                        + "ORDER BY priority;", 
                         PgmStation)
     self.fixup('mode', lists)
     self.fixup('station', stns)
@@ -294,20 +292,20 @@ class Program(DictTable):
   def sDate(self): return self['sDate']
   def aDate(self): return self['aDate']
   def eDate(self): return self['eDate']
-  def maxStations(self): return self['maxStations']
-  def maxFlow(self): return self['maxFlow']
-  def qOn(self): return self['onOff'] != 'off'
-  def startMode(self): return self['startMode']
-  def stopMode(self): return self['stopMode']
+  def maxStations(self): return self['maxstations']
+  def maxFlow(self): return self['maxflow']
+  def qOn(self): return self['onoff'] != 'off'
+  def startMode(self): return self['startmode']
+  def stopMode(self): return self['stopmode']
   def qStartModeClock(self): return self.startMode() == 'clock'
   def qStopModeClock(self): return self.stopMode() == 'clock'
-  def startTime(self): return self['startTime']
-  def endTime(self): return self['endTime']
+  def startTime(self): return self['starttime']
+  def endTime(self): return self['endtime']
   def action(self): return self['action']
   def qDOW(self): return self.action() == 'dow'
   def qnDays(self): return self.action() == 'nDays'
-  def refDate(self): return self['refDate']
-  def nDays(self): return self['nDays']
+  def refDate(self): return self['refdate']
+  def nDays(self): return self['ndays']
   def dow(self): return self['dow']
 
   def qActive(self, date, dow):
@@ -319,15 +317,15 @@ class Program(DictTable):
     if self.qDOW():
       return dow in self.dow()
     if self.qnDays():
-      refdate = datetime.date.fromtimestamp(self.refDate())
+      refdate = self.refDate()
       return (abs(refdate - date.date()).days % self.nDays()) == 0
     self.logger.error('Unrecognized action, {}, in program {}'.format(action, pgm))
     return False
 
   def qActiveTime(self, date): # Will a time window happen between now and the end of the day?
     d = date.date()
-    sTime = self.mkTime(self.startTime())
-    eTime = self.mkTime(self.endTime())
+    sTime = self.startTime()
+    eTime = self.endTime()
     if self.qStartModeClock() and self.qStopModeClock(): # Two wall clock times
       [sDate, eDate] = self.mkWallTimes(d, sTime, eTime)
     elif self.qStartModeClock(): # Start time is wall clock based
@@ -342,7 +340,7 @@ class Program(DictTable):
 
     self['sDate'] = sDate # Store for others to use
     self['eDate'] = eDate
-    af = self['attractorFrac']
+    af = self['attractorfrac']
     if af <= 0:
       self['aDate'] = sDate
     elif af >= 100:
@@ -351,11 +349,6 @@ class Program(DictTable):
       self['aDate'] = sDate + (eDate - sDate) * (af / 100)
 
     return eDate > date # End of interval is after date, so yes
-
-  def mkTime(self, secs): # Change seconds into day to a datetime.time object
-    if secs < 86400:
-      return datetime.time(math.floor(secs / 3600), math.floor((secs % 3600) / 60), secs % 60)
-    return datetime.time(23,59,59,999999);
 
   def mkWallTimes(self, date, sTime, eTime):
     sDate = datetime.datetime.combine(date, sTime)
@@ -394,24 +387,23 @@ class Program(DictTable):
       stn.resetManualTotalTime()
    
 class Programs(ListTables):
-  def __init__(self, db, logger):
+  def __init__(self, cur, logger):
     self.logger = logger
-    self.lists = WebLists(db)
-    self.sites = Sites(db, logger)
-    self.controllers = Controllers(db, logger, self.sites)
-    self.pocs = POCs(db, logger, self.sites)
-    self.sensors = Sensors(db, logger, self.controllers, self.lists)
-    self.stations = Stations(db, logger, self.sensors, self.pocs)
-    sqlOff = 'SELECT id FROM webList WHERE grp=="onOff" AND key=="off"';
-    sql = 'SELECT * FROM program WHERE onOff IS NOT (' + sqlOff + ') ORDER BY priority,name;'
-    ListTables.__init__(self, 'PGM', db, logger, sql, Program)
+    self.lists = WebLists(cur)
+    self.sites = Sites(cur, logger)
+    self.controllers = Controllers(cur, logger, self.sites)
+    self.pocs = POCs(cur, logger, self.sites)
+    self.sensors = Sensors(cur, logger, self.controllers, self.lists)
+    self.stations = Stations(cur, logger, self.sensors, self.pocs)
+    sql = "SELECT * FROM program WHERE onOff!=getListId('onOff', 'off') ORDER BY priority,name;"
+    ListTables.__init__(self, 'PGM', cur, logger, sql, Program)
     self.fixup('site', self.sites)
     self.fixup('action', self.lists)
-    self.fixup('onOff', self.lists)
-    self.fixup('startMode', self.lists, 'clock')
-    self.fixup('stopMode', self.lists, 'clock')
-    self.pgmStations = PgmStations(db, logger, self.lists, self, self.stations)
-    self.pgmDOW = PgmDOW(db, self, self.lists)
+    self.fixup('onoff', self.lists)
+    self.fixup('startmode', self.lists, 'clock')
+    self.fixup('stopmode', self.lists, 'clock')
+    self.pgmStations = PgmStations(cur, logger, self.lists, self, self.stations)
+    self.pgmDOW = PgmDOW(cur, self, self.lists)
 
   def schedule(self, date, events):
     dow = date.isoweekday() % 7 # Move Sunday from 7 to zero
@@ -431,8 +423,8 @@ class Programs(ListTables):
     for pgm in self:
       pgm.resetManualTotalTime()
 
-  def findPgmStation(self, addr, pgm):
+  def findPgmStation(self, sensor, pgm):
     for item in self.pgmStations:
-      if (addr == item.station().sensor().addr()) and (pgm == item.program().key()):
+      if (sensor == item.station().sensor().key()) and (pgm == item.program().key()):
         return item
     return None

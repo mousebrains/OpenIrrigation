@@ -1,7 +1,6 @@
 # Access an SQLite3 database with thread locking
 
-import sqlite3
-import threading
+import psycopg2
 
 def dict_factory(cursor, row):
   d = {}
@@ -9,37 +8,19 @@ def dict_factory(cursor, row):
     d[col[0]] = row[idx]
   return d
 
-class DB(sqlite3.Connection):
+class DB:
     # overlay on top of sqlite for handling thread locking
-    def __init__(self, fn):
-        sqlite3.Connection.__init__(self, fn, \
-		detect_types=sqlite3.PARSE_DECLTYPES, \
-		check_same_thread=False, isolation_level=None)
-        self.__curr = self.cursor()
-        self.__lock = threading.Lock()
+    def __init__(self, dbname):
+        db = psycopg2.connect("dbname=interface")
 
     def __enter__(self):
         return self
 
     def __exit__(self, a, b, c):
-        self.commit()
         self.close()
 
-    def write(self, sql, args=[]):
-        self.__lock.acquire()
-        self.__curr.execute(sql, args)
-        self.commit()
-        self.__lock.release()
-
-    def read(self, sql, args=[]):
-        self.__lock.acquire()
-        self.__curr.execute(sql, args)
-        rows = self.__curr.fetchall()
-        self.__lock.release()
-        return rows
-
-    def mkCursor(self, qDict=False):
+    def cursor(self, qDict=False):
       a = self.cursor()
-      if qDict:
-        a.row_factory = dict_factory
+      # if qDict:
+        # a.row_factory = dict_factory
       return a

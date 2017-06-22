@@ -13,10 +13,11 @@
 require_once 'php/navBar.php';
 
 if (!empty($_POST)) {
+  echo "<pre>"; var_dump($_POST); echo "</pre>";
   try {
     $db->begin();
     if (array_key_exists('Run', $_POST)) { // Update pgmStn
-      $db->execute('SELECT addManual($1,$2);', [$_POST['id'], $_POST['time']*60]);
+      $db->execute('SELECT addManual($1,$2);', [$_POST['id'], $_POST['time']]);
     } else { // Stop an existing run
       $db->execute('SELECT rmManual($1);', [$_POST['id']]);
     }

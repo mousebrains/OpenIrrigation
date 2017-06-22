@@ -47,9 +47,14 @@ CREATE OR REPLACE FUNCTION addManual(stn INTEGER, t FLOAT) RETURNS VOID AS $$
 -- Drop a manual operation
 
 CREATE OR REPLACE FUNCTION rmManual(stn INTEGER) RETURNS VOID AS $$
-  DELETE FROM pgmStn WHERE station=stn AND program=getManualId() AND qSingle=True;
-  DELETE FROM action 
-	WHERE station=stn AND program=getManualId() AND cmdOn IS NOT NULL AND cmdOFF IS NOT NULL;
-  UPDATE action SET tOff=CURRENT_TIMESTAMP
-	WHERE station=stn AND program=getManualId() AND cmdOn IS NULL AND cmdOff IS NOT NULL;
-  $$ LANGUAGE SQL;
+  DECLARE pgmID INTEGER;
+  DECLARE actID INTEGER;
+  BEGIN
+  SELECT getManualId() INTO pgmID;
+  DELETE FROM pgmStn WHERE station=stn AND program=pgmID AND qSingle=True;
+  SELECT id FROM action WHERE program=pgmID AND sensor=(SELECT sensor FROM station WHERE id=stn)
+	INTO actID; 
+  DELETE FROM action WHERE id IN (actID) AND cmdOn IS NOT NULL AND cmdOFF IS NOT NULL;
+  UPDATE action SET tOff=CURRENT_TIMESTAMP WHERE id IN (actID) AND cmdOn IS NULL AND cmdOff IS NOT NULL;
+  END;
+  $$ LANGUAGE plpgSQL;

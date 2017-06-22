@@ -4,7 +4,7 @@
 # fetch information from the AgriMet system
 #
 #
-import sqlite3 
+import psycopg2 
 import Params
 import logging
 import argparse
@@ -24,69 +24,79 @@ class Fetcher(threading.Thread):
 
   def run(self): # Called on thread start
     logger = self.logger.info
-    params = self.params
     logger('Starting')
-    earliestDate = time.mktime(time.strptime(params['earliestDate'], "%Y-%m-%d"))
-    extraBack = params['extraBack']
-    urlBase = params['URL']
-    qForce = args.force;
+    earliestDate = datetime.datetime.strptime(self.params['earliestDate'], "%Y-%m-%d").date()
+    # earliestDate = datetime.datetime.strptime('2017-06-01', "%Y-%m-%d").date()
+    extraBack = datetime.timedelta(days=self.params['extraBack'])
     tod = []
-    for t in params['times']:
-      st = time.strptime(t, '%H:%M')
-      tod.append(datetime.time(st.tm_hour, st.tm_min))
+    for t in self.params['times']: tod.append(datetime.datetime.strptime(t, "%H:%M").time())
 
     while True:
-      if not qForce:
-        now = datetime.datetime.utcnow()
-        tNow = now.time()
-        tNext = None
-        for t in tod:
-          if t > tNow:
-            tNext = datetime.datetime.combine(now.date(), t)
-            break
-        if tNext is None: 
-          tNext = datetime.datetime.combine(now.date() + datetime.timedelta(days=1), tod[0])
-        dt = (tNext - now).total_seconds() # Time left to next wakeup
-        logger('Sleeping until {} which is {} seconds from now'.format(tNext, dt))
-        time.sleep(dt);
+      now = datetime.datetime.now()
+      with psycopg2.connect(dbname=self.args.db) as db: # Create a new connection
+        with db.cursor() as cur: # Create a new cursor
+          cur.execute('SELECT max(t) FROM ET;')
+          t = cur.fetchone()[0]
+          if t is None: t = earliestDate
+        page = self.procURL(db, max(datetime.timedelta(), now.date()-t) + extraBack)
+        if len(page): self.procPage(page, db) # Process any data we got
+      self.sleeper(tod)
 
-      with sqlite3.Connection(self.args.db, isolation_level=None) as db:
-        cur = db.cursor()
-        t = cur.execute('SELECT max(date) FROM ET;').fetchone()[0]
-        if t is None:
-          t = earliestDate
-        nBack = max(0, round((time.time() - t) / 86400)) + int(extraBack)
-        url = '{}{}'.format(urlBase, nBack)
-        logger('Fetching {}'.format(url))
-        with urllib.request.urlopen(url) as fd:
-          page = fd.read().decode('utf-8') # Load the entire page so we don't get timeout issues
-          logger('Loaded {} bytes'.format(len(page)))
-          station = []
-          column = []
-          sql = 'INSERT INTO ET VALUES(?,?,?,?);'
-          cnt = 0
-          cur.execute('BEGIN DEFERRED TRANSACTION;');
-          for line in page.split('\n'):
-            line = line.split(',')
-            n = len(line)
-            if n < 2: continue
-            if line[0] == 'DateTime':
-              for i in range(n):
-                fields = line[i].split('_')
-                station.append(fields[0])
-                column.append(fields[1] if len(fields) > 1 else fields[0])
-            else: # Data line
-              t = time.strptime(line[0], "%Y-%m-%d")
-              for i in range(1,n):
-                if (len(line) > i) and len(line[i]):
-                    cur.execute(sql, (round(time.mktime(t)), station[i], column[i], line[i]))
-                    cnt += 1
-          cur.execute('COMMIT TRANSACTION;');
-        db.commit()
-        logger('Inserted {} records'.format(cnt))
+  def sleeper(self, tod):
+    now = datetime.datetime.now()
+    tNow = now.time()
+    tNext = None
+    for t in tod:
+      if t > tNow:
+        tNext = datetime.datetime.combine(now.date(), t)
+        break
+    if tNext is None: 
+      tNext = datetime.datetime.combine(now.date() + datetime.timedelta(days=1), tod[0])
+    dt = (tNext - now) # Time left to next wakeup
+    self.logger.info('Sleeping until {} which is {} from now'.format(tNext, dt))
+    time.sleep(dt.total_seconds())
 
-      if qForce:
-        return
+  def procURL(self, db, nBack):
+    logger = self.logger.info
+    urlBase = self.params['URL']
+    url = '{}{}'.format(urlBase, nBack.days)
+    logger('Fetching {}'.format(url))
+    with urllib.request.urlopen(url) as fd:
+      page = fd.read().decode('utf-8') # Load the entire page so we don't get timeout issues
+      logger('Loaded {} bytes'.format(len(page)))
+    return page
+
+  def procPage(self, page, db):
+    stime = datetime.datetime.now()
+    with db.cursor() as cur: 
+      station = []
+      column = []
+      cnt = 0
+      myID = 'ETInsert' # Prepare my statement once, and use many times
+      cur.execute("PREPARE " + myID \
+		+ " AS INSERT INTO ET(t,station,code,value)" \
+		+ " SELECT $1,$2,id,$3 FROM params" \
+                + " WHERE grp='ET' AND lower(name)=lower($4)" \
+                + " ON CONFLICT (station,code,t) DO UPDATE SET value=EXCLUDED.value;")
+      sql = "EXECUTE " + myID + "(%s,%s,%s,%s);"
+
+      for line in page.split('\n'):
+        line = line.split(',')
+        n = len(line)
+        if n < 2: continue
+        if line[0] == 'DateTime':
+          for i in range(n):
+            fields = line[i].split('_')
+            station.append(fields[0])
+            column.append(fields[1] if len(fields) > 1 else fields[0])
+        else: # Data line
+          for i in range(1,n):
+            if (len(line) > i) and len(line[i]):
+              cnt += 1
+              cur.execute(sql, (line[0], station[i], line[i], column[i]))
+    if cnt: db.commit() # If we wrote any records, commit them
+    self.logger.info('Inserted {} records in {}'.format(cnt, datetime.datetime.now()-stime))
+
 
 class Stats(threading.Thread):
   def __init__(self, args, params, logger):
@@ -101,35 +111,27 @@ class Stats(threading.Thread):
     logger('Starting')
     dom = self.params['statDayOfMonth']
     hod = datetime.datetime.strptime(self.params['statHourOfDay'], '%H:%M').time()
+    tNext = datetime.datetime.now() + datetime.timedelta(minutes=30)
     while True:
-      with sqlite3.Connection(self.args.db, isolation_level=None) as db:
-        cur = db.cursor()
-        logger('Building statistics')
-        cur.execute('BEGIN DEFERRED TRANSACTION;');
-        cur.execute('DROP TABLE IF EXISTS ETbyDOY;')
-        cur.execute('CREATE TABLE ETbyDOY AS ' +
-                    'SELECT station,code,value,strftime("%j",date,"unixepoch","localtime") AS doy' +
-                    ' FROM ET;')
-        logger('Created EtbyDOY table')
-        cur.execute('INSERT INTO ETannual ' +
-                    'SELECT doy,station,code,AVG(value),COUNT(*) ' +
-                    'FROM ETbyDOY GROUP BY station,code,doy;')
-        cur.execute('COMMIT TRANSACTION;');
-        db.commit()
-      now = datetime.datetime.utcnow()
-      tNext = now.combine(now.date(), hod)
-      if tNext < now:
-        if tNext.month < 12:
-          tNext = tNext.replace(month=tNext.month+1)
-        else:
-          tNext = tNext.replace(year=tNext.year+1, month=1)
-      dt = (tNext - now).total_seconds()
+      dt = max(datetime.timedelta(), tNext - datetime.datetime.now())
       logger('Sleeping until {} dt {}'.format(tNext, dt))
-      time.sleep(dt);
-
+      time.sleep(dt.total_seconds())
+      logger('Building statistics')
+      with psycopg2.connect(dbname=self.args.db) as db: # For transaction safety 1 connection/thread
+        with db.cursor() as cur:
+          cur.execute("CREATE TEMPORARY TABLE ETbyDOY AS" \
+		  + " SELECT station,code,value,EXTRACT('DOY' from t) AS doy FROM ET;")
+          cur.execute("INSERT INTO ETannual(doy,station,code,value,n)" \
+                    + " SELECT doy,station,code,AVG(value) as value,COUNT(*) as n" \
+                    + " FROM ETbyDOY GROUP BY station,code,doy" \
+                    + " ON CONFLICT (station,code,doy)" \
+                    + " DO UPDATE SET value=EXCLUDED.value,n=EXCLUDED.n;")
+          db.commit()
+      now = datetime.datetime.now().date()
+      dNext = datetime.date(now.year+1, 1, 1)
+      tNext = datetime.datetime.combine(dNext, hod)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--params', help='parameter database name', required=True)
 parser.add_argument('--db', help='ET database name', required=True)
 parser.add_argument('--log', help='logfile, if not specified use the console')
 parser.add_argument('--group', help='parameter group name to use', default='AGRIMET')
@@ -152,7 +154,7 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
-params = Params.Params(args.params, args.group)
+params = Params.Params(args.db, args.group)
 logger.info(params)
 
 thrFetch = Fetcher(args, params, logger) # Fetch Agrimet information
@@ -161,4 +163,5 @@ thrFetch.start()
 thrStats = Stats(args, params, logger) # Build summary information
 thrStats.start()
 
+thrStats.join() # Wait until finished, which should never happen
 thrFetch.join() # Wait until finished, which should never happen

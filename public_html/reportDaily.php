@@ -20,55 +20,52 @@ try {
   $nBack = 8;
   $nFwd = 8;
 
-  $now = new DateTimeImmutable();
-  $format = 'Y-m-d H:i:s';
-
-  $names = $db->loadKeyValue("SELECT id,name FROM station;");
+  $names = $db->loadKeyValue("SELECT sensor,name FROM station;");
   $stations = [];
-  $past = [];
   $future = [];
+  $past = [];
 
-  // currently active entries
-  $results = $db->execute("SELECT station,sum($1-tOn),sum(tOff-$1) FROM active GROUP BY station;",
-			  [$now->format($format)]);
+  $results = $db->execute("SELECT sensor"
+		. ",date_part('epoch',sum(tOff-tOn)) as dt"
+		. ",date_part('epoch',sum(tOff-CURRENT_TIMESTAMP)) as dtLeft"
+		. ",date_part('epoch',sum(CURRENT_TIMESTAMP-tOn)) as dtDone"
+		. ",CAST(tOn AS DATE)-CURRENT_DATE AS n"
+		. " FROM action"
+		. " WHERE tOn>=(CURRENT_DATE - INTERVAL '$nBack DAYS')"
+		. " AND tOn<=(CURRENT_DATE + INTERVAL '$nFwd DAYS')"
+		. " GROUP BY sensor,n;");
   while ($row = $results->fetchRow()) {
-    $a = $row[0];
-    $past[$a][0] = $row[1];
-    $future[$a][0] = $row[2];
-    array_push($stations, $a);
+    $id = $row[0];
+    $dt = $row[1];
+    $dtLeft = $row[2];
+    $dtDone = $row[3];
+    $n = $row[4];
+    array_push($stations, $id);
+    if ($n < 0) { // Past
+      if (!array_key_exists($id, $past)) {$past[$id] = [];}
+      if (!array_key_exists($n, $past[$id])) {$past[$id][$n] = 0;}
+      $past[$id][$n] += $dt;
+    } elseif ($n > 0) { // Future
+      if (!array_key_exists($id, $future)) {$future[$id] = [];}
+      if (!array_key_exists($n, $future[$id])) {$future[$id][$n] = 0;}
+      $future[$id][$n] += $dt;
+    } elseif ($dtLeft < 0) { // Today already done
+      if (!array_key_exists($id, $past)) {$past[$id] = [];}
+      if (!array_key_exists($n, $past[$id])) {$past[$id][$n] = 0;}
+      $past[$id][$n] += $dt;
+    } elseif ($dtDone < 0) { // Today yet to be done
+      if (!array_key_exists($id, $future)) {$future[$id] = [];}
+      if (!array_key_exists($n, $future[$id])) {$future[$id][$n] = 0;}
+      $future[$id][$n] += $dt;
+    } else { // Active
+      if (!array_key_exists($id, $past)) {$past[$id] = [];}
+      if (!array_key_exists($id, $future)) {$future[$id] = [];}
+      if (!array_key_exists($n, $past[$id])) {$past[$id][$n] = 0;}
+      if (!array_key_exists($n, $future[$id])) {$future[$id][$n] = 0;}
+      $past[$id][$n] += $dtDone;
+      $future[$id][$n] += $dtLeft;
+    }
   }
-
-  // Past enteries
-  $results = $db->execute("SELECT station,sum(tOff-tOn),date_trunc('day',tOn)"
-		. " FROM historical"
-		. " WHERE tOn>=$1"
-		. " GROUP BY station,date_trunc('day',tOn);",
-		[$now->sub(new DateInterval("P" . $nBack . "D"))->format($format)]);
-
-  while ($row = $results->fetchArray()) {
-    $a = $row[0];
-    if (!array_key_exists($a, $past)) {$past[$a] = [];}
-    $n = intval(floor(($now - $row[2]) / 86400));
-    if (!array_key_exists($n, $past[$a])) {$past[$a][$n] = 0;}
-    $past[$a][$n] += $row[1];
-    array_push($stations, $a);
-  }
-
-  // Future enteries
-  $results = $db->execute("SELECT station,sum(tOff-tOn),date_trunc('day',tOn)"
-		  . " FROM pending"
-		  . " WHERE tOn<=$1"
-		  . " GROUP BY station,date_trunc('day',tOn);",
-		  [$now->add(new DateInterval("P" . $nFwd . "D"))->format($format)]);
-  while ($row = $results->fetchArray()) {
-    $a = $row[0];
-    if (!array_key_exists($a, $future)) {$future[$a] = [];}
-    $n = intval(floor(($row[2]-$now) / 86400));
-    if (!array_key_exists($n, $future[$a])) {$future[$a][$n] = 0;}
-    $future[$a][$n] += $row[1];
-    array_push($stations, $a);
-  }
-
 } catch (Exception $e) {
   echo "<div><pre>" . $e->getMessage() . "</pre></div>\n";
 }

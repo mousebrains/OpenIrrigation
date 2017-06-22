@@ -17,14 +17,16 @@ class Query {
     $this->tFwd  = new DateInterval("P1D");
     $this->dt    = new DateInterval("PT50S");
     $this->tPrevMsg = new DateTimeImmutable();
-    $this->active = $db->prepare("SELECT station,sum(tOff-$1),sum($1-tOn) FROM active"
-		. " GROUP BY station;");
-    $this->past = $db->prepare("SELECT station,sum(tOff-tOn) FROM historical"
-		. " WHERE tOff>=$1"
-		. " GROUP BY station;");
-    $this->pend = $db->prepare("SELECT station,sum(tOff-tOn) FROM pending"
-		. " WHERE tOn<=$1"
-		. " GROUP BY station;");
+    $this->active = $db->prepare("SELECT station.id,round(date_part('epoch',sum(tOff-$1))),round(date_part('epoch',sum($1-tOn)))"
+		. " FROM active"
+		. " INNER JOIN station ON station.sensor=active.sensor"
+		. " GROUP BY station.id;");
+    $this->past = $db->prepare("SELECT station.id,round(date_part('epoch',sum(tOff-tOn))) FROM historical"
+		. " INNER JOIN station ON tOff>=$1 AND station.sensor=historical.sensor"
+		. " GROUP BY station.id;");
+    $this->pend = $db->prepare("SELECT station.id,round(date_part('epoch',sum(tOff-tOn))) FROM pending"
+		. " INNER JOIN station ON tOn<=$1 AND station.sensor=pending.sensor"
+		. " GROUP BY station.id;");
     $this->sched = $db->prepare("SELECT station,sum(runTime) FROM pgmStn"
 		. " WHERE qSingle=True GROUP BY station;");
   }
@@ -84,8 +86,8 @@ class Query {
 
 $query = new Query($db);
 
-# while (True) {
+while (True) {
   $query->sendIt();
-  # sleep(1);
-# }
+  sleep(1);
+}
 ?>
