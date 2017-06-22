@@ -3,7 +3,7 @@ require_once 'php/DB.php';
 
 echo "<div id='topnav'><div>\n";
 
-if ($db->querySingle("SELECT qSimulate FROM simulate LIMIT 1;")) {
+if ($db->querySingle("SELECT qSimulate FROM simulate LIMIT 1;") == 't') {
   echo "  <span>Simulating</span>";
 }
 
