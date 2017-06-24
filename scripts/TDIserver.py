@@ -14,6 +14,7 @@ import TDISimulate
 import Params
 import serial 
 import logging
+import logging.handlers
 import argparse
 
 parser = argparse.ArgumentParser()
@@ -23,6 +24,8 @@ parser.add_argument('--controller', help='controller name', required=True)
 parser.add_argument('--log', help='logfile, if not specified use the console')
 parser.add_argument('--group', help='parameter group name to use', default='TDI')
 parser.add_argument('--simul', help='simulate controller', action='store_true')
+parser.add_argument('--maxlogsize', help='logging verbosity', default=1000000)
+parser.add_argument('--backupcount', help='logging verbosity', default=7)
 parser.add_argument('--verbose', help='logging verbosity', action='store_true')
 args = parser.parse_args()
 
@@ -32,7 +35,8 @@ logger.setLevel(logging.DEBUG)
 if args.log is None:
     ch = logging.StreamHandler()
 else:
-    ch = logging.FileHandler(args.log)
+    ch = logging.handlers.RotatingFileHandler(args.log,
+                                maxBytes=args.maxlogsize, backupCount=args.backupcount)
 
 ch.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 

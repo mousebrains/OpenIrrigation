@@ -11,6 +11,7 @@
 import sys
 import Params
 import logging
+import logging.handlers
 import argparse
 import queue
 import time
@@ -151,6 +152,8 @@ class Trigger(threading.Thread): # Wait on events in the scheduler table
 parser = argparse.ArgumentParser()
 parser.add_argument('--db', help='database name', required=True)
 parser.add_argument('--log', help='logfile, if not specified use the console')
+parser.add_argument('--maxlogsize', help='logging verbosity', default=1000000)
+parser.add_argument('--backupcount', help='logging verbosity', default=7)
 parser.add_argument( '--verbose', help='logging verbosity level', action='store_true')
 args = parser.parse_args()
 
@@ -160,7 +163,8 @@ logger.setLevel(logging.DEBUG)
 if args.log is None:
     ch = logging.StreamHandler()
 else:
-    ch = logging.FileHandler(args.log)
+    ch = logging.handlers.RotatingFileHandler(args.log,
+                                maxBytes=args.maxlogsize, backupCount=args.backupcount)
 
 ch.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 
