@@ -152,7 +152,6 @@ class Consumer(threading.Thread):
       args.append(self.controller)
       with self.db.cursor() as cur:
         cur.execute(sql, args)
-        self.logger.info('{} {}'.format(sql, args))
     except Exception as e:
       self.logger.exception(e)
 
