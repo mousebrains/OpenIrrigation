@@ -27,7 +27,7 @@ class Query {
     $this->pend = $db->prepare("SELECT station.id,round(date_part('epoch',sum(tOff-tOn))) FROM pending"
 		. " INNER JOIN station ON tOn<=$1 AND station.sensor=pending.sensor"
 		. " GROUP BY station.id;");
-    $this->sched = $db->prepare("SELECT station,sum(runTime) FROM pgmStn"
+    $this->sched = $db->prepare("SELECT station,sum(runTime)*60 FROM pgmStn"
 		. " WHERE qSingle=True GROUP BY station;");
   }
 
