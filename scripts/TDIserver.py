@@ -61,21 +61,23 @@ with psycopg2.connect(dbname=args.db) as db:
 
   thrReader = TDI.Reader(s0, logger)
   thrWriter = TDI.Writer(s0, logger)
-  thrBuilder = TDI.Builder(s0, logger, thrReader.q, thrWriter.q)
+  thrDispatcher = TDI.Dispatcher(logger, thrReader.qAck, thrWriter.q)
+  thrBuilder = TDI.Builder(logger, thrReader.qSent, thrWriter.q)
 
   thr = []
   thr.append(TDI.Consumer(args, db, logger, thrBuilder.q))
-  thr.append(TDI.Number(params, logger, thrWriter.q))
-  thr.append(TDI.Version(params, logger, thrWriter.q))
-  thr.append(TDI.Error(params, logger, thrWriter.q))
-  thr.append(TDI.Current(params, logger, thrWriter.q))
-  thr.append(TDI.Sensor(params, logger, thrWriter.q))
-  thr.append(TDI.Two(params, logger, thrWriter.q))
-  thr.append(TDI.Pee(params, logger, thrWriter.q))
-  thr.append(TDI.Command(db, logger, thrWriter.q))
+  thr.append(TDI.Number(params, logger, thrDispatcher.q))
+  thr.append(TDI.Version(params, logger, thrDispatcher.q))
+  thr.append(TDI.Error(params, logger, thrDispatcher.q))
+  thr.append(TDI.Current(params, logger, thrDispatcher.q))
+  thr.append(TDI.Sensor(params, logger, thrDispatcher.q))
+  thr.append(TDI.Two(params, logger, thrDispatcher.q))
+  thr.append(TDI.Pee(params, logger, thrDispatcher.q))
+  thr.append(TDI.Command(db, logger, thrDispatcher.q))
 
   thrReader.start()
   thrWriter.start()
+  thrDispatcher.start()
   thrBuilder.start()
 
   for i in range(len(thr)):

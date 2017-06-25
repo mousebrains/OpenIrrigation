@@ -13,15 +13,20 @@ class Reader(threading.Thread):
     self.name='Reader'
     self.s0 = s0
     self.logger = logger
-    self.q = queue.Queue()
+    self.qAck = queue.Queue()
+    self.qSent = queue.Queue()
 
   def run(self): # Called on thread start
     self.logger.info('Starting')
     s0 = self.s0
-    q = self.q
+    qAck = self.qAck
+    qSent = self.qSent
     while True:
       a = s0.read(1)
-      q.put(a)
+      if (a == b'\x06') or (a == b'\x15'):
+          qAck.put(a)
+      else:
+          qSent.put(a)
 
 class Writer(threading.Thread):
   def __init__(self, s0, logger):
@@ -35,7 +40,6 @@ class Writer(threading.Thread):
     self.logger.info('Starting')
     s0 = self.s0
     q = self.q
-    tUntil = None
     while True:
       a = q.get()
       if (len(a) == 1):
@@ -47,17 +51,48 @@ class Writer(threading.Thread):
           chkSum += ord(c)
         msg += '{:02X}'.format(chkSum & 255)
         now = time.time()
-        if (tUntil is not None) and (now < tUntil): # Wait until tUntil before sending the next sentence
-          time.sleep(tUntil - now)
         s0.write(bytes('\x16' + msg, 'UTF-8'))
-        tUntil = time.time() + 0.5
       q.task_done()
 
+class DispatchItem:
+    def __init__(self, msg, nRetries=0, timeout=1):
+        self.msg = msg
+        self.nRetries = nRetries
+        self.timeout = timeout
+
+class Dispatcher(threading.Thread): # Dispatch sentences, if a timeout/NAK is returned, then try again
+    def __init__(self, logger, qReader, qWriter):
+        threading.Thread.__init__(self, daemon=True)
+        self.name='Dispatcher'
+        self.logger = logger
+        self.qReader = qReader
+        self.qWriter = qWriter
+        self.q = queue.Queue()
+
+    def run(self): # Called on thread start
+        logger = self.logger
+        qReader = self.qReader
+        qWriter = self.qWriter
+        qIn = self.q
+        logger.info('Starting')
+        while True: # Wait for something to send
+            a = qIn.get()
+            for cnt in range(a.nRetries + 1):
+              qWriter.put(a.msg)
+              b = qReader.get(timeout=a.timeout)
+              if b == b'\x06': break # ACK
+              if b is None:
+                  logger.warn('Timeout for "%s"', a.msg)
+              elif b == b'\x15': # NAK
+                  logger.warn('NAK for "%s"', a.msg)
+              else:
+                  logger.warn("Unrecognized reply for '%s', %s", a.msg, b)
+            qIn.task_done() # I'm done with with sentence
+
 class Builder(threading.Thread): # construct sentences and send ACK/NAK
-  def __init__(self, s0, logger, qReader, qWriter):
+  def __init__(self, logger, qReader, qWriter):
     threading.Thread.__init__(self, daemon=True)
     self.name='Builder'
-    self.s0 = s0
     self.logger = logger
     self.qReader = qReader
     self.qWriter = qWriter
@@ -78,19 +113,15 @@ class Builder(threading.Thread): # construct sentences and send ACK/NAK
           msgLen = 0
           chkSum = 0
           msg = ''
-        elif (a == b'\x06') or (a == b'\r'): # ACK or c/r
-          pass
-        elif a == b'\x15': # NAK
-          logger.warn('NAK')
-        else: # Ignore if c/r
-          logger.warn('Bad character, {}'.format(str(a, 'UTF-8')))
+        elif a != b'\r': # # Ignore if c/r
+          logger.warn('Bad character, "%s"', str(a, 'UTF-8'))
       elif (state == 1) or (state == 2): # message length
         state += 1
         try:
           msgLen = msgLen * 16 + int(a, 16)
           chkSum += sum(a)
         except Exception as e:
-          logger.error('Unable to convert {} to an integer'.format(str(a, 'UTF-8')))
+          logger.error('Unable to convert %s to an integer', str(a, 'UTF-8'))
           state == 0
       elif len(msg) < msgLen: # Build message
         msg += str(a, 'UTF-8')
@@ -100,7 +131,7 @@ class Builder(threading.Thread): # construct sentences and send ACK/NAK
           chk = int(a, 16)
           state += 1
         except Exception as e:
-          logger.error('Unable to convert {} to an integer'.format(str(a, 'UTF-8')))
+          logger.error('Unable to convert %s to an integer', str(a, 'UTF-8'))
           state == 0
       else: # Second character of checksum
         state = 0
@@ -110,7 +141,7 @@ class Builder(threading.Thread): # construct sentences and send ACK/NAK
           qBuilder.put(msg)
         else:
           qWriter.put(b'\x15')
-          logger.warn('Sent NAK %s', msg)
+          logger.warn('Bad checksum for inbound message "%s"', msg)
       qReader.task_done()
 
 class Consumer(threading.Thread):
@@ -148,9 +179,9 @@ class Consumer(threading.Thread):
         try:
           cmds[msg[1]](msg)
         except Exception as e:
-          logger.error('Error processing {}, {}'.format(msg, e))
+          logger.error('Error processing %s, %s', msg, e)
       else:
-        logger.error('Unrecognized message "{}"'.format(msg))
+        logger.error('Unrecognized message "%s"', msg)
       q.task_done()
 
   def toDB(self, sql, args):
@@ -243,11 +274,11 @@ class NoArgs(MyBase):
     q = self.qWriter
     dt = self.dt
     msg = self.msg
-    initialDelay = random.uniform(10,15)
+    initialDelay = random.uniform(1,5)
     self.logger.info('Starting %s %s initial sleep %s', dt, msg, initialDelay)
     time.sleep(initialDelay)
     while True:
-      q.put(msg)
+      q.put(DispatchItem(msg))
       time.sleep(dt);
 
 class Number(NoArgs):
@@ -290,7 +321,7 @@ class Args(MyBase):
     time.sleep(initialDelay)
     while True:
       for sensor in sensors:
-        q.put(msg.format(sensor))
+        q.put(DispatchItem(msg.format(sensor)))
       time.sleep(dt)
 
 class Sensor(Args):
@@ -346,7 +377,7 @@ class Command(threading.Thread):
             cmd = row[1]
             curDel.execute("EXECUTE cmdDel(%s);", [id]) # Delete command after it has been processed
             if cmd == 0: # On command
-              q.put('0A{:02X}00'.format(row[2]))
+              q.put(DispatchItem('0A{:02X}00'.format(row[2]), 5, 1))
               nOn += 1
             elif cmd == 1: # Off command
               nOn -= 1
@@ -356,9 +387,9 @@ class Command(threading.Thread):
                 logger.info('Turning everything off')
               else:
                 addr = row[2]
-              q.put('0D{:02X}'.format(addr))
+              q.put(DispatchItem('0D{:02X}'.format(addr), 5, 1))
             elif cmd == 2: # Tee command
-              q.put('0T{:02X}00'.format(row[2]))
+              q.put(DispatchItem('0T{:02X}00'.format(row[2])))
             else:
               logger.error('Unrecognized command, %s', row)
         except Exception as e:
