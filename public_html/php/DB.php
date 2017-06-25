@@ -20,6 +20,12 @@ class DBResults {
     while ($row = $this->fetchRow()) { $a[$row[0]] = $row[1]; }
     return $a;
   }
+
+  function loadColumn() {
+    $a = [];
+    while ($row = $this->fetchRow()) {array_push($a, $row[0]);}
+    return $a;
+  }
 } // DBResults
 
 class DBStatement {
@@ -129,6 +135,10 @@ class DB {
 
   function loadKeyValue(string $sql, array $args=[]) {
     return $this->prepare($sql)->execute($args)->loadKeyValue();
+  }
+
+  function loadColumn(string $sql, array $args=[]) {
+    return $this->prepare($sql)->execute($args)->loadColumn();
   }
 } // DB
 
