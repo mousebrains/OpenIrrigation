@@ -22,7 +22,7 @@ class Query {
 		. " controller,timestamp,volts,mAmps FROM currentLog"
 		. " WHERE timeStamp>=$1 ORDER BY controller,timeStamp;");
     $this->sensor = $db->prepare("SELECT DISTINCT ON (pocFlow)"
-		. " pocFlow,timestamp,flow FROM sensorLog"
+		. " pocFlow,timestamp,round(CAST(flow AS numeric),1) FROM sensorLog"
 		. " WHERE timeStamp>=$1 ORDER BY pocFlow,timeStamp;");
 
     $this->nOn = $db->prepare("SELECT count(DISTINCT sensor) FROM active;");
