@@ -945,8 +945,7 @@ CREATE TABLE action(
         offLog INTEGER REFERENCES offLog(id) ON DELETE SET NULL, -- off log entry
 	program INTEGER REFERENCES program(id) ON DELETE CASCADE NOT NULL, -- generating program 
 	pgmStn INTEGER REFERENCES pgmStn(id) ON DELETE SET NULL, -- generating program/station
-	pgmDate DATE NOT NULL, -- program date this command is for
-	CHECK (tOn<tOff) -- Causality, Off after On
+	pgmDate DATE NOT NULL -- program date this command is for
 	);
 DROP INDEX IF EXISTS actionTS;
 CREATE INDEX actionTS ON action(tOn, tOff);
