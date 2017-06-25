@@ -58,5 +58,8 @@ table { border-collapse: collapse; }
 table, th, td { border: 1px solid black; }
 th, td {text-align:center; vertical-align:center;}
 
-tbody tr:nth-of-type(odd) {background-color:#ccc;}
+tbody tr:nth-of-type(odd) {background-color:#cccccc;}
+tbody tr:nth-of-type(even) {background-color:#ffffff;}
+tbody tr:hover:nth-of-type(odd) {background-color:#cccc1c;}
+tbody tr:hover:nth-of-type(even) {background-color:#dd1ddd;}
 </style>
