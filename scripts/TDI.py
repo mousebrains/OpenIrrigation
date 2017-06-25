@@ -5,6 +5,7 @@ import queue
 import time
 import math
 import datetime
+import random
 
 class Reader(threading.Thread):
   def __init__(self, s0, logger):
@@ -34,6 +35,7 @@ class Writer(threading.Thread):
     self.logger.info('Starting')
     s0 = self.s0
     q = self.q
+    tUntil = None
     while True:
       a = q.get()
       if (len(a) == 1):
@@ -44,8 +46,12 @@ class Writer(threading.Thread):
         for c in msg:
           chkSum += ord(c)
         msg += '{:02X}'.format(chkSum & 255)
+        now = time.time()
+        if (tUntil is not None) and (now < tUntil): # Wait until tUntil before sending the next sentence
+          time.sleep(tUntil - now)
         s0.write(bytes('\x16' + msg, 'UTF-8'))
-        q.task_done()
+        tUntil = time.time() + 0.5
+      q.task_done()
 
 class Builder(threading.Thread): # construct sentences and send ACK/NAK
   def __init__(self, s0, logger, qReader, qWriter):
@@ -104,6 +110,7 @@ class Builder(threading.Thread): # construct sentences and send ACK/NAK
           qBuilder.put(msg)
         else:
           qWriter.put(b'\x15')
+          logger.warn('Sent NAK %s', msg)
       qReader.task_done()
 
 class Consumer(threading.Thread):
@@ -236,7 +243,9 @@ class NoArgs(MyBase):
     q = self.qWriter
     dt = self.dt
     msg = self.msg
-    self.logger.info('Starting {} {}'.format(dt, msg))
+    initialDelay = random.uniform(10,15)
+    self.logger.info('Starting %s %s initial sleep %s', dt, msg, initialDelay)
+    time.sleep(initialDelay)
     while True:
       q.put(msg)
       time.sleep(dt);
@@ -276,7 +285,9 @@ class Args(MyBase):
     dt = self.dt
     msg = self.msg
     sensors = self.sensors
-    self.logger.info('Starting {} {} {}'.format(dt, msg, sensors))
+    initialDelay = random.uniform(10,15)
+    self.logger.info('Starting %s %s %s initial sleep %s', dt, msg, sensors, initialDelay)
+    time.sleep(initialDelay)
     while True:
       for sensor in sensors:
         q.put(msg.format(sensor))
