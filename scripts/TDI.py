@@ -321,7 +321,7 @@ class Command(threading.Thread):
         nOn = row[0]
         break
 
-    logger.info('Starting');
+    logger.info('Starting nOn=%s', nOn);
     while True:
       stime = datetime.datetime.now()
       stime += datetime.timedelta(microseconds=(
@@ -342,15 +342,16 @@ class Command(threading.Thread):
               if nOn <= 0:
                 nOn = 0
                 addr = 255
+                logger.info('Turning everything off')
               else:
                 addr = row[2]
               q.put('0D{:02X}'.format(addr))
             elif cmd == 2: # Tee command
               q.put('0T{:02X}00'.format(row[2]))
             else:
-              logger.error('Unrecognized command, {}'.format(row))
+              logger.error('Unrecognized command, %s', row)
         except Exception as e:
-          logger.exception('Exception {}'.format(e))
+          logger.exception('Exception %s', e)
 
       dt = max(stime + datetime.timedelta(seconds=1) - datetime.datetime.now(), \
                datetime.timedelta(seconds=1))
