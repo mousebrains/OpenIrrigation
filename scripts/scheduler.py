@@ -64,7 +64,7 @@ class Scheduler(threading.Thread): # When triggered schedule things up
         nFwd = self.getNForward(cur)
         sDate = datetime.datetime.now()
         eDate = sDate + datetime.timedelta(days=self.getNForward(cur))
-        self.logger.info('Starting Scheduler Run from {} to {}'.format(sDate, eDate))
+        self.logger.info('Starting Scheduler Run from %s to %s', sDate, eDate)
         dt = datetime.timedelta(days=1)
         midnight = datetime.time()
         self.rmPending(cur, sDate.date())
@@ -82,24 +82,28 @@ class Scheduler(threading.Thread): # When triggered schedule things up
         refIDs = set()
         today = datetime.date.today()
         actions = {}
+        actionsSorted = []
+        sql = None
         for event in events:
           if event.sDate is None: continue # Not already queued
           if event.qOn: 
             actions[event.actionId] = event
             continue
           if event.actionId not in actions:
-            self.logger.error('Unpaired action, {}'.format(event))
+            self.logger.error('Unpaired action, %s', event)
             continue
           evOn = actions[event.actionId]
           evOff = event
-          sql = "INSERT INTO action(cmd,tOn,tOff,sensor,program,pgmStn,pgmDate)" \
-		+ " VALUES(0,%s,%s,%s,%s,%s,%s);" 
+          if sql is None: # Prepare a statement
+            cur.execute("PREPARE myInsert AS" \
+                + " INSERT INTO action(cmd,tOn,tOff,sensor,program,pgmStn,pgmDate)" \
+                +        " VALUES(0,$1,$2,$3,$4,$5,$6);")
+            sql = "EXECUTE myInsert(%s,%s,%s,%s,%s,%s);"
           sensorid = event.stn.station().sensor().key()
           pgmid = event.pgm.key()
           pgmstnid = event.stn.key()
           pgmDate = evOn.sDate
-          self.logger.info('Action {}-{} {} {}'.format(
-                           evOn.time, evOff.time, event.stn.label(), sDate))
+          actionsSorted.append([evOn.time, evOff.time, evOn.stn.label(), pgmDate])
           cur.execute(sql, (evOn.time, evOff.time, sensorid, pgmid, pgmstnid, pgmDate))
           if event.stn.qSingle():
             manIDs.add(str(event.stn.key()))
@@ -107,7 +111,17 @@ class Scheduler(threading.Thread): # When triggered schedule things up
             refIDs.add(str(event.pgm.key()))
         self.rmManual(cur, manIDs)
         self.updateRefDate(cur, refIDs)
-      db.commit()
+        prevPgmDate = None
+        actionsSorted.sort() # In place sort
+        for action in actionsSorted:
+          if prevPgmDate != action[3]: self.logger.info('Program Date %s', action[3])
+          prevPgmDate = action[3]
+          self.logger.info('Action %s to %s %s', action[0], action[1], action[2])
+      if args.dryrun:
+        db.rollback()
+        break
+      else:
+        db.commit()
 
 class Trigger(threading.Thread): # Wait on events in the scheduler table
   def __init__(self, args, logger, q):
@@ -155,6 +169,7 @@ parser.add_argument('--log', help='logfile, if not specified use the console')
 parser.add_argument('--maxlogsize', help='logging verbosity', default=1000000)
 parser.add_argument('--backupcount', help='logging verbosity', default=7)
 parser.add_argument( '--verbose', help='logging verbosity level', action='store_true')
+parser.add_argument( '--dryrun', help='Do not actually update database', action='store_true')
 args = parser.parse_args()
 
 logger = logging.getLogger(__name__)

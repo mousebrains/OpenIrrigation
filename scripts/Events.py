@@ -74,24 +74,25 @@ class Event:
         self.aI[ctl] = max(0, self.aI[ctl] + rhs.aI0)
         return self
 
-    def qOkay(self, stn):
+    def qOkay(self, stn, st):
+        if (self.nOn + 1) > self.stn.maxCoStations(): return False
+        if (self.nOn + 1) > stn.maxCoStations(): return False
         ctl = self.ctl.key()
+        if (self.nCtl[ctl] + 1) > self.ctl.maxStations(): return False
+        if (self.aI[ctl] + self.aI0) > self.ctl.maxCurrent(): return False
         pgm = self.pgm.key()
+        if (self.nPgm[pgm] + 1) > self.pgm.maxStations(): return False
+        if (self.flowPgm[pgm] + self.flow0) > self.pgm.maxFlow(): return False
         poc = self.poc.key()
-        return (self.stn.station() != stn.station()) \
-            and ((self.nOn + 1) <= self.stn.maxCoStations()) \
-            and ((self.nOn + 1) <= stn.maxCoStations()) \
-            and ((self.nCtl[ctl] + 1) <= self.ctl.maxStations()) \
-            and ((self.nPgm[pgm] + 1) <= self.pgm.maxStations()) \
-            and ((self.flowPOC[poc] + self.flow0) <= self.poc.maxFlow()) \
-            and ((self.flowPgm[pgm] + self.flow0) <= self.pgm.maxFlow()) \
-            and ((self.aI[ctl] + self.aI0) <= self.ctl.maxCurrent()) \
-
-
+        if (self.flowPOC[poc] + self.flow0) > self.poc.maxFlow(): return False
+        if self.stn.station() != stn.station(): return True
+        if st is None: return True
+        return st > self.time
 
 class Events(list):
     def __init__(self, sDate, eDate, cur, logger):
         list.__init__(self)
+        self.name = 'Events'
         self.cur = cur
         self.logger = logger
         self.zeroTime = datetime.timedelta()
@@ -111,9 +112,7 @@ class Events(list):
         tOn  = row['ton']
         tOff = row['toff']
         stn = programs.findPgmStation(sensor,pgm)
-        if stn is None:
-          self.logger.error('Queued sensor({}) not found, {} '.format(sensor, row))
-        else:
+        if stn is not None: # None if manual...
           self.insertEvent(None, tOn, tOff, stn)
 
     def schedule(self, stn, date):
@@ -124,9 +123,9 @@ class Events(list):
         aDate = stn.aDate()
         eDate = stn.eDate()
 
-        if date > sDate: # After start, so move
+        if date > sDate: # After sDate, so move to 5 seconds in the future
             sDate = date + datetime.timedelta(seconds=5, microseconds=-date.microsecond);
-        if date > aDate: # After start, so move
+        if date > aDate: # After aDate, so move to 5 seconds in the future
             aDate = date + datetime.timedelta(seconds=5, microseconds=-date.microsecond);
         if sDate >= eDate: # No time left
             return True
@@ -141,6 +140,7 @@ class Events(list):
         if not q: # Failed to fit everything in
             self.logger.error('{} left for {}/{} in {} to {}'.format(
                 stn.timeLeft(), stn.name(), stn.program().name(), sDate, eDate))
+            # sys.exit(1) # TPW
         return q
 
     def goBoth(self, sDate, aDate, eDate, stn):
@@ -159,6 +159,9 @@ class Events(list):
 
         st = sDate  # We'll change in while loop
         tLeft = stn.timeLeft()
+        # self.logger.info("goFwd %s %s to %s n %s", stn.label(), sDate, eDate, len(self))
+        # self.logger.info('goFwd soak %s delay %s min %s max %s left %s', soakTime, delayOn, minCycleTime, maxCycleTime, tLeft)
+        # self.logger.info(self)
         while tLeft > self.zeroTime:
             if self[-1].time <= (st - max(soakTime, delayOn)):
                 return self.appendTo(st, eDate, stn) # Insert after existing list
@@ -169,6 +172,7 @@ class Events(list):
             dt = max(min(tLeft, minCycleTime), tLeft / n)
             if dt.microseconds: dt += datetime.timedelta(seconds=1, microseconds=-dt.microseconds);
             [st, et] = self.findNextInterval(st, eDate, min(tLeft, minCycleTime), dt, stn)
+            # self.logger.info("goFwd st %s et %s", st, et)
             if st is None:
                 return False
             st = self.insertEvent(sDate, st, et, stn)
@@ -248,17 +252,23 @@ class Events(list):
             et = self.findNextEndTime(st, st + maxCycleTime, stn, 0)
             return [st, et]
 
-        sIndex = bisect.bisect_left(self, Event(None, st, True, stn))
+	# Index of entry with time <= st
+        sIndex = bisect.bisect_right(self, Event(None, st, True, stn)) - 1
+        # self.logger.info('FNI %s %s %s %s %s', stn.label(), st, eDate, minCycleTime, maxCycleTime)
         for index in range(sIndex, len(self)):
             ev = self[index]
-            if ev.time >= eDate:
+            # self.logger.info('FNI index %s %s', index, ev)
+            if ev.time >= eDate: # Did not find a window to put myself into
                 return [None, None]
-            if ev.qOkay(stn):  # Found a place this stn will work
-                st = self.adjustForSoakTimeBck(index+1, ev.time, stn)
+            if ev.qOkay(stn, st):  # Found a place this stn will work
+                st = max(st,self.adjustForSoakTimeBck(index+1, ev.time, stn))
+                # self.logger.info('FNI st0 %s', st)
                 st = self.adjustForDelayOn(index+1, st, stn)
+                # self.logger.info('FNI st1 %s', st)
                 if ((index + 1) < len(self)) and (self[index + 1].time <= st):
                     continue
                 et = self.findNextEndTime(st, st + maxCycleTime, stn, index)
+                # self.logger.info('FNI et %s', et)
                 if (et - st) > minCycleTime: return [st, et]
                 st = et
 
@@ -317,7 +327,7 @@ class Events(list):
             if ev.time > eDate:
                 et = self.adjustForSoakTimeFwd(index, eDate, stn)
                 return et
-            if not ev.qOkay(stn):
+            if not ev.qOkay(stn, None):
                 et = ev.time
                 return et
         return eDate
