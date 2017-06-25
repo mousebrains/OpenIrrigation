@@ -315,8 +315,13 @@ class Command(threading.Thread):
     + " INNER JOIN sensor ON sensor.id=command.sensor"
     + " WHERE timestamp<$1 ORDER BY timestamp,cmd;")
       cur.execute("PREPARE cmdDel AS DELETE FROM command WHERE id=$1;")
+      cur.execute("SELECT count(*) FROM active;")
+      nOn = 0
+      for row in cur:
+        nOn = row[0]
+        break
+
     logger.info('Starting');
-    # q.put('0D{:02X}'.format(255)) # Turn everybody off on startup
     while True:
       stime = datetime.datetime.now()
       stime += datetime.timedelta(microseconds=(
@@ -331,8 +336,15 @@ class Command(threading.Thread):
             curDel.execute("EXECUTE cmdDel(%s);", [id]) # Delete command after it has been processed
             if cmd == 0: # On command
               q.put('0A{:02X}00'.format(row[2]))
+              nOn += 1
             elif cmd == 1: # Off command
-              q.put('0D{:02X}'.format(row[2]))
+              nOn -= 1
+              if nOn <= 0:
+                nOn = 0
+                addr = 255
+              else:
+                addr = row[2]
+              q.put('0D{:02X}'.format(addr))
             elif cmd == 2: # Tee command
               q.put('0T{:02X}00'.format(row[2]))
             else:
