@@ -211,7 +211,7 @@ class ColumnMultiple extends ColumnSelect {
 
   function mkInput(array &$previous, int $cnt, array $row=NULL) {
     $id = is_null($row) ? 0 : $row['id'];
-    $a = $this->prefix . $cnt . "][]>\n";
+    $a = $this->prefix . $cnt . "][]'>\n";
     $key = $this->key;
     if (!array_key_exists($key, $previous)) $previous[$key] = [];
     $keys = array_key_exists($id, $this->secondary) ? $this->secondary[$id] : [];
