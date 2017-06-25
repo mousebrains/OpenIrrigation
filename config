@@ -31,8 +31,9 @@ parser.add_argument('--logdir', help='Where to store log files',
 			default=os.path.join(prefix, "logs"))
 parser.add_argument('--bindir', help='Where to store log files', 
 			default=os.path.join(prefix, "bin"))
-parser.add_argument('--dbname', help='Name of database in server', 
-			default='irrigation')
+parser.add_argument('--dbname', help='Name of database in server', default='irrigation')
+parser.add_argument('--site', help='Name of site', default='Casa')
+parser.add_argument('--controller', help='Name of controller', default='Casa')
 parser.add_argument('--webdir', help='Where to store log files', default=webdir)
 parser.add_argument('--phpdir', help='Where to store log files', 
 			default=os.path.join(webdir, "php"))
@@ -40,8 +41,7 @@ parser.add_argument('--cssdir', help='Where to store log files',
 			default=os.path.join(webdir, "css"))
 parser.add_argument('--jsdir', help='Where to store log files', 
 			default=os.path.join(webdir, "js"))
-parser.add_argument('--servicedir', help='Where to store log files', 
-			default="/etc/systemd/system")
+parser.add_argument('--servicedir', help='Where to store log files', default="/etc/systemd/system")
 parser.add_argument('--install', help='How to install',  default=installCmd)
 parser.add_argument('--simulate', help='Run as a simulator',  action='store_true')
 
@@ -54,6 +54,8 @@ with open(os.path.join(mydir, "Makefile.params"), "w") as f:
   f.write("USER = " + args.user + "\n")
   f.write("GROUP = " + args.group + "\n")
   f.write("DBNAME = " + args.dbname + "\n")
+  f.write("SITENAME = " + args.site + "\n")
+  f.write("CONTROLLERNAME = " + args.controller + "\n")
   f.write("USERDIR = " + rewrite(prefix,prefix,args.prefix) + "\n")
   f.write("LOGDIR = " + rewrite(prefix, args.prefix, args.logdir) + "\n")
   f.write("BINDIR = " + rewrite(prefix, args.prefix, args.bindir) + "\n")
