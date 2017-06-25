@@ -12,17 +12,18 @@ class Query {
 
   function __construct($db) {
     $this->db = $db;
-    $this->oneDay = new DateInterval("P1D");
+    $this->oneDay = new DateInterval("P0DT1H");
     $this->dt = new DateInterval("PT50S");
     $this->tPrev = (new DateTimeImmutable())->sub($this->oneDay);
     if (is_null($this->tPrevMsg)) {$this->tPrevMsg = $this->tPrev;}
-    $this->current = $db->prepare("SELECT controller.name,currentLog.timestamp,currentLog.volts,currentLog.mAmps FROM currentLog"
-		. " INNER JOIN controller ON currentLog.timeStamp>=$1 AND controller.id=currentLog.controller"
-		. " ORDER BY timeStamp;");
-    $this->sensor = $db->prepare("SELECT poc.name,sensorLog.timestamp,round(CAST(sensorLog.flow AS NUMERIC),1) FROM sensorLog"
-		. " INNER JOIN pocFlow ON sensorLog.timeStamp>=$1 AND pocFlow.id=sensorLog.pocFlow"
-		. " INNER JOIN poc ON poc.id=pocFlow.poc"
-		. " ORDER BY timeStamp;");
+    $this->controllers = $db->loadKeyValue("SELECT id,name FROM controller;");
+    $this->sensors = $db->loadKeyValue("SELECT id,name FROM pocFlow;");
+    $this->current = $db->prepare("SELECT DISTINCT ON (controller)"
+		. " controller,timestamp,volts,mAmps FROM currentLog"
+		. " WHERE timeStamp>=$1 ORDER BY controller,timeStamp;");
+    $this->sensor = $db->prepare("SELECT DISTINCT ON (pocFlow)"
+		. " pocFlow,timestamp,flow FROM sensorLog"
+		. " WHERE timeStamp>=$1 ORDER BY pocFlow,timeStamp;");
 
     $this->nOn = $db->prepare("SELECT count(DISTINCT sensor) FROM active;");
     $this->nPending = $db->prepare("SELECT count(DISTINCT sensor) FROM pending WHERE tOn<=$1;");
@@ -39,7 +40,11 @@ class Query {
     $a = $this->current->execute([$tLimit]);
     $current = [];
     while ($row = $a->fetchArray()) {
-      $current[$row[0]] = '["' . $row[0] . '",' . strtotime($row[1]) . "," . $row[2] . "," . $row[3] . "]";
+      $id = $row[0];
+      if (array_key_exists($id, $this->controllers)) {
+        $current[$id] = '["' . $this->controllers[$id] . '",' 
+		      . strtotime($row[1]) . "," . $row[2] . "," . $row[3] . "]";
+      }
     }
     if (!empty($current) and (($current != $this->prevCurrent) or is_null($this->prevCurrent))) {
       $this->prevCurrent = $current;
@@ -50,7 +55,11 @@ class Query {
     $a = $this->sensor->execute([$tLimit]);
     $sensor = [];
     while ($row = $a->fetchArray()) {
-      $sensor[$row[0]] = '["' . $row[0] . '",' . strtotime($row[1]) . ',' . $row[2] . ']';
+      $id = $row[0];
+      if (array_key_exists($id, $this->sensors)) {
+	$sensor[$id] = '["' . $this->sensors[$id] . '",' 
+			    . strtotime($row[1]) . ',' . $row[2] . ']';
+      }
     }
     if (!empty($sensor) and (($sensor != $this->prevSensor) or is_null($this->prevSensor))) {
       $this->prevSensor = $sensor;
