@@ -328,7 +328,6 @@ class Command(threading.Thread):
           for row in curGet:
             id = row[0]
             cmd = row[1]
-            logger.info(row)
             curDel.execute("EXECUTE cmdDel(%s);", [id]) # Delete command after it has been processed
             if cmd == 0: # On command
               q.put('0A{:02X}00'.format(row[2]))
