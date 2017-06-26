@@ -916,8 +916,19 @@ CREATE TABLE offLog(
 -- Insert a record looking up sensor id
 CREATE OR REPLACE FUNCTION offLogInsert(addr INTEGER, code INTEGER, site TEXT, controller TEXT)
 	RETURNS VOID AS $$
-  INSERT INTO offLog(code,sensor) VALUES (code,sensorID(addr,site,controller));
-  $$ LANGUAGE SQL;
+	DECLARE siteID;
+	DECLARE ctlID;
+	DECLARE devID;
+	BEGIN
+        SELECT id FROM site WHERE name=site RETURNING INTO siteID;
+        SELECT id FROM controller WHERE name=controller AND site=siteID RETURNING INTO ctlID;
+	SELECT id FROM webList WHERE grp='sensor' AND key=devName RETURNING INTO devID;
+	FOR id IN SELECT id FROM sensor WHERE (sensor.addr=addr or addr=255) AND controller=ctlID AND devType=devID
+		LOOP
+  	  		INSERT INTO offLog(code,sensor) VALUES (code,id);
+        	END LOOP;
+	END;
+  $$ LANGUAGE plpgsql;
 
 -- Command queue
 DROP TABLE IF EXISTS command CASCADE;
@@ -1073,15 +1084,23 @@ CREATE TRIGGER onLogInsert
 	FOR EACH ROW
 	EXECUTE PROCEDURE onLogInsert();
 
--- When a record is inserted into offLog
-CREATE OR REPLACE FUNCTION offLogInsert() RETURNS TRIGGER AS $$
+-- Insert a record looking up sensor id
+CREATE OR REPLACE FUNCTION offLogInsert(address INTEGER, code INTEGER, siteName TEXT, ctlName TEXT)
+	RETURNS VOID AS $$
+	DECLARE siteID INTEGER;
+	DECLARE ctlID INTEGER;
+	DECLARE devID INTEGER;
+	DECLARE sensID INTEGER;
 	BEGIN
-        UPDATE action SET offLog=NEW.id,tOff=NEW.timestamp
-		WHERE cmd=0 AND sensor=NEW.sensor AND cmdOff IS NULL AND offLog IS NULL;
-	RETURN NEW;
+        SELECT id INTO siteID FROM site WHERE name=siteName;
+        SELECT id INTO ctlID FROM controller WHERE name=ctlName AND site=siteID;
+	SELECT id INTO devID FROM webList WHERE grp='sensor' AND key='solenoid';
+	FOR sensID IN SELECT id FROM sensor WHERE (addr=address or address=255) AND controller=ctlID AND devType=devID
+		LOOP
+  	  		INSERT INTO offLog(code,sensor) VALUES (code,sensID);
+        	END LOOP;
 	END;
-	$$
-	LANGUAGE plpgSQL;
+  $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS offLogInsert ON action CASCADE;
 CREATE TRIGGER offLogInsert 
