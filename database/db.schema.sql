@@ -913,23 +913,6 @@ CREATE TABLE offLog(
 	UNIQUE (sensor,timestamp,code)
 	);
 
--- Insert a record looking up sensor id
-CREATE OR REPLACE FUNCTION offLogInsert(addr INTEGER, code INTEGER, site TEXT, controller TEXT)
-	RETURNS VOID AS $$
-	DECLARE siteID;
-	DECLARE ctlID;
-	DECLARE devID;
-	BEGIN
-        SELECT id FROM site WHERE name=site RETURNING INTO siteID;
-        SELECT id FROM controller WHERE name=controller AND site=siteID RETURNING INTO ctlID;
-	SELECT id FROM webList WHERE grp='sensor' AND key=devName RETURNING INTO devID;
-	FOR id IN SELECT id FROM sensor WHERE (sensor.addr=addr or addr=255) AND controller=ctlID AND devType=devID
-		LOOP
-  	  		INSERT INTO offLog(code,sensor) VALUES (code,id);
-        	END LOOP;
-	END;
-  $$ LANGUAGE plpgsql;
-
 -- Command queue
 DROP TABLE IF EXISTS command CASCADE;
 CREATE TABLE command(
