@@ -254,8 +254,23 @@ class Consumer(threading.Thread):
   def Off(self, msg):
     addr = int(msg[2:4],16)
     code = int(msg[4:],16)
-    self.toDB('SELECT offLogInsert(%s,%s,%s,%s);', [addr, code]);
-    self.logger.info('Off addr={} code={}'.format(addr, code))
+    if addr == 255: # Turn everybody off that is on
+      cur.execute("SELECT action.sensor FROM action"
+                + " INNER JOIN sensor ON sensor=sensor.id"
+                + " AND cmdOn is NULL and cmdOff is NOT NULL"
+                + " INNER JOIN controller ON sensor.controller=controller.id AND controller.name=%s"
+                + " INNER JOIN site ON controller.site=site.id AND site.name=%s;",
+                (self.controller, self.site))
+    else:
+      cur.execute("SELECT action.sensor FROM action"
+                + " INNER JOIN sensor ON cmdOn is NULL and cmdOff is NOT NULL"
+                + " AND sensor=sensor.id AND sensor.addr=%s"
+                + " INNER JOIN controller ON sensor.controller=controller.id AND controller.name=%s"
+                + " INNER JOIN site ON controller.site=site.id AND site.name=%s;",
+                (addr,self.controller, self.site))
+    for row in cur:
+      cur.execute('INSERT INTO offLog(sensor,code) VALUES(%s,%s);', (row[0], code))
+      self.logger.info('Off sensor={} code={}'.format(row[0], code))
 
 class MyBase(threading.Thread):
   def __init__(self, logger, qWriter, label, dt):
