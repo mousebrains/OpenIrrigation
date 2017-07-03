@@ -32,14 +32,11 @@ class Scheduler(threading.Thread): # When triggered schedule things up
     self.q = queue.Queue()
 
   def rmPending(self, cur, date):
+    # Delete pending transactions and their associated commands
     cur.execute("DELETE FROM action"
 		+ " WHERE cmdOn IS NOT NULL"
 		+ " AND cmdOFF IS NOT NULL"
 		+ " AND pgmDate>=%s;", (date,))
-
-  def rmManual(self, cur, ids):
-    for id in ids:
-      cur.execute("SELECT rmManual(%s);", (id,))
 
   def updateRefDate(self, cur, ids):
     if len(ids): # Some programs to update refDate for
@@ -49,7 +46,7 @@ class Scheduler(threading.Thread): # When triggered schedule things up
   def getNForward(self, cur):
     cur.execute("SELECT val FROM params WHERE grp='SCHED' AND name='nDays';");
     n = cur.fetchone()['val'];
-    if n is None: return 5
+    if n is None: return 10
     if isinstance(n, str) and n.isnumeric(): return int(n)
     return n 
 
@@ -78,7 +75,6 @@ class Scheduler(threading.Thread): # When triggered schedule things up
           pgm.resetRunTimes()
           sDate = datetime.datetime.combine(sDate.date() + dt, midnight)
 
-        manIDs = set()
         refIDs = set()
         today = datetime.date.today()
         actions = {}
@@ -105,11 +101,8 @@ class Scheduler(threading.Thread): # When triggered schedule things up
           pgmDate = evOn.sDate
           actionsSorted.append([evOn.time, evOff.time, evOn.stn.label(), pgmDate])
           cur.execute(sql, (evOn.time, evOff.time, sensorid, pgmid, pgmstnid, pgmDate))
-          if event.stn.qSingle():
-            manIDs.add(str(event.stn.key()))
           if event.pgm.qnDays() and (event.time.date() == today):
             refIDs.add(str(event.pgm.key()))
-        self.rmManual(cur, manIDs)
         self.updateRefDate(cur, refIDs)
         prevPgmDate = None
         actionsSorted.sort() # In place sort
