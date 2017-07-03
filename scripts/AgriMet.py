@@ -27,11 +27,12 @@ class Fetcher(threading.Thread):
     logger = self.logger.info
     logger('Starting')
     earliestDate = datetime.datetime.strptime(self.params['earliestDate'], "%Y-%m-%d").date()
-    # earliestDate = datetime.datetime.strptime('2017-06-01', "%Y-%m-%d").date()
+    if self.args.earliestDate is not None:
+      earliestDate = datetime.datetime.strptime(self.args.earliestDate, "%Y-%m-%d").date()
     extraBack = datetime.timedelta(days=self.params['extraBack'])
     tod = []
     for t in self.params['times']: tod.append(datetime.datetime.strptime(t, "%H:%M").time())
-
+    qForce = self.args.force
     while True:
       now = datetime.datetime.now()
       with psycopg2.connect(dbname=self.args.db) as db: # Create a new connection
@@ -41,6 +42,7 @@ class Fetcher(threading.Thread):
           if t is None: t = earliestDate
         page = self.procURL(db, max(datetime.timedelta(), now.date()-t) + extraBack)
         if len(page): self.procPage(page, db) # Process any data we got
+      if qForce: break
       self.sleeper(tod)
 
   def sleeper(self, tod):
@@ -54,17 +56,17 @@ class Fetcher(threading.Thread):
     if tNext is None: 
       tNext = datetime.datetime.combine(now.date() + datetime.timedelta(days=1), tod[0])
     dt = (tNext - now) # Time left to next wakeup
-    self.logger.info('Sleeping until {} which is {} from now'.format(tNext, dt))
+    self.logger.info('Sleeping until %s which is %s from now', tNext, dt)
     time.sleep(dt.total_seconds())
 
   def procURL(self, db, nBack):
     logger = self.logger.info
     urlBase = self.params['URL']
     url = '{}{}'.format(urlBase, nBack.days)
-    logger('Fetching {}'.format(url))
+    logger('Fetching %s', url)
     with urllib.request.urlopen(url) as fd:
       page = fd.read().decode('utf-8') # Load the entire page so we don't get timeout issues
-      logger('Loaded {} bytes'.format(len(page)))
+      logger('Loaded %s bytes', len(page))
     return page
 
   def procPage(self, page, db):
@@ -80,7 +82,6 @@ class Fetcher(threading.Thread):
                 + " WHERE grp='ET' AND lower(name)=lower($4)" \
                 + " ON CONFLICT (station,code,t) DO UPDATE SET value=EXCLUDED.value;")
       sql = "EXECUTE " + myID + "(%s,%s,%s,%s);"
-
       for line in page.split('\n'):
         line = line.split(',')
         n = len(line)
@@ -94,9 +95,10 @@ class Fetcher(threading.Thread):
           for i in range(1,n):
             if (len(line) > i) and len(line[i]):
               cnt += 1
-              cur.execute(sql, (line[0], station[i], line[i], column[i]))
-    if cnt: db.commit() # If we wrote any records, commit them
-    self.logger.info('Inserted {} records in {}'.format(cnt, datetime.datetime.now()-stime))
+              cur.execute(sql, [line[0], station[i], line[i], column[i]])
+      if cnt:
+        db.commit() # commit records written
+      self.logger.info('Inserted %s records in %s', cnt, datetime.datetime.now()-stime)
 
 
 class Stats(threading.Thread):
@@ -113,10 +115,12 @@ class Stats(threading.Thread):
     dom = self.params['statDayOfMonth']
     hod = datetime.datetime.strptime(self.params['statHourOfDay'], '%H:%M').time()
     tNext = datetime.datetime.now() + datetime.timedelta(minutes=30)
+    qForce = not self.args.forceStats
     while True:
       dt = max(datetime.timedelta(), tNext - datetime.datetime.now())
-      logger('Sleeping until {} dt {}'.format(tNext, dt))
-      time.sleep(dt.total_seconds())
+      if not qForce:
+        logger('Sleeping until %s dt %s', tNext, dt)
+        time.sleep(dt.total_seconds())
       logger('Building statistics')
       with psycopg2.connect(dbname=self.args.db) as db: # For transaction safety 1 connection/thread
         with db.cursor() as cur:
@@ -131,12 +135,15 @@ class Stats(threading.Thread):
       now = datetime.datetime.now().date()
       dNext = datetime.date(now.year+1, 1, 1)
       tNext = datetime.datetime.combine(dNext, hod)
+      if qForce: break
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--db', help='ET database name', required=True)
 parser.add_argument('--log', help='logfile, if not specified use the console')
 parser.add_argument('--group', help='parameter group name to use', default='AGRIMET')
 parser.add_argument('--force', help='run once fetching information', action='store_true')
+parser.add_argument('--forceStats', help='run stats generation once ', action='store_true')
+parser.add_argument('--earliestDate', help='Earliest date to fetch')
 parser.add_argument('--maxlogsize', help='logging verbosity', default=1000000)
 parser.add_argument('--backupcount', help='logging verbosity', default=7)
 parser.add_argument('--verbose', help='logging verbosity', action='store_true')
