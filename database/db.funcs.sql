@@ -33,28 +33,19 @@ CREATE OR REPLACE FUNCTION getManualId() RETURNS INTEGER AS $$
 
 -- Insert a record to request the scheduler to run
 CREATE OR REPLACE FUNCTION startScheduler() RETURNS VOID AS $$
-  INSERT INTO scheduler VALUES(CURRENT_TIMESTAMP + '1 second') ON CONFLICT DO NOTHING;
+  INSERT INTO scheduler VALUES(CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING;
   $$ LANGUAGE SQL;
 
 -- Insert a manual operation
 
-CREATE OR REPLACE FUNCTION addManual(stn INTEGER, t FLOAT) RETURNS VOID AS $$
-  INSERT INTO pgmStn(program,mode,station,runTime,qSingle) VALUES
-	(getManualId(),getListId('pgm','on'),stn,t,True);
-  INSERT INTO scheduler VALUES(CURRENT_TIMESTAMP + '1 second') ON CONFLICT DO NOTHING;
-  $$ LANGUAGE SQL;
-
--- Drop a manual operation
-
-CREATE OR REPLACE FUNCTION rmManual(stn INTEGER) RETURNS VOID AS $$
+CREATE OR REPLACE FUNCTION addManual(sensorID INTEGER, t FLOAT) RETURNS VOID AS $$
   DECLARE pgmID INTEGER;
-  DECLARE actID INTEGER;
+  DECLARE stnID INTEGER;
   BEGIN
   SELECT getManualId() INTO pgmID;
-  DELETE FROM pgmStn WHERE station=stn AND program=pgmID AND qSingle=True;
-  SELECT id FROM action WHERE program=pgmID AND sensor=(SELECT sensor FROM station WHERE id=stn)
-	INTO actID; 
-  DELETE FROM action WHERE id IN (actID) AND cmdOn IS NOT NULL AND cmdOFF IS NOT NULL;
-  UPDATE action SET tOff=CURRENT_TIMESTAMP WHERE id IN (actID) AND cmdOn IS NULL AND cmdOff IS NOT NULL;
+  SELECT id FROM station WHERE sensor=sensorID INTO stnID;
+  INSERT INTO pgmStn(program,mode,station,runTime,qSingle) VALUES
+	(pgmID,getListId('pgm','on'),stnID,t,True);
+  INSERT INTO scheduler VALUES(CURRENT_TIMESTAMP) ON CONFLICT DO NOTHING;
   END;
   $$ LANGUAGE plpgSQL;
