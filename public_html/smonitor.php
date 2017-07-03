@@ -12,20 +12,28 @@
 <?php
 require_once 'php/navBar.php';
 
-$thead = "<tr><th>Station</th><th>Prev<br>24 hrs</th><th>Next<br>24 hrs</th></tr>";
+$thead = "<tr><th>Prev<br>24 hrs</th>"
+	. "<th>Station</th><th>Next<br>24 hrs</th></tr>";
 echo "<center>\n";
 echo "<table>\n";
 echo "<thead>$thead</thead>\n";
 echo "<tbody>\n";
 
 try {
-  $results = $db->execute("SELECT id,name FROM station ORDER BY station.name;");
+  $results = $db->execute("SELECT sensor.id AS sensor,station.name AS name"
+        . " FROM sensor"
+        . " INNER JOIN station ON sensor.id=station.sensor"
+        . " UNION"
+        . " SELECT  sensor.id AS sensor,pocMV.name AS name"
+        . " FROM sensor"
+        . " INNER JOIN pocMV ON sensor.id=pocMV.sensor"
+        . " ORDER BY name;");
   while ($row = $results->fetchArray()) {
     $id = $row[0];
     $name = $row[1];
-    echo "<tr id='r$id' style='display:none;'>"
-	. "<th id='a$id'>$name</th>"
+    echo "<tr>"
 	. "<td id='p$id'></td>"
+	. "<th id='a$id'>$name</th>"
 	. "<td id='n$id'></td>"
 	. "</tr>\n";
   }

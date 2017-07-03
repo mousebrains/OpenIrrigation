@@ -1,4 +1,3 @@
-var showingEntries = new Set();
 var activeEntries = new Set();
 var pastEntries = {};
 var nextEntries = {};
@@ -7,14 +6,12 @@ if (typeof(EventSource) != "undefined") {
 	var runningSource = new EventSource("running.php");
 	runningSource.onmessage = function(event) {
 		let data = JSON.parse(event.data);
-                let seen = new Set();
                 let active = new Set();
                 let past = {};
                 let pending = {};
                 let a = data['dtPast'];
                 if (a) { 
 		    for (let k in a) { 
-		        seen.add(k); 
 		        if (k in past) {
 		            past[k] += a[k]; 
                         } else {
@@ -26,7 +23,6 @@ if (typeof(EventSource) != "undefined") {
                 if (a) { 
 		    for (let k in a) { 
 		        active.add(k); 
-		        seen.add(k); 
 		        if (k in past) {
 		            past[k] += a[k]; 
                         } else {
@@ -37,7 +33,6 @@ if (typeof(EventSource) != "undefined") {
                 a = data['dtPending'];
                 if (a) { 
 		    for (let k in a) { 
-		        seen.add(k); 
 		        if (k in pending) {
 		            pending[k] += a[k]; 
                         } else {
@@ -48,7 +43,6 @@ if (typeof(EventSource) != "undefined") {
                 a = data['dtSched'];
                 if (a) { 
 		    for (let k in a) { 
-		        seen.add(k); 
 		        if (k in pending) {
 		            pending[k] += a[k]; 
                         } else {
@@ -56,31 +50,16 @@ if (typeof(EventSource) != "undefined") {
                         }
                     }
                 }
-                if (a) { for (let k in a) { seen.add(k); pending[k] += a[k]; } }
+                if (a) { for (let k in a) { pending[k] += a[k]; } }
                 a = data['dtActive'];
                 if (a) { 
 		    for (let k in a) { 
 		        active.add(k); 
-		        seen.add(k); 
 		        if (k in pending) {
 		            pending[k] += a[k]; 
                         } else {
 		            pending[k] = a[k]; 
                         }
-                    }
-                }
-
-                for (let k of seen) { // Make visible new entries
-                    if (!showingEntries.has(k)) {
-                        showingEntries.add(k);
-                        $("#r" + k).css('display', 'table-row');
-                    }
-                }
-
-                for (let k of showingEntries) { // Make invisble old entries
-                    if (!seen.has(k)) {
-                        showingEntries.delete(k);
-                        $("#r" + k).css('display', 'none');
                     }
                 }
 

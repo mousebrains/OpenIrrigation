@@ -17,11 +17,10 @@ function mkRT($dt) {
 }
 
 try {
-  $nBack = 8;
-  $nFwd = 8;
+  $nBack = 11;
+  $nFwd = 11;
 
   $names = $db->loadKeyValue("SELECT sensor,name FROM station;");
-  $stations = [];
   $future = [];
   $past = [];
 
@@ -40,7 +39,6 @@ try {
     $dtLeft = $row[2];
     $dtDone = $row[3];
     $n = $row[4];
-    array_push($stations, $id);
     if ($n < 0) { // Past
       if (!array_key_exists($id, $past)) {$past[$id] = [];}
       if (!array_key_exists($n, $past[$id])) {$past[$id][$n] = 0;}
@@ -66,6 +64,8 @@ try {
       $future[$id][$n] += $dtLeft;
     }
   }
+
+  $stations = $db->loadKeyValue('SELECT sensor,name FROM station ORDER BY name;');
 } catch (Exception $e) {
   echo "<div><pre>" . $e->getMessage() . "</pre></div>\n";
 }
@@ -93,41 +93,22 @@ echo "<table>\n";
 echo "<thead>$thead0\n$thead1\n</thead>\n";
 echo "<tbody>\n";
 
-$stations = array_unique($stations);
-$entries = [];
-foreach ($stations as $stn) {
-  if (array_key_exists($stn, $names)) {$entries[$names[$stn]] = $stn;}
-}
-ksort($entries);
-
-foreach ($entries as $name => $stn) {
+foreach ($stations as $sensor => $name) {
   echo "<tr>\n";
-  if (array_key_exists($stn, $past)) {
-    for ($j = $nBack-1; $j >= 0; $j--) {
-      if (array_key_exists($j, $past[$stn])) {
-        echo "<td>" . mkRT($past[$stn][$j]) . "</td>\n";
-      } else {
-        echo "<td></td>\n";
-      }
+  for ($j = $nBack-1; $j >= 0; $j--) {
+    echo "<td>";
+    if (array_key_exists($sensor, $past) and array_key_exists($j, $past[$sensor])) {
+      echo mkRt($past[$sensor][$j]);
     }
-  } else {
-    for ($j = $nBack-1; $j >= 0; $j--) {
-      echo "<td></td>\n";
-    }
+    echo "</td>\n";
   }
   echo "<th>$name</th>\n";
-  if (array_key_exists($stn, $future)) {
-    for ($j = 0; $j < $nFwd; $j++) {
-      if (array_key_exists($j, $future[$stn])) {
-        echo "<td>" . mkRT($future[$stn][$j]) . "</td>\n";
-      } else {
-        echo "<td></td>\n";
-      }
+  for ($j = 0; $j < $nFwd; $j++) {
+    echo "<td>";
+    if (array_key_exists($sensor, $future) and array_key_exists($j, $future[$sensor])) {
+      echo mkRt($future[$sensor][$j]);
     }
-  } else {
-    for ($j = 0; $j < $nFwd; $j++) {
-      echo "<td></td>\n";
-    }
+    echo "</td>\n";
   }
   echo "</tr>\n";
 }
