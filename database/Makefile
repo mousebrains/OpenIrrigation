@@ -16,7 +16,7 @@ SQL+= db.soil.sql
 SQL+= db.crop.sql
 SQL+= db.site.sql
 
-.PHONY: all extract install clean mkdb recreatedb dropdb createdb dumpdb
+.PHONY: all extract install clean mkdb dropdb createdb dumpdb freshdb
 
 all:
 
@@ -24,10 +24,10 @@ install:
 
 clean:
 
-mkdb: $(SQL)
-	for i in $^; do echo $$i; psql --quiet $(DBNAME) <$$i; done
+freshdb: dropdb createdb mkdb
 
-recreatedb: dropdb createdb
+mkdb: $(SQL)
+	for i in $^; do echo $$i; psql --quiet --file=$$i $(DBNAME); done
 
 dropdb:
 	dropdb $(DBNAME)
