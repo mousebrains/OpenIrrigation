@@ -107,6 +107,7 @@ class Events(list):
       cur.execute("SELECT * FROM action WHERE tOff>%s", (date - datetime.timedelta(days=1),))
       sensors = {} # sensor to station map
       for row in cur:
+        id = row['id']
         sensor = row['sensor']
         pgm = row['program']
         tOn  = row['ton']

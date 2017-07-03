@@ -254,24 +254,25 @@ class Consumer(threading.Thread):
   def Off(self, msg):
     addr = int(msg[2:4],16)
     code = int(msg[4:],16)
-    with self.db.cursor() as cur:
-      if addr == 255: # Turn everybody off that is on
-        cur.execute("SELECT action.sensor FROM action"
-                + " INNER JOIN sensor ON sensor=sensor.id"
-                + " AND cmdOn is NULL and cmdOff is NOT NULL"
-                + " INNER JOIN controller ON sensor.controller=controller.id AND controller.name=%s"
-                + " INNER JOIN site ON controller.site=site.id AND site.name=%s;",
-                (self.controller, self.site))
-      else:
-        cur.execute("SELECT action.sensor FROM action"
-                + " INNER JOIN sensor ON cmdOn is NULL and cmdOff is NOT NULL"
-                + " AND sensor=sensor.id AND sensor.addr=%s"
-                + " INNER JOIN controller ON sensor.controller=controller.id AND controller.name=%s"
-                + " INNER JOIN site ON controller.site=site.id AND site.name=%s;",
-                (addr,self.controller, self.site))
-      for row in cur:
-        cur.execute('INSERT INTO offLog(sensor,code) VALUES(%s,%s);', (row[0], code))
-        self.logger.info('Off sensor={} code={}'.format(row[0], code))
+    self.logger.info('Off %s %s %s', msg, addr, code)
+    sql = 'SELECT offLogInsert(%s,%s,%s,%s);'
+    if addr == 255: # Turn everybody off that is on
+      with self.db.cursor() as cur:
+        self.logger.info('Everything off')
+        cur.execute("SELECT sensor.addr FROM sensor"
+		+ " INNER JOIN action"
+		+ " ON sensor.id=action.sensor"
+		+ " AND action.cmdOn IS NULL"
+		+ " AND action.cmdOff IS NULL"
+		+ " AND action.onLog IS NOT NULL"
+		+ " AND action.offLog IS NULL;")
+        for row in cur:
+          self.logger.info('off row %s', row)
+          self.logger.info('Off addr=%s code=%s All', row[0], code)
+          self.toDB(sql, [row[0], code])
+    else:
+      self.logger.info('Off addr=%s code=%s', addr, code)
+      self.toDB(sql, [addr, code])
 
 class MyBase(threading.Thread):
   def __init__(self, logger, qWriter, label, dt):
@@ -400,7 +401,6 @@ class Command(threading.Thread):
               if nOn <= 0:
                 nOn = 0
                 addr = 255
-                logger.info('Turning everything off')
               else:
                 addr = row[2]
               q.put(DispatchItem('0D{:02X}'.format(addr), 5, 1))

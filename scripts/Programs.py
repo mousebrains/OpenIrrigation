@@ -426,6 +426,9 @@ class Programs(ListTables):
 
   def findPgmStation(self, sensor, pgm):
     for item in self.pgmStations:
-      if (sensor == item.station().sensor().key()) and (pgm == item.program().key()):
+      if (item.program() is not None) and \
+	(item.station() is not None) and \
+	(sensor == item.station().sensor().key()) and \
+	(pgm == item.program().key()):
         return item
     return None
