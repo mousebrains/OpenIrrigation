@@ -17,18 +17,25 @@ class Query {
     $this->tFwd  = new DateInterval("P1D");
     $this->dt    = new DateInterval("PT50S");
     $this->tPrevMsg = new DateTimeImmutable();
-    $this->active = $db->prepare("SELECT station.id,round(date_part('epoch',sum(tOff-$1))),round(date_part('epoch',sum($1-tOn)))"
+    $this->active = $db->prepare("SELECT sensor,"
+		. "round(date_part('epoch',min(tOff)-$1)),"
+		. "round(date_part('epoch',$1-min(tOn)))"
 		. " FROM active"
-		. " INNER JOIN station ON station.sensor=active.sensor"
-		. " GROUP BY station.id;");
-    $this->past = $db->prepare("SELECT station.id,round(date_part('epoch',sum(tOff-tOn))) FROM historical"
-		. " INNER JOIN station ON tOff>=$1 AND station.sensor=historical.sensor"
-		. " GROUP BY station.id;");
-    $this->pend = $db->prepare("SELECT station.id,round(date_part('epoch',sum(tOff-tOn))) FROM pending"
-		. " INNER JOIN station ON tOn<=$1 AND station.sensor=pending.sensor"
-		. " GROUP BY station.id;");
-    $this->sched = $db->prepare("SELECT station,sum(runTime)*60 FROM pgmStn"
-		. " WHERE qSingle=True GROUP BY station;");
+		. " GROUP BY sensor;");
+    $this->past = $db->prepare("SELECT sensor,round(date_part('epoch',sum(tOff-tOn)))"
+		. " FROM historical"
+		. " WHERE tOff>=$1"
+		. " GROUP BY sensor;");
+    $this->pend = $db->prepare("SELECT sensor,round(date_part('epoch',sum(tOff-tOn)))"
+		. " FROM pending"
+		. " WHERE tOn<=$1"
+		. " GROUP BY sensor;");
+    $this->sched = $db->prepare("SELECT station.sensor,sum(runTime)*60"
+		. " FROM pgmStn"
+		. " INNER JOIN station"
+		. " ON qSingle=True"
+		. " AND pgmStn.station=station.id"
+		. " GROUP BY station.sensor;");
   }
 
   function sendIt() {
@@ -41,9 +48,9 @@ class Query {
       $pActive = [];
       $results = $this->active->execute([$now->format($format)]);
       while ($row = $results->fetchRow()) {
-        $stn = $row[0];
-        array_push($fActive, '"' . $stn . '":' . $row[1]);
-        array_push($pActive, '"' . $stn . '":' . $row[2]);
+        $sensor = $row[0];
+        array_push($fActive, '"' . $sensor . '":' . $row[1]);
+        array_push($pActive, '"' . $sensor . '":' . $row[2]);
       }
       if (!empty($fActive)) {
         array_push($msg, '"dtActive":{' . implode(",", $fActive) . '}');
