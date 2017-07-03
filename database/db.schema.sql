@@ -6,7 +6,7 @@
 
 -- Table column definitions for viewing purposes
 DROP TABLE IF EXISTS tableInfo CASCADE;
-CREATE TABLE tableInfo(
+CREATE TABLE tableInfo( -- How to display tables
 	tbl TEXT NOT NULL, -- Name of table the row applies to
 	col TEXT NOT NULL, -- column name in tbl (For inputType='secondary', is secondary table
         displayOrder INTEGER NOT NULL, -- order in which to display the columns
@@ -31,7 +31,7 @@ CREATE TABLE tableInfo(
 
 -- Table of web related list items
 DROP TABLE IF EXISTS webList CASCADE;
-CREATE TABLE webList(
+CREATE TABLE webList( -- key/value for parameters
 	id SERIAL PRIMARY KEY, -- id
 	sortOrder INTEGER DEFAULT 0, -- display order sorting
 	grp TEXT, -- which group this item is in
@@ -49,7 +49,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax) VALU
 
 -- Are we running in simulation or live mode?
 DROP TABLE IF EXISTS simulate CASCADE;
-CREATE TABLE simulate(
+CREATE TABLE simulate( -- Am I in simulation or real mode?
 	id SERIAL PRIMARY KEY,
 	qSimulate BOOLEAN
 	);
@@ -72,13 +72,13 @@ CREATE TRIGGER simulateInsert
 
 -- Times the scheduler should run
 DROP TABLE IF EXISTS scheduler;
-CREATE TABLE scheduler(
+CREATE TABLE scheduler( -- When the scheduler should run
 	date TIMESTAMP PRIMARY KEY -- run the scheduler at
 	);
 
 -- Interface parameters
 DROP TABLE IF EXISTS params CASCADE;
-CREATE TABLE params(
+CREATE TABLE params( -- key/value pairs for parameters
 	id SERIAL PRIMARY KEY, -- id
 	grp TEXT NOT NULL, -- name of group this parameter belongs to
 	name TEXT NOT NULL, -- name of parameter
@@ -95,7 +95,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder
 
 -- Soil types
 DROP TABLE IF EXISTS soil CASCADE;
-CREATE TABLE soil(
+CREATE TABLE soil( -- Soil definitions
 	id SERIAL PRIMARY KEY, -- id
 	name TEXT UNIQUE NOT NULL, -- name of the soil, clay, ...
 	paw FLOAT NOT NULL, -- plant available water mm/m
@@ -114,7 +114,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,placeholder,valMin,va
 	('soil', 'rootnorm',  4, False, 'Root norm', 1, 0.05, 2, 0.05);
 
 DROP TABLE IF EXISTS crop CASCADE;
-CREATE TABLE crop(
+CREATE TABLE crop( -- crop definitions
 	id SERIAL PRIMARY KEY, -- id
 	name TEXT UNIQUE NOT NULL, -- name of the crop
 	plantDate DATE, -- roughly when planted, mm/dd is used of the date
@@ -149,7 +149,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,placeholder) VALUES
 
 -- All user accounts
 DROP TABLE IF EXISTS usr CASCADE;
-CREATE TABLE usr(
+CREATE TABLE usr( -- user information
 	id SERIAL PRIMARY KEY, -- id
 	name TEXT UNIQUE NOT NULL, -- Name of the user to use when displaying
 	passwd TEXT -- Hashed password 
@@ -160,7 +160,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,placeholder) VALUES
 
 -- All email addresses
 DROP TABLE IF EXISTS email CASCADE;
-CREATE TABLE email(
+CREATE TABLE email( -- email for various users
 	id SERIAL PRIMARY KEY, -- id
 	usr INTEGER REFERENCES usr(id) ON DELETE CASCADE, -- user association 
 	email TEXT UNIQUE, -- email address
@@ -179,7 +179,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,
 
 -- Which reports to send to which emails
 DROP TABLE IF EXISTS emailReports;
-CREATE TABLE emailReports(
+CREATE TABLE emailReports( -- Which reports to send to which emails
 	email INTEGER REFERENCES email(id) ON DELETE CASCADE, -- email id
 	report INTEGER REFERENCES webList(id) ON DELETE CASCADE, -- which report
 	PRIMARY KEY(email,report)
@@ -187,7 +187,7 @@ CREATE TABLE emailReports(
 
 -- Site information
 DROP TABLE IF EXISTS site CASCADE;
-CREATE TABLE site(
+CREATE TABLE site( -- site information
 	id SERIAL PRIMARY KEY, -- id
 	name TEXT UNIQUE, -- descriptive name 
 	addr TEXT, -- street address 
@@ -207,7 +207,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 
 -- Controler information
 DROP TABLE IF EXISTS controller CASCADE;
-CREATE TABLE controller(
+CREATE TABLE controller( -- controller information
 	id SERIAL PRIMARY KEY, -- id
 	site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
 	name TEXT, -- descriptive name
@@ -242,7 +242,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,placeholder) VALUES
 
 -- sensors/valves
 DROP TABLE IF EXISTS sensor CASCADE;
-CREATE TABLE sensor(
+CREATE TABLE sensor( -- hardware information about decoders/sensors
 	id SERIAL PRIMARY KEY, -- id
 	controller INTEGER REFERENCES controller(id) ON DELETE CASCADE, -- ctl's id
 	name TEXT, -- descriptive name
@@ -285,7 +285,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,placeholder) VALUES
 
 -- Point of connect
 DROP TABLE IF EXISTS poc CASCADE;
-CREATE TABLE poc(
+CREATE TABLE poc( -- point-of-connects
 	id SERIAL PRIMARY KEY, -- id
 	site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
 	name TEXT, -- descriptive name
@@ -307,7 +307,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 
 -- Point of connect flow
 DROP TABLE IF EXISTS pocFlow CASCADE;
-CREATE TABLE pocFlow(
+CREATE TABLE pocFlow( -- flow sensors associated with POCs
 	id SERIAL PRIMARY KEY, -- id
 	poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- poc's id
 	sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE UNIQUE, -- sensor's id
@@ -333,7 +333,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 
 -- Point of connect master valve
 DROP TABLE IF EXISTS pocMV CASCADE;
-CREATE TABLE pocMV(
+CREATE TABLE pocMV( -- master valves associated with POCs
 	id SERIAL PRIMARY KEY, -- id
 	poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- poc's id
 	sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE UNIQUE, -- sensor's id
@@ -354,7 +354,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder
 
 -- Point of connect pump
 DROP TABLE IF EXISTS pocPump CASCADE;
-CREATE TABLE pocPump(
+CREATE TABLE pocPump( -- booster pumps associated with POCs
 	id SERIAL PRIMARY KEY, -- id
 	poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- poc's id
 	sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE UNIQUE, -- sensor's id
@@ -384,7 +384,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax) VALU
 
 -- Station 
 DROP TABLE IF EXISTS station CASCADE;
-CREATE TABLE station(
+CREATE TABLE station( -- irrigation station information
 	id SERIAL PRIMARY KEY, -- id
 	poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- poc's id
 	sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE UNIQUE, -- sensor's id
@@ -429,7 +429,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 
 -- progams, a collection of water events
 DROP TABLE IF EXISTS program CASCADE;
-CREATE TABLE program(
+CREATE TABLE program( -- program information
 	id SERIAL PRIMARY KEY, -- id
 	site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
 	name TEXT UNIQUE, -- descriptive name
@@ -476,7 +476,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,
 
 --- program days of week
 DROP TABLE IF EXISTS pgmDOW;
-CREATE TABLE pgmDOW(
+CREATE TABLE pgmDOW( -- programs/ day of week association
 	program INTEGER REFERENCES program(id) ON DELETE CASCADE, -- which program
 	dow INTEGER REFERENCES webList(id) ON DELETE CASCADE,
 	PRIMARY KEY (program,dow)
@@ -484,7 +484,7 @@ CREATE TABLE pgmDOW(
 
 -- stations in each program
 DROP TABLE IF EXISTS pgmStn CASCADE;
-CREATE TABLE pgmStn(
+CREATE TABLE pgmStn( -- station/program association
 	id SERIAL PRIMARY KEY, -- id
 	program INTEGER REFERENCES program(id) ON DELETE CASCADE, -- program's id
 	station INTEGER REFERENCES station(id) ON DELETE CASCADE, -- station's id
@@ -508,7 +508,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 
 -- non-watering event specifier
 DROP TABLE IF EXISTS event CASCADE;
-CREATE TABLE event(
+CREATE TABLE event( -- non-watering events
 	id SERIAL PRIMARY KEY, -- id
 	site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
 	name TEXT UNIQUE, -- descriptive name
@@ -545,7 +545,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,
 
 --- Event days of week
 DROP TABLE IF EXISTS eventDOW;
-CREATE TABLE eventDOW(
+CREATE TABLE eventDOW( -- non-watering event day of week associations
 	event INTEGER REFERENCES event(id) ON DELETE CASCADE, -- which event
 	dow INTEGER REFERENCES webList(id) ON DELETE CASCADE,
 	PRIMARY KEY (event,dow)
@@ -553,7 +553,7 @@ CREATE TABLE eventDOW(
 	
 -- ET information for each station
 DROP TABLE IF EXISTS EtStation;
-CREATE TABLE EtStation(
+CREATE TABLE EtStation( -- ET information for each station
 	id SERIAL PRIMARY KEY, -- id
 	station INTEGER UNIQUE REFERENCES station(id) ON DELETE CASCADE , -- station's id 
 	crop INTEGER REFERENCES crop(id) ON DELETE SET NULL, -- crop id 
@@ -597,7 +597,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 
 -- Groups of stations
 DROP TABLE IF EXISTS groups CASCADE;
-CREATE TABLE groups(
+CREATE TABLE groups( -- group information
 	id SERIAL PRIMARY KEY, -- id
 	site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site this group belongs to
 	name TEXT, -- name of the group
@@ -609,7 +609,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
 	('groups','site',   1, 'Site', 'site');
 
 DROP TABLE IF EXISTS groupStation;
-CREATE TABLE groupStation(
+CREATE TABLE groupStation( -- Station/group associations
 	groups INTEGER REFERENCES groups(id), -- which group this entry is for
 	station INTEGER REFERENCES station(id), -- which station this entery is for
 	sortOrder INTEGER DEFAULT 0, -- sorting order
@@ -623,7 +623,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax) VALU
 
 -- daily ET information, set up for Agrimet
 DROP TABLE IF EXISTS ET;
-CREATE TABLE ET(
+CREATE TABLE ET( -- harvested ET information by date and station
 	id SERIAL PRIMARY KEY, -- id
 	t DATE NOT NULL, -- date of sample
 	station TEXT NOT NULL, -- station for this entry
@@ -644,7 +644,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 
 -- annual ET information
 DROP TABLE IF EXISTS ETannual;
-CREATE TABLE ETannual(
+CREATE TABLE ETannual( -- day of year average ET information
 	id SERIAL PRIMARY KEY, -- id
 	doy INTEGER NOT NULL, -- day of year [0,366]
 	station TEXT NOT NULL, -- station for this entry
@@ -692,12 +692,11 @@ CREATE OR REPLACE FUNCTION pocFlowID(address INTEGER, siteName TEXT, ctlName TEX
 
 -- Zee message log
 DROP TABLE IF EXISTS zeeLog;
-CREATE TABLE zeeLog(
-	id SERIAL PRIMARY KEY, -- id
+CREATE TABLE zeeLog( -- 1Z Unknown command log from TDI controller
         controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- Time received
 	value TEXT NOT NULL, -- Message
-	UNIQUE (controller,timestamp,value)
+	PRIMARY KEY(timestamp,controller)
 	);
 DROP INDEX IF EXISTS zeeTS;
 CREATE INDEX zeeTS ON zeeLog(timestamp);
@@ -709,12 +708,11 @@ CREATE OR REPLACE FUNCTION zeeInsert(value TEXT, site TEXT, controller TEXT) RET
 
 -- Number message log
 DROP TABLE IF EXISTS numberLog;
-CREATE TABLE numberLog(
-	id SERIAL PRIMARY KEY, -- id
+CREATE TABLE numberLog( -- 1N log entries from TDI controller, max # of stations?
         controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- Time received
 	value INTEGER NOT NULL, -- number returned
-	UNIQUE (controller,timestamp,value)
+	PRIMARY KEY (timestamp,controller)
 	);
 DROP INDEX IF EXISTS numberTS;
 CREATE INDEX numberTS ON numberLog(timestamp);
@@ -726,12 +724,11 @@ CREATE OR REPLACE FUNCTION numberInsert(value INTEGER, site TEXT, controller TEX
 
 -- Version message results
 DROP TABLE IF EXISTS versionLog;
-CREATE TABLE versionLog(
-	id SERIAL PRIMARY KEY, -- id
+CREATE TABLE versionLog( -- 1V log entries from TDI controller, firmware version
         controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- Time received
 	value TEXT NOT NULL, -- version string returned
-	UNIQUE (controller,timestamp,value)
+	PRIMARY KEY (timestamp,controller)
 	);
 DROP INDEX IF EXISTS versionTS;
 CREATE INDEX versionTS ON versionLog (timestamp);
@@ -743,12 +740,11 @@ CREATE OR REPLACE FUNCTION versionInsert(value TEXT, site TEXT, controller TEXT)
 
 -- Error message results
 DROP TABLE IF EXISTS errorLog;
-CREATE TABLE errorLog(
-	id SERIAL PRIMARY KEY, -- id
+CREATE TABLE errorLog( -- 1E log entries from TDI controller
         controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- Time received
 	value INTEGER NOT NULL, -- error code returned
-	UNIQUE (controller,timestamp,value)
+	PRIMARY KEY (timestamp,controller)
 	);
 DROP INDEX IF EXISTS errorTS;
 CREATE INDEX errorTS ON errorLog (timestamp);
@@ -760,13 +756,12 @@ CREATE OR REPLACE FUNCTION errorInsert(value INTEGER, site TEXT, controller TEXT
 
 -- Two message results
 DROP TABLE IF EXISTS twoLog;
-CREATE TABLE twoLog(
-	id SERIAL PRIMARY KEY, -- unique record ID
+CREATE TABLE twoLog( -- 12 log entries from TDI controller, 2-wire path active?
         controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
 	addr INTEGER NOT NULL, -- address
 	value INTEGER NOT NULL, -- reading
-	UNIQUE (controller,timestamp,addr,value)
+	PRIMARY KEY (timestamp,controller,addr)
 	);
 DROP INDEX IF EXISTS twoTS;
 CREATE INDEX twoTS ON twoLog (timestamp);
@@ -779,13 +774,12 @@ CREATE OR REPLACE FUNCTION twoInsert(addr INTEGER, value INTEGER, site TEXT, con
 
 -- Pee message results
 DROP TABLE IF EXISTS peeLog;
-CREATE TABLE peeLog(
-	id SERIAL PRIMARY KEY, -- unique record ID
+CREATE TABLE peeLog( -- 1P log entries from TDI controller
         controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
 	addr INTEGER NOT NULL, -- address
 	value INTEGER NOT NULL, -- reading
-	UNIQUE (controller,timestamp,addr,value)
+	PRIMARY KEY (timestamp,controller,addr)
 	);
 DROP INDEX IF EXISTS peeTS;
 CREATE INDEX peeTS ON peeLog (timestamp);
@@ -798,13 +792,12 @@ CREATE OR REPLACE FUNCTION peeInsert(addr INTEGER, value INTEGER, site TEXT, con
 
 -- Current message results
 DROP TABLE IF EXISTS currentLog;
-CREATE TABLE currentLog(
-	id SERIAL PRIMARY KEY, -- unique record ID
+CREATE TABLE currentLog( -- 1U log entries from TDI controller, voltage and current
         controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
 	volts FLOAT NOT NULL, -- voltage in volts
 	mAmps INTEGER NOT NULL, -- current in mAmps
-	UNIQUE (controller,timestamp,volts,mAmps)
+	PRIMARY KEY (timestamp,controller)
 	);
 DROP INDEX IF EXISTS currentTS;
 CREATE INDEX currentTS ON currentLog (timestamp);
@@ -817,16 +810,15 @@ CREATE OR REPLACE FUNCTION currentInsert(volts FLOAT, mAmps INTEGER, site TEXT, 
 
 -- Sensor message results
 DROP TABLE IF EXISTS sensorLog;
-CREATE TABLE sensorLog(
-	id SERIAL PRIMARY KEY, -- unique record ID
+CREATE TABLE sensorLog( -- 1S log entries from TDI controller, flow sensor clicks
         pocFlow INTEGER REFERENCES pocFlow(id) ON DELETE CASCADE NOT NULL, -- which flow sensor
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
 	value INTEGER NOT NULL, -- reading, Hertz*10
 	flow FLOAT NOT NULL, -- value processed into a physical value
-	UNIQUE (pocFlow,timestamp)
+	PRIMARY KEY (timestamp,pocFlow)
 	);
 DROP INDEX IF EXISTS sensorTS;
-CREATE INDEX sensorTS ON sensorLog (timestamp,pocFlow);
+CREATE INDEX sensorTS ON sensorLog (timestamp);
 
 -- Insert a record looking up site and controller
 CREATE OR REPLACE FUNCTION sensorInsert(address INTEGER, value INTEGER, site TEXT, controller TEXT)
@@ -842,15 +834,14 @@ CREATE OR REPLACE FUNCTION sensorInsert(address INTEGER, value INTEGER, site TEX
 
 -- Tee message results
 DROP TABLE IF EXISTS teeLog;
-CREATE TABLE teeLog(
-	id SERIAL PRIMARY KEY, -- unique record ID
+CREATE TABLE teeLog( -- 1T log entries from TDI controller, pre/peak/post current tests
         sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- which flow sensor
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
 	code INTEGER NOT NULL, -- returned code
 	pre INTEGER NOT NULL, -- pre on current in mAmps
 	peak INTEGER NOT NULL, -- peak on current in mAmps
 	post INTEGER NOT NULL, -- post on current in mAmps
-	UNIQUE (sensor,timestamp)
+	PRIMARY KEY (timestamp,sensor)
 );
 DROP INDEX IF EXISTS teeTS;
 CREATE INDEX teeTS ON teeLog (timestamp,sensor);
@@ -881,15 +872,14 @@ CREATE OR REPLACE FUNCTION teeInsert(address INTEGER, code INTEGER,
 --  
 -- On message results
 DROP TABLE IF EXISTS onLog CASCADE;
-CREATE TABLE onLog(
+CREATE TABLE onLog( -- 1A log entry from TDI controller, station turned on
 	id SERIAL PRIMARY KEY, -- unique record ID
         sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- sensor
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
 	code INTEGER NOT NULL, -- return code
 	pre INTEGER, -- pre on current in mAmps
 	peak INTEGER, -- peak on current in mAmps
-	post INTEGER, -- post on current in mAmps
-	UNIQUE (sensor,timestamp,code,pre,peak,post)
+	post INTEGER -- post on current in mAmps
 	);
 DROP INDEX IF EXISTS onLogTS;
 CREATE INDEX onLogTS ON onLog(timestamp);
@@ -905,17 +895,24 @@ CREATE OR REPLACE FUNCTION onLogInsert(addr INTEGER, code INTEGER,
 
 -- Off message results
 DROP TABLE IF EXISTS offLog CASCADE;
-CREATE TABLE offLog(
+CREATE TABLE offLog( -- 1D log entry from TDI controller, station turned off
 	id SERIAL PRIMARY KEY, -- unique record ID
         sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- sensor
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
-	code INTEGER NOT NULL, -- return code
-	UNIQUE (sensor,timestamp,code)
+	code INTEGER NOT NULL -- return code
 	);
+
+CREATE OR REPLACE FUNCTION offLogInsert(addr INTEGER, code INTEGER,
+                                        site TEXT, controller TEXT)
+	RETURNS VOID AS $$
+  INSERT INTO offLog(code,sensor) VALUES
+	(code,sensorID(addr,site,controller));
+  $$ LANGUAGE SQL;
+
 
 -- Command queue
 DROP TABLE IF EXISTS command CASCADE;
-CREATE TABLE command(
+CREATE TABLE command( -- command to be executed by TDI controller
 	id SERIAL PRIMARY KEY, -- id
 	sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- sensor to work on
 	action INTEGER, -- id of generating row in action, a forward reference, look at triggers
@@ -927,7 +924,7 @@ CREATE INDEX commandTS ON command(timestamp);
 
 -- Actions to be done
 DROP TABLE IF EXISTS action CASCADE;
-CREATE TABLE action(
+CREATE TABLE action( -- station on/off actions
 	id SERIAL PRIMARY KEY, -- unique record ID
 	sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- sensor to work on
 	cmd INTEGER CONSTRAINT actChk CHECK (cmd IN (0,2)) NOT NULL, -- on/off=0, T=2
@@ -939,7 +936,8 @@ CREATE TABLE action(
         offLog INTEGER REFERENCES offLog(id) ON DELETE SET NULL, -- off log entry
 	program INTEGER REFERENCES program(id) ON DELETE CASCADE NOT NULL, -- generating program 
 	pgmStn INTEGER REFERENCES pgmStn(id) ON DELETE SET NULL, -- generating program/station
-	pgmDate DATE NOT NULL -- program date this command is for
+	pgmDate DATE NOT NULL, -- program date this command is for
+        CHECK (tOn < tOff) -- causality
 	);
 DROP INDEX IF EXISTS actionTS;
 CREATE INDEX actionTS ON action(tOn, tOff);
@@ -947,6 +945,17 @@ DROP INDEX IF EXISTS actionOn;
 CREATE INDEX actionOn ON action(cmd,sensor,cmdOn,onLog);
 DROP INDEX IF EXISTS actionOff;
 CREATE INDEX actionOff ON action(cmd,sensor,cmdOff,offLog);
+
+-- Daily summary derived from Actions after things are done
+DROP TABLE IF EXISTS daily;
+CREATE TABLE daily( -- daily cumulative on time
+	sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- sensor id
+	pgmDate DATE NOT NULL, -- program date
+	runTime INTERVAL NOT NULL, -- total run time on pgmDate
+        PRIMARY KEY(pgmDate,sensor)
+	);
+DROP INDEX IF EXISTS dailyTS;
+CREATE INDEX dailyTS ON daily(pgmDate, sensor);
 
 -- When an on/off row is inserted into action
 CREATE OR REPLACE FUNCTION actionOnOffInsert() RETURNS TRIGGER AS $$
@@ -1068,22 +1077,24 @@ CREATE TRIGGER onLogInsert
 	EXECUTE PROCEDURE onLogInsert();
 
 -- Insert a record looking up sensor id
-CREATE OR REPLACE FUNCTION offLogInsert(address INTEGER, code INTEGER, siteName TEXT, ctlName TEXT)
-	RETURNS VOID AS $$
-	DECLARE siteID INTEGER;
-	DECLARE ctlID INTEGER;
-	DECLARE devID INTEGER;
-	DECLARE sensID INTEGER;
-	BEGIN
-        SELECT id INTO siteID FROM site WHERE name=siteName;
-        SELECT id INTO ctlID FROM controller WHERE name=ctlName AND site=siteID;
-	SELECT id INTO devID FROM webList WHERE grp='sensor' AND key='solenoid';
-	FOR sensID IN SELECT id FROM sensor WHERE (addr=address or address=255) AND controller=ctlID AND devType=devID
-		LOOP
-  	  		INSERT INTO offLog(code,sensor) VALUES (code,sensID);
-        	END LOOP;
-	END;
-  $$ LANGUAGE plpgsql;
+CREATE OR REPLACE FUNCTION offLogInsert() RETURNS TRIGGER AS $$
+        DECLARE pDate DATE;
+        DECLARE timeOn TIMESTAMP;
+        BEGIN
+        UPDATE action SET offLog=NEW.id,tOff=NEW.timestamp
+                WHERE cmd=0
+                AND sensor=NEW.sensor
+                AND cmdOn is NULL
+                AND onLog is NOT NULL
+                AND cmdOff is NULL
+                AND offLog is NULL
+                RETURNING pgmDate,tOn INTO pDate,timeOn;
+        INSERT INTO daily VALUES 
+                (NEW.sensor,pDate,greatest(NEW.timestamp-timeOn, INTERVAL '0 SECONDS'))
+                ON CONFLICT (sensor,pgmDate) DO UPDATE SET runtime=daily.runTime+EXCLUDED.runTime;
+        RETURN NEW;
+        END;
+  $$ LANGUAGE plpgSQL;
 
 DROP TRIGGER IF EXISTS offLogInsert ON action CASCADE;
 CREATE TRIGGER offLogInsert 
