@@ -12,8 +12,8 @@ SQL+= db.funcs.sql
 SQL+= db.list.sql
 SQL+= db.params.sql
 SQL+= db.ET.sql
-SQL+= db.soil.sql
-SQL+= db.crop.sql
+# SQL+= db.soil.sql
+# SQL+= db.crop.sql
 SQL+= db.site.sql
 
 .PHONY: all extract install clean mkdb dropdb createdb dumpdb freshdb
@@ -37,3 +37,6 @@ createdb:
 
 dumpdb:
 	pg_dump $(DBNAME) | gzip -v9 >$(DBNAME).dump.gz
+
+db.site.sql: extract.site.py
+	./$^ --db $(DBNAME) >$@

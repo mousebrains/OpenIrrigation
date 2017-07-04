@@ -295,6 +295,11 @@ def putDaily(db):
     print("        FROM action GROUP by sensor,pgmDate;")
     print("-- END Generate daily runtimes")
 
+def putCommand(db):
+    print("\n--BEGIN Drop commands we genered by inserting into action")
+    print("DELETE FROM command;")
+    print("--END Drop commands we genered by inserting into action")
+
 def logBasic(db, info, tbl, fields=['timestamp', 'value'], sFields = None):
     if sFields is None:
         sFields = [('controller', info.ctl)]
@@ -333,6 +338,7 @@ with psycopg2.connect(dbname=args.db) as db:
 
     getAction(db, info)
     putDaily(db)
+    putCommand(db)
     # logBasic(db, info, 'onLog', ['timestamp', 'code', 'pre', 'peak', 'post'],
              # [('sensor', info.sensor)])
     # logBasic(db, info, 'offLog', ['timestamp', 'code'], [('sensor', info.sensor)])
