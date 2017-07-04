@@ -286,7 +286,7 @@ def getHistorical(db, info):
     sql = "SELECT historical.sensor,ton,min(toff) as toff,min(program) as program,min(pgmdate) as pgmdate," \
 	+ "min(onLog.code) As onCode,min(pre) as pre,min(peak) as peak,min(post) as post,0 AS offCode" \
 	+ " FROM historical" \
-	+ " INNER JOIN onLog ON onLog=onLog.id" \
+	+ " INNER JOIN onLog ON tOn < tOff AND onLog=onLog.id" \
         + " GROUP BY historical.sensor,tOn" \
 	+ " ORDER BY tOn,historical.sensor;"
     getSpecial(db, fields, sFields, sql, "Historical information", "historical")
