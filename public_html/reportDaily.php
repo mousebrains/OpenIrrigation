@@ -21,8 +21,8 @@ try {
   $nFwd = 11;
 
   $names = $db->loadKeyValue("SELECT sensor,name FROM station;");
-  $future = [];
   $past = [];
+  $future = [];
 
   $results = $db->execute("SELECT sensor"
 		. ",date_part('epoch',sum(tOff-tOn)) as dt"
@@ -97,8 +97,8 @@ foreach ($stations as $sensor => $name) {
   echo "<tr>\n";
   for ($j = $nBack-1; $j >= 0; $j--) {
     echo "<td>";
-    if (array_key_exists($sensor, $past) and array_key_exists($j, $past[$sensor])) {
-      echo mkRt($past[$sensor][$j]);
+    if (array_key_exists($sensor, $past) and array_key_exists(-$j, $past[$sensor])) {
+      echo mkRt($past[$sensor][-$j]);
     }
     echo "</td>\n";
   }
