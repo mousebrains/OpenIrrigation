@@ -281,8 +281,7 @@ def getGroupStation(db, info):
             'group/station information', 'groupStation')
 
 def getHistorical(db, info):
-    sFields = OrderedDict([('sensor', info.sensor), ('program', info.program),
-        ('pgmstn', info.pgmStn)])
+    sFields = OrderedDict([('sensor', info.sensor), ('program', info.program)])
     fields = ['ton', 'toff', 'pgmdate', 'pre', 'peak', 'post', 'oncode', 'offcode']
     sql = "SELECT historical.sensor,ton,toff,program,pgmstn,pgmdate," \
 	+ "onLog.code As onCode,pre,peak,post," \
