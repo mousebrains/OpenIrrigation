@@ -115,10 +115,9 @@ class Info:
 def outputEntries(comment, tbl, entries):
     if entries:
         print("\n-- BEGIN ", comment)
-        print("COPY ", tbl, "FROM stdin")
-        print("{};".format(",\n".join(entries)))
-        print("\.")
-        print("-- END ", comment, "\n")
+        print("INSERT INTO ", tbl, "VALUES")
+        print(" {}".format(",\n ".join(entries)) + ";")
+        print("-- END ", comment)
 
 def mkBase(row, fields):
     a = []
@@ -136,7 +135,7 @@ def getBasic(db, fields, sql, comment, tbl):
         entries = []
         cur.execute(sql)
         for row in cur:
-            entries.append(mkBase(row, fields))
+            entries.append("(" + mkBase(row, fields) + ")")
         outputEntries(comment, tbl + "(" + ",".join(fields) + ")", entries)
 
 def getSpecial(db, fields, sFields, sql, comment, tbl):
@@ -144,10 +143,10 @@ def getSpecial(db, fields, sFields, sql, comment, tbl):
         entries = []
         cur.execute(sql)
         for row in cur:
-            a = "" + mkSpecial(row, sFields)
+            a = mkSpecial(row, sFields)
             if fields:
                 a += "," + mkBase(row, fields)
-            entries.append(a)
+            entries.append("(" + a + ")")
         names = ",".join(sFields.keys())
         if fields:
             names += "," + ",".join(fields)
@@ -285,8 +284,16 @@ def getAction(db, info):
     sFields = OrderedDict([('sensor', info.sensor), ('program', info.program),
         ('pgmstn', info.pgmStn)])
     fields = ['cmd', 'ton', 'toff', 'pgmdate']
-    getSpecial(db, fields, sFields, 'SELECT * FROM historical ORDER BY tOn,sensor;',
-            'Action information', 'action')
+    getSpecial(db, fields, sFields, 
+            "SELECT * FROM historical WHERE pgmDate>'2017-06-25' AND tOn < tOff ORDER BY tOn,sensor;",
+            "Action information", "action")
+
+def putDaily(db):
+    print("\n-- BEGIN Generate daily runtimes")
+    print("INSERT INTO daily")
+    print(" SELECT sensor,pgmDate,sum(tOff-tOn)")
+    print("        FROM action GROUP by sensor,pgmDate;")
+    print("-- END Generate daily runtimes")
 
 def logBasic(db, info, tbl, fields=['timestamp', 'value'], sFields = None):
     if sFields is None:
@@ -325,9 +332,10 @@ with psycopg2.connect(dbname=args.db) as db:
     getGroupStation(db, info)
 
     getAction(db, info)
-    logBasic(db, info, 'onLog', ['timestamp', 'code', 'pre', 'peak', 'post'],
-             [('sensor', info.sensor)])
-    logBasic(db, info, 'offLog', ['timestamp', 'code'], [('sensor', info.sensor)])
+    putDaily(db)
+    # logBasic(db, info, 'onLog', ['timestamp', 'code', 'pre', 'peak', 'post'],
+             # [('sensor', info.sensor)])
+    # logBasic(db, info, 'offLog', ['timestamp', 'code'], [('sensor', info.sensor)])
 
     # logBasic(db, info, 'zeeLog')
     # logBasic(db, info, 'numberLog')
