@@ -114,19 +114,21 @@ class Info:
 
 def outputEntries(comment, tbl, entries):
     if entries:
-        print("\n--", comment)
-        print("INSERT INTO", tbl, "VALUES")
+        print("\n-- BEGIN ", comment)
+        print("COPY ", tbl, "FROM stdin")
         print("{};".format(",\n".join(entries)))
+        print("\.")
+        print("-- END ", comment, "\n")
 
 def mkBase(row, fields):
     a = []
     for field in fields: a.append(str(Value(row[field])))
-    return ','.join(a)
+    return ",".join(a)
 
 def mkSpecial(row, fields):
     a = []
     for key in fields: a.append(fields[key](row[key]))
-    return ",\n  ".join(a)
+    return ",".join(a)
 
 
 def getBasic(db, fields, sql, comment, tbl):
@@ -134,7 +136,7 @@ def getBasic(db, fields, sql, comment, tbl):
         entries = []
         cur.execute(sql)
         for row in cur:
-            entries.append(" (" + mkBase(row, fields) + ")")
+            entries.append(mkBase(row, fields))
         outputEntries(comment, tbl + "(" + ",".join(fields) + ")", entries)
 
 def getSpecial(db, fields, sFields, sql, comment, tbl):
@@ -142,11 +144,9 @@ def getSpecial(db, fields, sFields, sql, comment, tbl):
         entries = []
         cur.execute(sql)
         for row in cur:
-            a = " (" + mkSpecial(row, sFields)
+            a = "" + mkSpecial(row, sFields)
             if fields:
-                a += ",\n"
-                a+= "  " + mkBase(row, fields)
-            a+= ")"
+                a += "," + mkBase(row, fields)
             entries.append(a)
         names = ",".join(sFields.keys())
         if fields:
@@ -285,8 +285,8 @@ def getAction(db, info):
     sFields = OrderedDict([('sensor', info.sensor), ('program', info.program),
         ('pgmstn', info.pgmStn)])
     fields = ['cmd', 'ton', 'toff', 'pgmdate']
-    getSpecial(db, fields, sFields, 'SELECT * FROM action ORDER BY tOn,sensor;',
-            'Action information', 'acction')
+    getSpecial(db, fields, sFields, 'SELECT * FROM historical ORDER BY tOn,sensor;',
+            'Action information', 'action')
 
 def logBasic(db, info, tbl, fields=['timestamp', 'value'], sFields = None):
     if sFields is None:
