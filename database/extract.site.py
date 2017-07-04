@@ -297,7 +297,9 @@ def putDaily(db):
 
 def putCommand(db):
     print("\n--BEGIN Drop commands we genered by inserting into action")
+    print("ALTER TABLE command DISABLE TRIGGER USER;")
     print("DELETE FROM command;")
+    print("ALTER TABLE command ENABLE TRIGGER USER;")
     print("--END Drop commands we genered by inserting into action")
 
 def logBasic(db, info, tbl, fields=['timestamp', 'value'], sFields = None):
