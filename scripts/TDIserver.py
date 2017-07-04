@@ -8,11 +8,9 @@
 # the tty device to use
 # the name of the output log file
 #
-import psycopg2 
 import TDI 
 import TDISimulate 
 import Params
-import serial 
 import logging
 import logging.handlers
 import argparse
@@ -48,41 +46,31 @@ logger.addHandler(ch)
 params = Params.Params(args.db, args.group)
 logger.info(params)
 
-with psycopg2.connect(dbname=args.db) as db:
-  db.set_session(autocommit=True)
+s0 = TDISimulate.mkSerial(args, params, logger)
 
-  with db.cursor() as cur:
-    cur.execute('INSERT INTO simulate(qSimulate) VALUES(%s);', [True if args.simul else False]);
-  if args.simul:
-    s0 = TDISimulate.Simulate(logger)
-    s0.start()
-  else:
-    s0 = serial.Serial(port=params['port'], baudrate=params['baudrate']);
+thrReader = TDI.Reader(s0, logger)
+thrWriter = TDI.Writer(s0, logger)
+thrDispatcher = TDI.Dispatcher(logger, thrReader.qAck, thrWriter.q)
+thrBuilder = TDI.Builder(logger, thrReader.qSent, thrWriter.q)
 
-  thrReader = TDI.Reader(s0, logger)
-  thrWriter = TDI.Writer(s0, logger)
-  thrDispatcher = TDI.Dispatcher(logger, thrReader.qAck, thrWriter.q)
-  thrBuilder = TDI.Builder(logger, thrReader.qSent, thrWriter.q)
+thr = []
+thr.append(TDI.Consumer(args, args.db, logger, thrBuilder.q))
+thr.append(TDI.Number(params, logger, thrDispatcher.q))
+thr.append(TDI.Version(params, logger, thrDispatcher.q))
+thr.append(TDI.Error(params, logger, thrDispatcher.q))
+thr.append(TDI.Current(params, logger, thrDispatcher.q))
+thr.append(TDI.Sensor(params, logger, thrDispatcher.q))
+thr.append(TDI.Two(params, logger, thrDispatcher.q))
+thr.append(TDI.Pee(params, logger, thrDispatcher.q))
+thr.append(TDI.Command(args.db, logger, thrDispatcher.q))
 
-  thr = []
-  thr.append(TDI.Consumer(args, db, logger, thrBuilder.q))
-  thr.append(TDI.Number(params, logger, thrDispatcher.q))
-  thr.append(TDI.Version(params, logger, thrDispatcher.q))
-  thr.append(TDI.Error(params, logger, thrDispatcher.q))
-  thr.append(TDI.Current(params, logger, thrDispatcher.q))
-  thr.append(TDI.Sensor(params, logger, thrDispatcher.q))
-  thr.append(TDI.Two(params, logger, thrDispatcher.q))
-  thr.append(TDI.Pee(params, logger, thrDispatcher.q))
-  thr.append(TDI.Command(db, logger, thrDispatcher.q))
+thrReader.start()
+thrWriter.start()
+thrDispatcher.start()
+thrBuilder.start()
 
-  thrReader.start()
-  thrWriter.start()
-  thrDispatcher.start()
-  thrBuilder.start()
+for i in range(len(thr)): thr[i].start()
 
-  for i in range(len(thr)):
-    thr[i].start()
+thrReader.join()
 
-  thrReader.join()
-
-  s0.close()
+s0.close()

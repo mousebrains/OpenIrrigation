@@ -1,6 +1,21 @@
 import threading
 import queue
 import random
+import serial
+import psycopg2
+
+# Make either a real or simulated serial style connection
+def mkSerial(args, params, logger):
+  with psycopg2.connect(dbname=args.db) as db, \
+	db.cursor() as cur:
+    cur.execute("INSERT INTO simulate(qSimulate) VALUES(%s);", [args.simul])
+    db.commit()
+
+  if not args.simul:
+    return serial.Serial(port=params['port'], baudrate=params['baudrate'])
+  s0 = Simulate(logger)
+  s0.start()
+  return s0
 
 class Simulate(threading.Thread):
 	def __init__(self, logger):

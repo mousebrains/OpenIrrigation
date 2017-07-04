@@ -6,6 +6,7 @@ import time
 import math
 import datetime
 import random
+import psycopg2
 
 class Reader(threading.Thread):
   def __init__(self, s0, logger):
@@ -79,14 +80,15 @@ class Dispatcher(threading.Thread): # Dispatch sentences, if a timeout/NAK is re
             a = qIn.get()
             for cnt in range(a.nRetries + 1):
               qWriter.put(a.msg)
-              b = qReader.get(timeout=a.timeout)
-              if b == b'\x06': break # ACK
-              if b is None:
-                  logger.warn('Timeout for "%s"', a.msg)
-              elif b == b'\x15': # NAK
+              try:
+                b = qReader.get(timeout=a.timeout)
+                if b == b'\x06': break # ACK
+                if b == b'\x15': # NAK
                   logger.warn('NAK for "%s"', a.msg)
-              else:
+                else:
                   logger.warn("Unrecognized reply for '%s', %s", a.msg, b)
+              except queue.Empty: # Timed out in read from qReader
+                logger.warn('Timeout for "%s"', a.msg)
             qIn.task_done() # I'm done with with sentence
 
 class Builder(threading.Thread): # construct sentences and send ACK/NAK
@@ -145,12 +147,13 @@ class Builder(threading.Thread): # construct sentences and send ACK/NAK
       qReader.task_done()
 
 class Consumer(threading.Thread):
-  def __init__(self, args, db, logger, qBuilder):
+  def __init__(self, args, dbName, logger, qBuilder):
     threading.Thread.__init__(self, daemon=True)
     self.name = 'Consumer'
     self.site = args.site
     self.controller = args.controller
-    self.db = db
+    self.dbName = dbName
+    self.db = None
     self.logger = logger
     self.qBuilder = qBuilder
     self.previous = {}
@@ -179,19 +182,36 @@ class Consumer(threading.Thread):
         try:
           cmds[msg[1]](msg)
         except Exception as e:
-          logger.error('Error processing %s, %s', msg, e)
+          logger.exception('Exception processing %s', msg)
       else:
         logger.error('Unrecognized message "%s"', msg)
       q.task_done()
+
+  def mkDB(self):
+    if self.db is not None: return self.db
+    try:
+      self.db = psycopg2.connect(dbname=self.dbName)
+      self.logger.info('Opened database connection %s', self.dbName)
+      return self.db
+    except Exception as e:
+      if self.db:
+        self.db.close()
+      self.db = None
+      raise(e)
 
   def toDB(self, sql, args):
     try:
       args.append(self.site)
       args.append(self.controller)
+      db = self.mkDB()
       with self.db.cursor() as cur:
         cur.execute(sql, args)
+      db.commit()
     except Exception as e:
-      self.logger.exception(e)
+      if self.db:
+        self.db.close()
+        self.db = None 
+      raise(e)
 
   def notPrevious(self, msg, cmd=None):
     if cmd is None:
@@ -257,7 +277,8 @@ class Consumer(threading.Thread):
     self.logger.info('Off %s %s %s', msg, addr, code)
     sql = 'SELECT offLogInsert(%s,%s,%s,%s);'
     if addr == 255: # Turn everybody off that is on
-      with self.db.cursor() as cur:
+      db = self.mkDB()
+      with db.cursor() as cur:
         self.logger.info('Everything off')
         cur.execute("SELECT sensor.addr FROM sensor"
 		+ " INNER JOIN action"
@@ -267,7 +288,6 @@ class Consumer(threading.Thread):
 		+ " AND action.onLog IS NOT NULL"
 		+ " AND action.offLog IS NULL;")
         for row in cur:
-          self.logger.info('off row %s', row)
           self.logger.info('Off addr=%s code=%s All', row[0], code)
           self.toDB(sql, [row[0], code])
     else:
@@ -357,37 +377,52 @@ class Pee(Args):
                   params['peePeriod'], params['peeChannels'])
 
 class Command(threading.Thread):
-  def __init__(self, db, logger, qWriter):
+  def __init__(self, dbName, logger, qWriter):
     threading.Thread.__init__(self, daemon=True)
-    self.db = db
+    self.dbName = dbName
     self.logger = logger
     self.qWriter = qWriter
     self.name = 'Cmd'
+    self.db = None
+    self.nOn = 0
+
+  def mkDB(self):
+    if self.db is not None: return self.db
+    try:
+      self.db = psycopg2.connect(dbname=self.dbName)
+      self.logger.info('Opened database connection %s', self.dbName)
+      with self.db.cursor() as cur:
+        cur.execute("PREPARE cmdGet AS"
+                  + " SELECT command.id,command.cmd,sensor.addr FROM command"
+                  + " INNER JOIN sensor ON sensor.id=command.sensor"
+                  + " WHERE timestamp<$1 ORDER BY timestamp,cmd;")
+        cur.execute("PREPARE cmdDel AS DELETE FROM command WHERE id=$1;")
+        cur.execute("SELECT count(*) FROM active;")
+        self.nOn = 0
+        for row in cur:
+          self.nOn = row[0]
+          break
+      return self.db
+    except Exception as e:
+      if self.db:
+        self.db.close()
+      self.db = None
+      raise(e)
+
+    
 
   def run(self): # Called on thread start
-    db = self.db
     logger = self.logger
     q = self.qWriter
-    with db.cursor() as cur:
-      cur.execute("PREPARE cmdGet AS"
-    + " SELECT command.id,command.cmd,sensor.addr FROM command"
-    + " INNER JOIN sensor ON sensor.id=command.sensor"
-    + " WHERE timestamp<$1 ORDER BY timestamp,cmd;")
-      cur.execute("PREPARE cmdDel AS DELETE FROM command WHERE id=$1;")
-      cur.execute("SELECT count(*) FROM active;")
-      nOn = 0
-      for row in cur:
-        nOn = row[0]
-        break
-
-    logger.info('Starting nOn=%s', nOn);
+    logger.info('Starting nOn=%s', self.nOn);
     while True:
       stime = datetime.datetime.now()
       stime += datetime.timedelta(microseconds=(
               -stime.microsecond if stime.microsecond < 500000 else (1000000 - stime.microsecond)))
-      with db.cursor() as curGet, \
-           db.cursor() as curDel:
-        try:
+      try:
+        db = self.mkDB()
+        with db.cursor() as curGet, \
+             db.cursor() as curDel:
           curGet.execute("EXECUTE cmdGet(%s);", [stime])
           for row in curGet:
             id = row[0]
@@ -395,11 +430,11 @@ class Command(threading.Thread):
             curDel.execute("EXECUTE cmdDel(%s);", [id]) # Delete command after it has been processed
             if cmd == 0: # On command
               q.put(DispatchItem('0A{:02X}00'.format(row[2]), 5, 1))
-              nOn += 1
+              self.nOn += 1
             elif cmd == 1: # Off command
-              nOn -= 1
-              if nOn <= 0:
-                nOn = 0
+              self.nOn -= 1
+              if self.nOn <= 0:
+                self.nOn = 0
                 addr = 255
               else:
                 addr = row[2]
@@ -408,8 +443,8 @@ class Command(threading.Thread):
               q.put(DispatchItem('0T{:02X}00'.format(row[2])))
             else:
               logger.error('Unrecognized command, %s', row)
-        except Exception as e:
-          logger.exception('Exception %s', e)
+      except Exception as e:
+        logger.exception('Exception')
 
       dt = max(stime + datetime.timedelta(seconds=1) - datetime.datetime.now(), \
                datetime.timedelta(seconds=1))
