@@ -864,53 +864,10 @@ CREATE OR REPLACE FUNCTION teeInsert(address INTEGER, code INTEGER,
 -- i.e. an on command followed by an off command
 --
 -- The external controller interface will remove command records as they happen
--- and generate onLog/offLog/teeLog records as appropriate.
+-- and generate onLogInsert and offLogInsert function calls as
+-- on/off records are received. They will modify action/historical
 --
--- A trigger on onLog/OffLog will update the references in action
---
--- Time updates in action will be updated in the appropriate command row
---  
--- On message results
-DROP TABLE IF EXISTS onLog CASCADE;
-CREATE TABLE onLog( -- 1A log entry from TDI controller, station turned on
-	id SERIAL PRIMARY KEY, -- unique record ID
-        sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- sensor
-	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
-	code INTEGER NOT NULL, -- return code
-	pre INTEGER, -- pre on current in mAmps
-	peak INTEGER, -- peak on current in mAmps
-	post INTEGER -- post on current in mAmps
-	);
-DROP INDEX IF EXISTS onLogTS;
-CREATE INDEX onLogTS ON onLog(timestamp);
-
--- Insert a record looking up sensor id
-CREATE OR REPLACE FUNCTION onLogInsert(addr INTEGER, code INTEGER, 
-				       pre INTEGER, peak INTEGER, post INTEGER, 
-				       site TEXT, controller TEXT)
-	RETURNS VOID AS $$
-  INSERT INTO onLog(code,pre,peak,post,sensor) VALUES
-	(code,pre,peak,post,sensorID(addr,site,controller));
-  $$ LANGUAGE SQL;
-
--- Off message results
-DROP TABLE IF EXISTS offLog CASCADE;
-CREATE TABLE offLog( -- 1D log entry from TDI controller, station turned off
-	id SERIAL PRIMARY KEY, -- unique record ID
-        sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- sensor
-	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
-	code INTEGER NOT NULL -- return code
-	);
-
-CREATE OR REPLACE FUNCTION offLogInsert(addr INTEGER, code INTEGER,
-                                        site TEXT, controller TEXT)
-	RETURNS VOID AS $$
-  INSERT INTO offLog(code,sensor) VALUES
-	(code,sensorID(addr,site,controller));
-  $$ LANGUAGE SQL;
-
-
--- Command queue
+-- Command queue (Generated/removed by insert/delete to/from action)
 DROP TABLE IF EXISTS command CASCADE;
 CREATE TABLE command( -- command to be executed by TDI controller
 	id SERIAL PRIMARY KEY, -- id
@@ -930,32 +887,42 @@ CREATE TABLE action( -- station on/off actions
 	cmd INTEGER CONSTRAINT actChk CHECK (cmd IN (0,2)) NOT NULL, -- on/off=0, T=2
 	tOn TIMESTAMP NOT NULL, -- when on action should occur
 	tOff TIMESTAMP NOT NULL, -- when off action should occur
-        cmdOn INTEGER REFERENCES command(id) ON DELETE SET NULL, -- on command entry
-	cmdOff INTEGER REFERENCES command(id) ON DELETE SET NULL, -- off command entry
-        onLog INTEGER REFERENCES onLog(id) ON DELETE SET NULL, -- on log entry
-        offLog INTEGER REFERENCES offLog(id) ON DELETE SET NULL, -- off log entry
 	program INTEGER REFERENCES program(id) ON DELETE CASCADE NOT NULL, -- generating program 
 	pgmStn INTEGER REFERENCES pgmStn(id) ON DELETE SET NULL, -- generating program/station
 	pgmDate DATE NOT NULL, -- program date this command is for
+        cmdOn INTEGER REFERENCES command(id) ON DELETE SET NULL, -- on command entry
+	cmdOff INTEGER REFERENCES command(id) ON DELETE SET NULL, -- off command entry
+	onCode INTEGER, -- return code from on command
+        pre  INTEGER, -- pre on current in mAmps
+        peak INTEGER, -- peak on current in mAmps
+        post INTEGER, -- post on current in mAmps
         CHECK (tOn < tOff) -- causality
 	);
 DROP INDEX IF EXISTS actionTS;
 CREATE INDEX actionTS ON action(tOn, tOff);
 DROP INDEX IF EXISTS actionOn;
-CREATE INDEX actionOn ON action(cmd,sensor,cmdOn,onLog);
-DROP INDEX IF EXISTS actionOff;
-CREATE INDEX actionOff ON action(cmd,sensor,cmdOff,offLog);
+CREATE INDEX actionOn ON action(cmd,sensor,cmdOn,cmdOff,onCode);
 
--- Daily summary derived from Actions after things are done
-DROP TABLE IF EXISTS daily;
-CREATE TABLE daily( -- daily cumulative on time
-	sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- sensor id
+-- After an action is completed, it is copied to historical by offLogInsert
+DROP TABLE IF EXISTS historical CASCADE;
+CREATE TABLE historical( -- sensor on/off actions in the past
+	sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- sensor
+	tOn TIMESTAMP NOT NULL, -- when it came on
+	tOff TIMESTAMP NOT NULL, -- when it went off
+	program INTEGER REFERENCES program(id) ON DELETE SET NULL, -- generating program
 	pgmDate DATE NOT NULL, -- program date
-	runTime INTERVAL NOT NULL, -- total run time on pgmDate
-        PRIMARY KEY(pgmDate,sensor)
+	pre INTEGER NOT NULL, -- pre on current in mAmps
+	peak INTEGER NOT NULL, -- peak on current in mAmps
+	post INTEGER NOT NULL, -- post on current in mAmps
+	onCode INTEGER NOT NULL, -- returned code in on command
+	offCode INTEGER NOT NULL, -- returned code in off command
+	PRIMARY KEY (sensor,tOn), -- for each sensor there can only be one on time
+	CHECK (tOn < tOff) -- casality
 	);
-DROP INDEX IF EXISTS dailyTS;
-CREATE INDEX dailyTS ON daily(pgmDate, sensor);
+DROP INDEX IF EXISTS historicalTS;
+CREATE INDEX historicalTS ON historical(tOn,sensor);
+DROP INDEX IF EXISTS historicalDate;
+CREATE INDEX historicalDate ON historical(pgmDate,sensor);
 
 -- When an on/off row is inserted into action
 CREATE OR REPLACE FUNCTION actionOnOffInsert() RETURNS TRIGGER AS $$
@@ -972,7 +939,7 @@ CREATE OR REPLACE FUNCTION actionOnOffInsert() RETURNS TRIGGER AS $$
 	$$
 	LANGUAGE plpgSQL;
 
-DROP TRIGGER IF EXISTS actionnOffInsert ON action CASCADE;
+DROP TRIGGER IF EXISTS actionOffInsert ON action CASCADE;
 CREATE TRIGGER actionOnOffInsert 
 	AFTER INSERT ON action -- For every insert where cmd=0
 	FOR EACH ROW WHEN (NEW.cmd=0)
@@ -989,8 +956,6 @@ CREATE OR REPLACE FUNCTION actionTeeInsert() RETURNS TRIGGER AS $$
 	END;
 	$$
 	LANGUAGE plpgSQL;
-
--- (SELECT id FROM command WHERE action=NEW.id AND cmd=NEW.cmd),
 
 DROP TRIGGER IF EXISTS actionTeeInsert ON action CASCADE;
 CREATE TRIGGER actionTeeInsert 
@@ -1062,7 +1027,10 @@ CREATE TRIGGER actionOffUpdate
 CREATE OR REPLACE FUNCTION onLogInsert() RETURNS TRIGGER AS $$
 	BEGIN
         UPDATE action SET onLog=NEW.id,tOn=NEW.timestamp
-		WHERE cmd=0 AND sensor=NEW.sensor AND cmdOn IS NULL AND onLog IS NULL;
+		WHERE cmd=0 
+		AND sensor=NEW.sensor 
+		AND cmdOn IS NULL 
+		AND onLog IS NULL;
 	DELETE FROM pgmStn 
 		WHERE qSingle=True AND id IN (SELECT pgmStn FROM action WHERE onLog=NEW.id);
 	RETURN NEW;
@@ -1070,40 +1038,41 @@ CREATE OR REPLACE FUNCTION onLogInsert() RETURNS TRIGGER AS $$
 	$$
 	LANGUAGE plpgSQL;
 
-DROP TRIGGER IF EXISTS onLogInsert ON action CASCADE;
-CREATE TRIGGER onLogInsert 
-	AFTER INSERT ON onLog -- For every insert into onLog
-	FOR EACH ROW
-	EXECUTE PROCEDURE onLogInsert();
-
 -- Insert a record looking up sensor id
-CREATE OR REPLACE FUNCTION offLogInsert() RETURNS TRIGGER AS $$
-        DECLARE pDate DATE;
-        DECLARE timeOn TIMESTAMP;
+CREATE OR REPLACE FUNCTION onLogInsert(addr INTEGER, code INTEGER, 
+				       preVal INTEGER, peakVal INTEGER, postVal INTEGER, 
+				       site TEXT, controller TEXT)
+	RETURNS VOID AS $$
+        DECLARE sensID INTEGER;
+        DECLARE r action%rowtype;
+	BEGIN
+	sensID := sensorID(addr,site,controller);
+	FOR r IN SELECT * FROM action WHERE cmd=0 AND sensor=sensID 
+                                      AND cmdOn is NULL AND cmdOff IS NOT NULL
+	LOOP
+	  UPDATE action SET (pre,peak,post,onCode)=(preVal,peakVal,postVal,code) WHERE id=r.id;
+	END LOOP;
+	END;
+  $$ LANGUAGE plpgSQL;
+
+CREATE OR REPLACE FUNCTION offLogInsert(addr INTEGER, offCode INTEGER,
+                                        site TEXT, controller TEXT)
+	RETURNS VOID AS $$
+        DECLARE sensID INTEGER;
+        DECLARE r action%rowtype;
         BEGIN
-        UPDATE action SET offLog=NEW.id,tOff=NEW.timestamp
-                WHERE cmd=0
-                AND sensor=NEW.sensor
-                AND cmdOn is NULL
-                AND onLog is NOT NULL
-                AND cmdOff is NULL
-                AND offLog is NULL
-                RETURNING pgmDate,tOn INTO pDate,timeOn;
-        INSERT INTO daily VALUES 
-                (NEW.sensor,pDate,greatest(NEW.timestamp-timeOn, INTERVAL '0 SECONDS'))
-                ON CONFLICT (sensor,pgmDate) DO UPDATE SET runtime=daily.runTime+EXCLUDED.runTime;
-        RETURN NEW;
+        sensID := sensorID(addr,site,controller);
+        FOR r IN SELECT * FROM action WHERE sensor=sensID AND cmdOn IS NULL 
+			              AND cmdOff IS NULL AND onCode IS NULL
+	LOOP
+		INSERT INTO historical VALUES
+			(r.sensor,r.tOn,r.tOff,r.program,r.pgmDate,
+			 r.pre,r.peak,r.post,r.onCode,offCode);
+                DELETE FROM action WHERE id=r.id;
+	END LOOP;
         END;
   $$ LANGUAGE plpgSQL;
 
-DROP TRIGGER IF EXISTS offLogInsert ON action CASCADE;
-CREATE TRIGGER offLogInsert 
-	AFTER INSERT ON offLog -- For every insert into offLog
-	FOR EACH ROW
-	EXECUTE PROCEDURE offLogInsert();
-
-CREATE OR REPLACE VIEW historical AS
-	SELECT * FROM action WHERE cmd=0 AND cmdOn IS NULL AND cmdOff IS NULL;
 CREATE OR REPLACE VIEW pending AS
 	SELECT * FROM action WHERE cmd=0 AND cmdOn IS NOT NULL AND cmdOff IS NOT NULL;
 CREATE OR REPLACE VIEW active AS

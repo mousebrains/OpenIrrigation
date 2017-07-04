@@ -16,7 +16,7 @@ SQL+= db.ET.sql
 # SQL+= db.crop.sql
 SQL+= db.site.sql
 
-.PHONY: all extract install clean mkdb dropdb createdb dumpdb freshdb
+.PHONY: all extract install clean mkdb dropdb createdb dumpdb freshdb mkSite
 
 all:
 
@@ -38,5 +38,5 @@ createdb:
 dumpdb:
 	pg_dump $(DBNAME) | gzip -v9 >$(DBNAME).dump.gz
 
-db.site.sql: extract.site.py
-	./$^ --db $(DBNAME) >$@
+mkSite:
+	./extract.site.py --db $(DBNAME) >db.site.sql
