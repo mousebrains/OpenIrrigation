@@ -62,7 +62,7 @@ thr.append(TDI.Current(params, logger, thrDispatcher.q))
 thr.append(TDI.Sensor(params, logger, thrDispatcher.q))
 thr.append(TDI.Two(params, logger, thrDispatcher.q))
 thr.append(TDI.Pee(params, logger, thrDispatcher.q))
-thr.append(TDI.Command(args.db, logger, thrDispatcher.q))
+thr.append(TDI.Command(params, args, logger, thrDispatcher.q))
 
 thrReader.start()
 thrWriter.start()

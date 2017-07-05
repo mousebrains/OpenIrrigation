@@ -191,6 +191,7 @@ class Consumer(threading.Thread):
     if self.db is not None: return self.db
     try:
       self.db = psycopg2.connect(dbname=self.dbName)
+      self.db.set_session(autocommit=True)
       self.logger.info('Opened database connection %s', self.dbName)
       return self.db
     except Exception as e:
@@ -206,7 +207,6 @@ class Consumer(threading.Thread):
       db = self.mkDB()
       with self.db.cursor() as cur:
         cur.execute(sql, args)
-      db.commit()
     except Exception as e:
       if self.db:
         self.db.close()
@@ -274,7 +274,6 @@ class Consumer(threading.Thread):
   def Off(self, msg):
     addr = int(msg[2:4],16)
     code = int(msg[4:],16)
-    self.logger.info('Off %s %s %s', msg, addr, code)
     sql = 'SELECT offLogInsert(%s,%s,%s,%s);'
     if addr == 255: # Turn everybody off that is on
       db = self.mkDB()
@@ -377,9 +376,12 @@ class Pee(Args):
                   params['peePeriod'], params['peeChannels'])
 
 class Command(threading.Thread):
-  def __init__(self, dbName, logger, qWriter):
+  def __init__(self, params, args, logger, qWriter):
     threading.Thread.__init__(self, daemon=True)
-    self.dbName = dbName
+    self.maxStations = params['maxStations'] # Max stations on at a time
+    self.dbName = args.db
+    self.site = args.site
+    self.controller = args.controller
     self.logger = logger
     self.qWriter = qWriter
     self.name = 'Cmd'
@@ -390,7 +392,7 @@ class Command(threading.Thread):
     if self.db is not None: return self.db
     try:
       self.db = psycopg2.connect(dbname=self.dbName)
-      self.logger.info('Opened database connection %s', self.dbName)
+      self.db.set_session(autocommit=True)
       with self.db.cursor() as cur:
         cur.execute("PREPARE cmdGet AS"
                   + " SELECT command.id,command.cmd,sensor.addr FROM command"
@@ -402,6 +404,7 @@ class Command(threading.Thread):
         for row in cur:
           self.nOn = row[0]
           break
+      self.logger.info('Opened database connection %s nOn=%s', self.dbName, self.nOn)
       return self.db
     except Exception as e:
       if self.db:
@@ -409,12 +412,42 @@ class Command(threading.Thread):
       self.db = None
       raise(e)
 
+  def turnOn(self, row, curDel, db):
+    id = row[0]
+    addr = row[2]
+    if self.nOn >= self.maxStations: # can't turn on, so drop it
+      self.logger.error("Unable to turn on addr(%s), due to max station limit(%s)",
+                        addr, self.maxStations)
+      with db.cursor() as cur:
+        cur.execute("UPDATE action SET tOff=CURRENT_TIMESTAMP WHERE cmdOn=%s;", (id,))
+        curDel.execute("EXECUTE cmdDel(%s);", [id]) # Delete command after update tOff but before onLog
+        cur.execute('SELECT onLogInsert(%s,%s,%s,%s,%s,%s,%s);', 
+			[addr, 10, None, None, None, self.site, self.controller])
+    else:
+      curDel.execute("EXECUTE cmdDel(%s);", [id]) # Delete command before sending out
+      self.qWriter.put(DispatchItem('0A{:02X}00'.format(addr), 5, 1))
+      self.nOn += 1
+
+  def turnOff(self, row, curDel):
+    id = row[0]
+    addr = row[2]
+    self.nOn -= 1
+    if self.nOn <= 0:
+      self.nOn = 0
+      addr = 255
+    curDel.execute("EXECUTE cmdDel(%s);", [id]) # Delete command before sending out
+    self.qWriter.put(DispatchItem('0D{:02X}'.format(addr), 5, 1))
+
+  def turnTee(self, row, curDel):
+    id = row[0]
+    addr = row[2]
+    curDel.execute("EXECUTE cmdDel(%s);", [id]) # Delete command
+    self.qWriter.put(DispatchItem('0T{:02X}00'.format(addr)))
     
 
   def run(self): # Called on thread start
     logger = self.logger
-    q = self.qWriter
-    logger.info('Starting nOn=%s', self.nOn);
+    logger.info('Starting maxStations=%s', self.maxStations);
     while True:
       stime = datetime.datetime.now()
       stime += datetime.timedelta(microseconds=(
@@ -425,24 +458,16 @@ class Command(threading.Thread):
              db.cursor() as curDel:
           curGet.execute("EXECUTE cmdGet(%s);", [stime])
           for row in curGet:
-            id = row[0]
             cmd = row[1]
-            curDel.execute("EXECUTE cmdDel(%s);", [id]) # Delete command after it has been processed
             if cmd == 0: # On command
-              q.put(DispatchItem('0A{:02X}00'.format(row[2]), 5, 1))
-              self.nOn += 1
+              self.turnOn(row, curDel, db)
             elif cmd == 1: # Off command
-              self.nOn -= 1
-              if self.nOn <= 0:
-                self.nOn = 0
-                addr = 255
-              else:
-                addr = row[2]
-              q.put(DispatchItem('0D{:02X}'.format(addr), 5, 1))
+              self.turnOff(row, curDel)
             elif cmd == 2: # Tee command
-              q.put(DispatchItem('0T{:02X}00'.format(row[2])))
+              self.turnTee(row, curDel)
             else:
               logger.error('Unrecognized command, %s', row)
+              curDel.execute("EXECUTE cmdDel(%s);", [row[0]]) # Delete command
       except Exception as e:
         logger.exception('Exception')
 
