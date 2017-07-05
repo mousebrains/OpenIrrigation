@@ -284,8 +284,7 @@ class Consumer(threading.Thread):
 		+ " ON sensor.id=action.sensor"
 		+ " AND action.cmdOn IS NULL"
 		+ " AND action.cmdOff IS NULL"
-		+ " AND action.onLog IS NOT NULL"
-		+ " AND action.offLog IS NULL;")
+		+ " AND action.onCode IS NOT NULL;")
         for row in cur:
           self.logger.info('Off addr=%s code=%s All', row[0], code)
           self.toDB(sql, [row[0], code])
