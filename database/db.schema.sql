@@ -911,9 +911,9 @@ CREATE TABLE historical( -- sensor on/off actions in the past
 	tOff TIMESTAMP NOT NULL, -- when it went off
 	program INTEGER REFERENCES program(id) ON DELETE SET NULL, -- generating program
 	pgmDate DATE NOT NULL, -- program date
-	pre INTEGER NOT NULL, -- pre on current in mAmps
-	peak INTEGER NOT NULL, -- peak on current in mAmps
-	post INTEGER NOT NULL, -- post on current in mAmps
+	pre INTEGER, -- pre on current in mAmps
+	peak INTEGER, -- peak on current in mAmps
+	post INTEGER, -- post on current in mAmps
 	onCode INTEGER NOT NULL, -- returned code in on command
 	offCode INTEGER NOT NULL, -- returned code in off command
 	PRIMARY KEY (sensor,tOn), -- for each sensor there can only be one on time
@@ -1023,21 +1023,6 @@ CREATE TRIGGER actionOffUpdate
 	FOR EACH ROW WHEN (NEW.cmdOff IS NOT NULL)
 	EXECUTE PROCEDURE actionOffUpdate();
 
--- When a record is inserted into onLog
-CREATE OR REPLACE FUNCTION onLogInsert() RETURNS TRIGGER AS $$
-	BEGIN
-        UPDATE action SET onLog=NEW.id,tOn=NEW.timestamp
-		WHERE cmd=0 
-		AND sensor=NEW.sensor 
-		AND cmdOn IS NULL 
-		AND onLog IS NULL;
-	DELETE FROM pgmStn 
-		WHERE qSingle=True AND id IN (SELECT pgmStn FROM action WHERE onLog=NEW.id);
-	RETURN NEW;
-	END;
-	$$
-	LANGUAGE plpgSQL;
-
 -- Insert a record looking up sensor id
 CREATE OR REPLACE FUNCTION onLogInsert(addr INTEGER, code INTEGER, 
 				       preVal INTEGER, peakVal INTEGER, postVal INTEGER, 
@@ -1050,7 +1035,14 @@ CREATE OR REPLACE FUNCTION onLogInsert(addr INTEGER, code INTEGER,
 	FOR r IN SELECT * FROM action WHERE cmd=0 AND sensor=sensID 
                                       AND cmdOn is NULL AND cmdOff IS NOT NULL
 	LOOP
-	  UPDATE action SET (pre,peak,post,onCode)=(preVal,peakVal,postVal,code) WHERE id=r.id;
+	  UPDATE action SET 
+		tOn=CURRENT_TIMESTAMP,
+                tOff=greatest(tOff,CURRENT_TIMESTAMP + INTERVAL '0.5 seconds'),
+                onCode=code,
+                pre=preVal,
+                peak=peakVal,
+                post=postVal
+		WHERE id=r.id;
 	END LOOP;
 	END;
   $$ LANGUAGE plpgSQL;
@@ -1063,10 +1055,10 @@ CREATE OR REPLACE FUNCTION offLogInsert(addr INTEGER, offCode INTEGER,
         BEGIN
         sensID := sensorID(addr,site,controller);
         FOR r IN SELECT * FROM action WHERE sensor=sensID AND cmdOn IS NULL 
-			              AND cmdOff IS NULL AND onCode IS NULL
+			              AND cmdOff IS NULL AND onCode IS NOT NULL
 	LOOP
 		INSERT INTO historical VALUES
-			(r.sensor,r.tOn,r.tOff,r.program,r.pgmDate,
+			(r.sensor,r.tOn,CURRENT_TIMESTAMP,r.program,r.pgmDate,
 			 r.pre,r.peak,r.post,r.onCode,offCode);
                 DELETE FROM action WHERE id=r.id;
 	END LOOP;
@@ -1074,6 +1066,12 @@ CREATE OR REPLACE FUNCTION offLogInsert(addr INTEGER, offCode INTEGER,
   $$ LANGUAGE plpgSQL;
 
 CREATE OR REPLACE VIEW pending AS
-	SELECT * FROM action WHERE cmd=0 AND cmdOn IS NOT NULL AND cmdOff IS NOT NULL;
+	SELECT * FROM action WHERE cmd=0 AND cmdOn IS NOT NULL;
+
 CREATE OR REPLACE VIEW active AS
-	SELECT * FROM action WHERE cmd=0 AND cmdOn IS NULL AND cmdOff IS NOT NULL;
+	SELECT * FROM action WHERE cmd=0 AND cmdOn IS NULL;
+
+CREATE OR REPLACE VIEW everything AS
+	SELECT sensor,ton,toff,program,pgmdate FROM action WHERE cmd=0
+	UNION
+	SELECT sensor,ton,toff,program,pgmdate FROM historical;
