@@ -13,6 +13,7 @@ INSERT INTO params (grp,name,val) VALUES
 	('TDI', 'twoChannels', '0,1'), -- values to probe
 	('TDI', 'peePeriod', 10), -- Seconds between pee requests
 	('TDI', 'peeChannels', '0,1'), -- values to probe
+	('TDI', 'maxStations', 10), -- maximum allowed stations to be on at same time
 -- Agrimet parameters
 	('AGRIMET', 'station', 'CRVO'),
 	('AGRIMET', 'URL', 
