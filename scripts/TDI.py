@@ -278,7 +278,6 @@ class Consumer(threading.Thread):
     if addr == 255: # Turn everybody off that is on
       db = self.mkDB()
       with db.cursor() as cur:
-        self.logger.info('Everything off')
         cur.execute("SELECT sensor.addr FROM sensor"
 		+ " INNER JOIN action"
 		+ " ON sensor.id=action.sensor"
