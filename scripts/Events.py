@@ -104,10 +104,10 @@ class Events(list):
         return msg
 
     def loadQueued(self, cur, date, programs):
-      cur.execute("SELECT * FROM action WHERE tOff>%s", (date - datetime.timedelta(days=1),))
+      stime = date - datetime.timedelta(days=1)
+      cur.execute("SELECT * FROM everything WHERE tOff>%s;", (stime,))
       sensors = {} # sensor to station map
       for row in cur:
-        id = row['id']
         sensor = row['sensor']
         pgm = row['program']
         tOn  = row['ton']
