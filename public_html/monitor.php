@@ -54,7 +54,9 @@ echo "</pre>";
 function loadAction($db, string $sql) {
   $results = $db->execute($sql);
   $a = [];
-  while ($row = $results->fetchArray()) { $a[$row['sensor']] = $row; }
+  while ($row = $results->fetchArray()) {
+    array_push($a, $row);
+  }
   return $a;
 }
 
@@ -63,9 +65,8 @@ function loadActive($db) {
 	. ",date_trunc('seconds',(CAST(tOn AS TIME))) AS t"
 	. ",date_trunc('seconds',CURRENT_TIMESTAMP-tOn) AS dtDone"
 	. ",date_trunc('seconds',tOff-CURRENT_TIMESTAMP) AS dtLeft"
-	. ",active.sensor,program,code,pre,peak,post"
+	. ",active.sensor,program,onCode,pre,peak,post"
 	. " FROM active"
-	. " INNER JOIN onLOG ON onLog=onLog.id" 
 	. " ORDER BY tOn,sensor;";
   return loadAction($db, $sql);
 }
@@ -95,11 +96,9 @@ function mkPast($db, array $pgm, array $sens2name) {
 			. " date_trunc('seconds',tOn) AS tOn"
 			. ",date_trunc('seconds',tOff-tOn) AS dt"
 			. ",historical.sensor,program"
-			. ",onLog.code AS codeOn,pre,peak,post"
-			. ",offLog.code AS codeOff"
+			. ",onCode,pre,peak,post"
+			. ",offCode"
 			. " FROM historical"
-			. " INNER JOIN onLog ON onLog=onLog.id"
-			. " INNER JOIN offLog ON offLog=offLog.id"
 			. " ORDER BY tOn DESC,sensor"
 			. " LIMIT 100;");
 	$hdr = "<tr><th>Station</th><th>Start</th><th>RunTime</th><th>Program</th><th>Pre</th><th>Peak</th>"
@@ -119,8 +118,8 @@ function mkPast($db, array $pgm, array $sens2name) {
 			. "</td>\n<td>" . $row['pre']
 			. "</td>\n<td>" . $row['peak']
 			. "</td>\n<td>" . $row['post']
-			. "</td>\n<td>" . $row['codeon']
-			. "</td>\n<td>" . $row['codeoff']
+			. "</td>\n<td>" . $row['oncode']
+			. "</td>\n<td>" . $row['offcode']
 			. "</td>\n</tr>\n";
 	}
 	if (!$qFirst) {
@@ -152,7 +151,7 @@ function mkCurrent(array $rows, array $pgm, array $sens2name) {
 			. "</td>\n<td>" . $row['pre']
 			. "</td>\n<td>" . $row['peak']
 			. "</td>\n<td>" . $row['post']
-			. "</td>\n<td>" . $row['code']
+			. "</td>\n<td>" . $row['oncode']
 			. "</td>\n</tr>\n";
 	}
 	if (!$qFirst) {
