@@ -5,6 +5,7 @@ import bisect
 import datetime
 import math
 import sys
+import copy
 
 actionId = 0
 
@@ -74,20 +75,35 @@ class Event:
         self.aI[ctl] = max(0, self.aI[ctl] + rhs.aI0)
         return self
 
-    def qOkay(self, stn, st):
+    def initialize(self, prev): # Initialize state
+        self.nOn = prev.nOn;
+        self.nCtl = copy.copy(prev.nCtl)
+        self.nPgm = copy.copy(prev.nPgm)
+        self.flowPgm = copy.copy(prev.flowPgm)
+        self.flowPOC = copy.copy(prev.flowPOC)
+        self.aI = copy.copy(prev.aI)
+
+    def qOkay(self, stn):
         if (self.nOn + 1) > self.stn.maxCoStations(): return False
         if (self.nOn + 1) > stn.maxCoStations(): return False
-        ctl = self.ctl.key()
-        if (self.nCtl[ctl] + 1) > self.ctl.maxStations(): return False
-        if (self.aI[ctl] + self.aI0) > self.ctl.maxCurrent(): return False
-        pgm = self.pgm.key()
-        if (self.nPgm[pgm] + 1) > self.pgm.maxStations(): return False
-        if (self.flowPgm[pgm] + self.flow0) > self.pgm.maxFlow(): return False
-        poc = self.poc.key()
-        if (self.flowPOC[poc] + self.flow0) > self.poc.maxFlow(): return False
-        if self.stn.station() != stn.station(): return True
-        if st is None: return True
-        return st > self.time
+
+        ctl = stn.controller()
+        key = ctl.key()
+        if (key in self.nCtl) and ((self.nCtl[key] + 1) > ctl.maxStations()): return False
+        if (key in self.aI) and ((self.aI[key] + stn.activeCurrent()) > ctl.maxCurrent()):
+            return False
+
+        pgm = stn.program()
+        key = pgm.key()
+        flow = stn.flow()
+        if (key in self.nPgm) and ((self.nPgm[key] + 1) > pgm.maxStations()): return False
+        if (key in self.flowPgm) and ((self.flowPgm[key] + flow) > pgm.maxFlow()): return False
+
+        poc = stn.poc()
+        key = poc.key()
+        if (key in self.flowPOC) and ((self.flowPOC[key] + flow) > poc.maxFlow()): return False
+
+        return self.stn.station() != stn.station() # Can't operate on myself
 
 class Events(list):
     def __init__(self, sDate, eDate, cur, logger):
@@ -139,20 +155,20 @@ class Events(list):
             q = self.goBoth(sDate, aDate, eDate, stn)
 
         if not q: # Failed to fit everything in
-            self.logger.error('{} left for {}/{} in {} to {}'.format(
-                stn.timeLeft(), stn.name(), stn.program().name(), sDate, eDate))
-            # sys.exit(1) # TPW
+            self.logger.error('%s left for %s/%s in %s to %s',
+                stn.timeLeft(), stn.name(), stn.program().name(), sDate, eDate)
         return q
 
     def goBoth(self, sDate, aDate, eDate, stn):
-        self.logger.error(
-            'Inserting bothwards into a list is not supported! {}'.format(stn.name()))
+        self.logger.error( 'Inserting bothwards into a list is not supported! %s', stn.label())
+        return False
+
+    def goBackward(self, sDate, eDate, stn):
+        self.logger.error( 'Inserting backwards into a list is not supported! %s', stn.label())
         return False
 
     def goForward(self, sDate, eDate, stn):
-        if not len(self): # Nothing in list, so insert going forwards
-            return self.appendTo(sDate, eDate, stn)
-
+        # self.logger.info('GFWD %s %s %s %s', len(self), sDate, eDate, stn.label())
         soakTime = stn.minSoakTime()
         delayOn = stn.delayOn()
         minCycleTime = stn.minCycleTime()
@@ -160,42 +176,30 @@ class Events(list):
 
         st = sDate  # We'll change in while loop
         tLeft = stn.timeLeft()
-        # self.logger.info("goFwd %s %s to %s n %s", stn.label(), sDate, eDate, len(self))
-        # self.logger.info('goFwd soak %s delay %s min %s max %s left %s', soakTime, delayOn, minCycleTime, maxCycleTime, tLeft)
-        # self.logger.info(self)
+        # self.logger.info('GFWD soak %s delay %s min %s max %s left %s', soakTime, delayOn, minCycleTime, maxCycleTime, tLeft)
+        # self.logger.info('GFWD %s', self)
         while tLeft > self.zeroTime:
-            if self[-1].time <= (st - max(soakTime, delayOn)):
-                return self.appendTo(st, eDate, stn) # Insert after existing list
-
-            # How many cycles are required to finish
-            n = math.ceil(tLeft / maxCycleTime)
-            # Even amount of time required to finish
-            dt = max(min(tLeft, minCycleTime), tLeft / n)
-            if dt.microseconds: dt += datetime.timedelta(seconds=1, microseconds=-dt.microseconds);
+            n = math.ceil(tLeft / maxCycleTime) # How many cycles are required to finish
+            dt = max(min(tLeft, minCycleTime), tLeft / n) # Even amount of time required to finish
+            if dt.microseconds < 500: 
+              dt -= datetime.timedelta(microseconds=-dt.microseconds)
+            else:
+              dt += datetime.timedelta(microseconds=1000000-dt.microseconds)
+            # self.logger.info("GFWD PRE FNI st %s n %s dt %s tLeft %s", st, n, dt, tLeft)
             [st, et] = self.findNextInterval(st, eDate, min(tLeft, minCycleTime), dt, stn)
-            # self.logger.info("goFwd st %s et %s", st, et)
-            if st is None:
-                return False
+            # self.logger.info("GFWD st %s et %s", st, et)
+            if (st is None) or (st >= et): return False
             st = self.insertEvent(sDate, st, et, stn)
             tLeft = stn.timeLeft()
-            if (st >= eDate) and (tLeft > self.zeroTime):
-                return False
+            if st >= eDate: return tLeft <= self.zeroTime
         return True
-
-    def goBackward(self, sDate, eDate, stn):
-        # Insert before existing list
-        if not len(self): # nothing in list, so insert going backwards
-            return self.appendTo(sDate, eDate, stn, False)
-        self.logger.error(
-            'Inserting backwards into a list is not supported! {}'.format(stn.name()))
-        return False
 
     def insertEvent(self, sDate, st, et, stn, qFwd = True):
         global actionId
         if et <= st:
-            self.logger.error('Time Reversal for {}, {} {}'.format(stn.label(), st, et))
-            offset = max(stn.minSoakTime(), stn.delayOn())
-            return (et + offset) if qFwd else (st - offset)
+            self.logger.error('Time Reversal for %s, %s %s', stn.label(), st, et)
+            if qFwd: return et + max(stn.minSoakTime(), stn.delayOn())
+            return st - max(stn.minSoakTime(), stn.delayOff())
 
         actionId += 1
         evOn  = Event(sDate, st, True, stn, actionId)
@@ -209,126 +213,129 @@ class Events(list):
             self.insert(0, evOn)
         else: # Insert and check
             i = bisect.bisect_right(self, evOn)
-            if i > 0: evOn += self[i-1] # Add in my predecessor, if not at front
-            self.insert(i, evOn)
+            if i > 0: evOn.initialize(self[i-1]) # Set initial conditions
+            self.insert(i, evOn) # i is now index of evOn
             j = bisect.bisect_left(self, evOff)
-            self.insert(j, evOff)
-            for k in range(i+1, j):
+            for k in range(i, j):
                 self[k] += evOn
-        offset = max(stn.minSoakTime(), stn.delayOn())
+            evOff.initialize(self[j-1]) # Get previous settings
+            evOff += evOff # Subtract myself off previous settings
+            self.insert(j, evOff) # Stick myself into list
         stn += max(datetime.timedelta(), et - st)
-        return (et + offset) if qFwd else (st - offset)
-
-    def appendTo(self, sDate, eDate, stn, qFwd = True):  # insert at end or of list
-        minCycleTime = stn.minCycleTime()
-        maxCycleTime = stn.maxCycleTime()
-        soakTime = stn.minSoakTime()
-        tLeft = stn.timeLeft()
-        n = math.ceil(tLeft / maxCycleTime)
-        dt = max(minCycleTime, tLeft / n)
-        if dt.microseconds: dt += datetime.timedelta(seconds=1, microseconds=-dt.microseconds);
-        st = sDate if qFwd else (eDate - dt)
-        while tLeft > self.zeroTime:
-            et = st + min(tLeft, dt)
-            if (st < sDate) or (et > eDate):
-                return False
-            st = self.insertEvent(sDate, st, et, stn, qFwd)
-            tLeft = stn.timeLeft()
-            if not qFwd: st -= min(tLeft, dt) # Backup an watering interval
-        return True
+        if qFwd: return et + max(stn.minSoakTime(), stn.delayOn())
+        return st - max(stn.minSoakTime(), stn.delayOff())
 
     def findNextInterval(self, st, eDate, minCycleTime, maxCycleTime, stn):
-        if not len(self):  # Totally empty list, so st must be good
-            return [st, st+maxCycleTime]
-
-        soakTime = stn.minSoakTime()  # minimum required soak time
-        delayOn = stn.delayOn()  # How long between turning on/off stations on a controller
+        # self.logger.info('FNI st %s edate %s ct %s %s %s', st, eDate, minCycleTime, maxCycleTime,stn.label())
+        # for ev in self: self.logger.info('FNI EV %s', ev)
+        if not len(self):  # Nothing yet, so anytime is good subject to eDate constraint
+            if (st + minCycleTime) >= eDate: return [None, None] # No window
+            return [st, min(eDate, st+maxCycleTime)]
 
         if self[-1].time <= st:  # After last entry
-            st = self.adjustForSoakTimeBck(None, st, stn)
-            st = self.adjustForDelayOn(None, st, stn)
-            return [st, st+maxCycleTime]  # Adjusted to work past the end
+            # self.logger.info('FNI AFTER LAST %s', st)
+            st = self.adjustForPrevious(len(self)-1, st, stn)
+            # self.logger.info('FNI AFTER ADJUSTMENT %s', st)
+            return [st, min(eDate, st+maxCycleTime)]  # Adjusted to work past the end
 
         if st < self[0].time:  # Before first entry
-            et = self.findNextEndTime(st, st + maxCycleTime, stn, 0)
-            return [st, et]
+            # self.logger.info('FNI BEFORE LAST %s', et)
+            et = self.adjustForFuture(0, self[0].time, stn)
+            # self.logger.info('FNI BEFORE ADJUSTMENT %s', et)
+            return [st, min(eDate, st+maxCycleTime, et)]
 
 	# Index of entry with time <= st
         sIndex = bisect.bisect_right(self, Event(None, st, True, stn)) - 1
         # self.logger.info('FNI %s %s %s %s %s', stn.label(), st, eDate, minCycleTime, maxCycleTime)
+        # Find first place we are okay to insert an event
+
         for index in range(sIndex, len(self)):
             ev = self[index]
             # self.logger.info('FNI index %s %s', index, ev)
             if ev.time >= eDate: # Did not find a window to put myself into
+                # self.logger.info('FNI ev.time %s >= eDate %s', ev.time, eDate)
                 return [None, None]
-            if ev.qOkay(stn, st):  # Found a place this stn will work
-                st = max(st,self.adjustForSoakTimeBck(index+1, ev.time, stn))
-                # self.logger.info('FNI st0 %s', st)
-                st = self.adjustForDelayOn(index+1, st, stn)
-                # self.logger.info('FNI st1 %s', st)
-                if ((index + 1) < len(self)) and (self[index + 1].time <= st):
-                    continue
-                et = self.findNextEndTime(st, st + maxCycleTime, stn, index)
-                # self.logger.info('FNI et %s', et)
-                if (et - st) > minCycleTime: return [st, et]
-                st = et
+            if ev.qOkay(stn):  # Found a place this stn will work
+                sst = self.adjustForPrevious(index, ev.time, stn)
+                eet = self.adjustForFuture(index+1, sst, stn)
+                # self.logger.info('FNI st0 st %s ev.time %s %s %s', st, ev.time, sst, eet)
+                if sst <= eet: # Okay to place here
+                  st = sst
+                  et = self.findNextEndTime(st, min(eDate,st+maxCycleTime), stn, index)
+                  if et is None or ((st + minCycleTime) > et): return [None, None]
+                  # self.logger.info('FNI GOTIT %s %s', st, et)
+                  return [st, et] 
 
-        if self[-1].time < eDate:
-            st = self.adjustForSoakTimeBck(None, self[-1].time, stn)
-            st = self.adjustForDelayOn(None, st, stn)
-            et = self.findNextEndTime(st, min(eDate, st + maxCycleTime), stn, len(self))
-            return [st, et] if (et - st) > minCycleTime else [None, None]
+        # Ran off end, I know I must be good at the last entry time
+        # self.logger.info('FNI FELL THROUGH') 
+        ev = self[-1]
+        if ev.time < eDate:
+            sst = self.adjustForPrevious(len(self)-1, ev.time, stn)
+            if (sst + minCycleTime) < eDate: return [sst, eDate]
 
         self.logger.error('FNST No space found')
         return [None, None]
 
-    def adjustForSoakTimeFwd(self, sIndex, et, stn):
-        soakTime = stn.minSoakTime()
-        latest = et + soakTime
-        for index in range(0 if sIndex is None else sIndex, len(self)):
-            ev = self[index]
-            if ev.time >= latest: return et
-            if ev.stn.station() == stn.station():
-                return ev.time - soakTime
-        return et
-
-    def adjustForSoakTimeBck(self, sIndex, st, stn):
-        soakTime = stn.minSoakTime()
-        earliest = st - soakTime
-        for index in range(len(self) if sIndex is None else sIndex, 0, -1):
-            ev = self[index - 1]
-            if ev.time <= earliest: return st
-            if ev.stn.station() == stn.station():
-                return ev.time + soakTime
-        return st
-
-    def adjustForDelayOn(self, sIndex, st, stn):
-        delayOn = stn.delayOn()
-        earliest = st - delayOn
-        if sIndex is None: sIndex = len(self)
-        # First look backwards for this controller
-        for index in range(sIndex, 0, -1):
-            ev = self[index - 1]
-            if ev.time <= earliest: break
-            if ev.qOn and (ev.stn.controller() == stn.controller()):
-                st = ev.time + delayOn
-                break
-        # Now look forwards
-        latest = st + delayOn
-        for index in range(sIndex, len(self)):
-            if ev.time >= latest: break
-            if ev.qOn and (ev.stn.controller() == stn.controller()):
-                st = ev.time + delayOn
-                latest = st + delayOn
-        return st
-
+    def findPrevEndTime(self, st, stn, sIndex):
+       for index in range(sIndex, -1, -1):
+         ev = self[index]
+         t = max(ev.time, st)
+         eet = self.adjustForFuture(index, t, stn)
+         sst = self.adjustForPrevious(index-1, eet, stn)
+         if eet >= sst: return eet
+         if ev.time <= st: return None
+       return None # No place works, we shouldn't get here
+        
     def findNextEndTime(self, st, eDate, stn, sIndex):
         for index in range(sIndex, len(self)):
             ev = self[index]
-            if ev.time > eDate:
-                et = self.adjustForSoakTimeFwd(index, eDate, stn)
-                return et
-            if not ev.qOkay(stn, None):
-                et = ev.time
-                return et
-        return eDate
+            if ev.time >= eDate:
+                # self.logger.info('FNET >= %s %s', ev, stn.label())
+                eet = self.adjustForFuture(index, eDate, stn)
+                sst = self.adjustForPrevious(index-1, eet, stn)
+                if sst <= eet: return eet
+                return self.findPrevEndTime(st, stn, index) 
+            if not ev.qOkay(stn):
+                # self.logger.info('FNET NOT OKAY %s %s', ev, stn.label())
+                eet = self.adjustForFuture(index, ev.time, stn)
+                sst = self.adjustForPrevious(index-1, eet, stn)
+                if sst <= eet: return eet
+                return self.findPrevEndTime(st, stn, index) 
+        
+        return self.adjustForPrevious(len(self)-1, eDate, stn)
+
+    def adjustForPrevious(self, sIndex, st, stn):
+        soakTime  = stn.minSoakTime()        # minimum required soak time
+        cDelay    = stn.controller().delay() # Delay after controller operation
+        pDelayOff = stn.poc().delayOff()     # Delay after turning off a station
+        pDelayOn  = stn.poc().delayOn()      # Delay after turning on a station
+        maxDelay  = max(soakTime, cDelay, pDelayOff, pDelayOn)
+        # self.logger.info('AFP %s %s %s %s %s %s', sIndex, st, soakTime, cDelay, pDelayOff, pDelayOn)
+        for index in range(sIndex,-1,-1): # Walk backwards
+            ev = self[index]
+            t = ev.time
+            if t <= (st - maxDelay): return st # No longer interesting
+            if (stn.station() == ev.stn.station()) and (t > (st - soakTime)): st = t + soakTime
+            if (stn.controller() == ev.stn.controller()) and (t > (st - cDelay)): st = t + cDelay
+            if stn.poc() == ev.stn.poc(): # Same point of connect
+              if ev.qOn and (t > (st - pDelayOn)): st = t + pDelayOn
+              elif not ev.qOn and (t > (st - pDelayOff)): st = t + pDelayOff
+        return st
+            
+    def adjustForFuture(self, sIndex, st, stn):
+        soakTime  = stn.minSoakTime()        # minimum required soak time
+        cDelay    = stn.controller().delay() # Delay after controller operation
+        pDelayOff = stn.poc().delayOff()     # Delay after turning off a station
+        pDelayOn  = stn.poc().delayOn()      # Delay after turning on a station
+        maxDelay  = max(soakTime, cDelay, pDelayOff, pDelayOn)
+        # self.logger.info('AFF %s %s %s %s %s %s', sIndex, st, soakTime, cDelay, pDelayOff, pDelayOn)
+        for index in range(sIndex,len(self)): # Walk Forwards
+            ev = self[index]
+            t = ev.time
+            if t >= (st + maxDelay): return st # No longer interesting
+            if (stn.station() == ev.stn.station()) and (t < (st + soakTime)): st = t - soakTime
+            if (stn.controller() == ev.stn.controller()) and (t < (st + cDelay)): st = t - cDelay
+            if stn.poc() == ev.stn.poc(): # Same point of connect
+              if ev.qOn and (t < (st + pDelayOn)): st = t - pDelayOn
+              elif not ev.qOn and (t < (st + pDelayOff)): st = t - pDelayOff
+        return st
