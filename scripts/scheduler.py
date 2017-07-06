@@ -61,6 +61,8 @@ class Scheduler(threading.Thread): # When triggered schedule things up
         nFwd = self.getNForward(cur)
         sDate = datetime.datetime.now()
         eDate = sDate + datetime.timedelta(days=self.getNForward(cur))
+        # sDate = datetime.datetime.combine(datetime.date(2017,7,14),datetime.time()) # TPW
+        # eDate = datetime.datetime.combine(datetime.date(2017,7,14),datetime.time()) # TPW
         self.logger.info('Starting Scheduler Run from %s to %s', sDate, eDate)
         dt = datetime.timedelta(days=1)
         midnight = datetime.time()

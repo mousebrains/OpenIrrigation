@@ -103,7 +103,7 @@ class Event:
         key = poc.key()
         if (key in self.flowPOC) and ((self.flowPOC[key] + flow) > poc.maxFlow()): return False
 
-        return self.stn.station() != stn.station() # Can't operate on myself
+        return True
 
 class Events(list):
     def __init__(self, sDate, eDate, cur, logger):
@@ -238,42 +238,36 @@ class Events(list):
             # self.logger.info('FNI AFTER ADJUSTMENT %s', st)
             return [st, min(eDate, st+maxCycleTime)]  # Adjusted to work past the end
 
-        if st < self[0].time:  # Before first entry
-            # self.logger.info('FNI BEFORE LAST %s', et)
-            et = self.adjustForFuture(0, self[0].time, stn)
-            # self.logger.info('FNI BEFORE ADJUSTMENT %s', et)
-            return [st, min(eDate, st+maxCycleTime, et)]
+        # Find first place we are okay to insert an event, self[sIndex].time > st
+        sIndex = bisect.bisect_right(self, Event(None, st, True, stn))
+        # self.logger.info('FNI sIndex %s %s %s %s %s %s', sIndex, stn.label(), st, eDate, minCycleTime, maxCycleTime)
 
-	# Index of entry with time <= st
-        sIndex = bisect.bisect_right(self, Event(None, st, True, stn)) - 1
-        # self.logger.info('FNI %s %s %s %s %s', stn.label(), st, eDate, minCycleTime, maxCycleTime)
-        # Find first place we are okay to insert an event
+        firstTime = st if not sIndex or self[sIndex-1].qOkay(stn) else None
 
         for index in range(sIndex, len(self)):
-            ev = self[index]
-            # self.logger.info('FNI index %s %s', index, ev)
-            if ev.time >= eDate: # Did not find a window to put myself into
-                # self.logger.info('FNI ev.time %s >= eDate %s', ev.time, eDate)
-                return [None, None]
-            if ev.qOkay(stn):  # Found a place this stn will work
-                sst = self.adjustForPrevious(index, ev.time, stn)
-                eet = self.adjustForFuture(index+1, sst, stn)
-                # self.logger.info('FNI st0 st %s ev.time %s %s %s', st, ev.time, sst, eet)
-                if sst <= eet: # Okay to place here
-                  st = sst
-                  et = self.findNextEndTime(st, min(eDate,st+maxCycleTime), stn, index)
-                  if et is None or ((st + minCycleTime) > et): return [None, None]
-                  # self.logger.info('FNI GOTIT %s %s', st, et)
-                  return [st, et] 
+          ev = self[index]
+          # self.logger.info('FNI index %s 1st %s ev %s', index, firstTime, ev)
+          if firstTime is not None:
+              sst = self.adjustForPrevious(index-1, firstTime, stn)
+              eet = self.adjustForFuture(index, sst, stn)
+              # self.logger.info('FNI sst %s eet %s', sst, eet)
+              if sst <= eet: # A slot to put something
+                  et = self.findNextEndTime(sst, min(eDate, sst+maxCycleTime), stn, index)
+                  # self.logger.info('FNI sst %s et %s et-sst %s', sst, et, et-sst)
+                  if (et is not None) and ((et - sst) > minCycleTime):
+                      # self.logger.info('FNI returing %s %s', sst, et)
+                      return [sst, et]
+              firstTime = None
+          if ev.time > eDate: return [None, None]
+          firstTime = ev.time if ev.qOkay(stn) else None
 
-        # Ran off end, I know I must be good at the last entry time
-        # self.logger.info('FNI FELL THROUGH') 
-        ev = self[-1]
-        if ev.time < eDate:
-            sst = self.adjustForPrevious(len(self)-1, ev.time, stn)
-            if (sst + minCycleTime) < eDate: return [sst, eDate]
-
-        self.logger.error('FNST No space found')
+        # self.logger.info('FNI FELL THROUGH 1st %s', firstTime) 
+        if firstTime is not None:
+          sst = self.adjustForPrevious(len(self)-1, firstTime, stn)
+          et = self.findNextEndTime(sst, min(eDate, sst+maxCycleTime), stn, index)
+          # self.logger.info('FNI sst %s et %s et-sst %s', sst, et, et-sst)
+          if (et is not None) and ((et - sst) > minCycleTime): return [sst, et]
+        # self.logger.info('FNI NO SPACE')
         return [None, None]
 
     def findPrevEndTime(self, st, stn, sIndex):
