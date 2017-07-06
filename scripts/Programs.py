@@ -148,10 +148,10 @@ class Sensor(DictTable):
   def key(self): return self['id']
   def addr(self): return self['addr']
   def controller(self): return self['controller']
-  def delayOn(self): return self.controller().delay()
-  def delayOff(self): return self.controller().delay()
   def activeCurrent(self): return self['activecurrent']
   def passiveCurrent(self): return self['passivecurrent']
+  def delayOn(self): return self.controller().delay()
+  def delayOff(self): return self.controller().delay()
 
 class Sensors(DictTables):
   def __init__(self, cur, logger, controllers, lists):
@@ -184,8 +184,8 @@ class Station(DictTable):
   def flowDelayOn(self): return self['flowdelayon']
   def flowDelayOff(self): return self['flowdelayoff']
 
-  def delayOn(self): return self.sensor().delayOn()
-  def delayOff(self): return self.sensor().delayOff()
+  def delayOn(self): return max(self.poc().delayOn(), self.sensor().delayOn())
+  def delayOff(self): return max(self.poc().delayOff(), self.sensor().delayOff())
 
   def activeCurrent(self): return self.sensor().activeCurrent()
   def passiveCurrent(self): return self.sensor().passiveCurrent()
