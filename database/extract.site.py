@@ -283,12 +283,7 @@ def getGroupStation(db, info):
 def getHistorical(db, info):
     sFields = OrderedDict([('sensor', info.sensor), ('program', info.program)])
     fields = ['ton', 'toff', 'pgmdate', 'pre', 'peak', 'post', 'oncode', 'offcode']
-    sql = "SELECT historical.sensor,ton,min(toff) as toff,min(program) as program,min(pgmdate) as pgmdate," \
-	+ "min(onLog.code) As onCode,min(pre) as pre,min(peak) as peak,min(post) as post,0 AS offCode" \
-	+ " FROM historical" \
-	+ " INNER JOIN onLog ON tOn < tOff AND onLog=onLog.id" \
-        + " GROUP BY historical.sensor,tOn" \
-	+ " ORDER BY tOn,historical.sensor;"
+    sql = "SELECT * FROM historical ORDER BY tOn,sensor;"
     getSpecial(db, fields, sFields, sql, "Historical information", "historical")
 
 def logBasic(db, info, tbl, fields=['timestamp', 'value'], sFields = None):
