@@ -4,6 +4,29 @@
 -- Nov-2016, Pat Welch, pat@mousebrains.com
 --
 
+-- Domains are data types with constraints
+
+DROP DOMAIN IF EXISTS POSINTEGER CASCADE;
+CREATE DOMAIN POSINTEGER AS INTEGER CHECK (VALUE>0);
+
+DROP DOMAIN IF EXISTS NONNEGINTEGER CASCADE;
+CREATE DOMAIN NONNEGINTEGER AS INTEGER CHECK (VALUE>=0);
+
+DROP DOMAIN IF EXISTS POSFLOAT CASCADE;
+CREATE DOMAIN POSFLOAT AS FLOAT CHECK (VALUE>0);
+
+DROP DOMAIN IF EXISTS NONNEGFLOAT CASCADE;
+CREATE DOMAIN NONNEGFLOAT AS FLOAT CHECK (VALUE>=0);
+
+DROP DOMAIN IF EXISTS PERCENT CASCADE;
+CREATE DOMAIN PERCENT AS SMALLINT CHECK (VALUE BETWEEN 0 AND 100);
+
+DROP DOMAIN IF EXISTS LATITUDE CASCADE;
+CREATE DOMAIN LATITUDE AS FLOAT CHECK (VALUE BETWEEN -90 AND 90);
+
+DROP DOMAIN IF EXISTS LONGITUDE CASCADE;
+CREATE DOMAIN LONGITUDE AS FLOAT CHECK (VALUE BETWEEN -180 AND 180);
+
 -- Table column definitions for viewing purposes
 DROP TABLE IF EXISTS tableInfo CASCADE;
 CREATE TABLE tableInfo( -- How to display tables
@@ -98,10 +121,10 @@ DROP TABLE IF EXISTS soil CASCADE;
 CREATE TABLE soil( -- Soil definitions
 	id SERIAL PRIMARY KEY, -- id
 	name TEXT UNIQUE NOT NULL, -- name of the soil, clay, ...
-	paw FLOAT NOT NULL, -- plant available water mm/m
-	infiltration FLOAT NOT NULL, -- mm/hour
-	infiltrationSlope FLOAT DEFAULT 0, -- mm/hour/% change as a function of slope
-	rootNorm FLOAT DEFAULT 1 -- multiple crop root depth by this value
+	paw POSFLOAT NOT NULL, -- plant available water mm/m
+	infiltration POSFLOAT NOT NULL, -- mm/hour
+	infiltrationSlope NONNEGFLOAT DEFAULT 0, -- mm/hour/% change as a function of slope
+	rootNorm POSFLOAT DEFAULT 1 -- multiple crop root depth by this value
 	);
 
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
@@ -118,16 +141,16 @@ CREATE TABLE crop( -- crop definitions
 	id SERIAL PRIMARY KEY, -- id
 	name TEXT UNIQUE NOT NULL, -- name of the crop
 	plantDate DATE, -- roughly when planted, mm/dd is used of the date
-	Lini INTEGER, -- days of initial stage
-	Ldev INTEGER, -- days of development stage
-	Lmid INTEGER, -- days of mid-season stage
-	Llate INTEGER, -- days of final stage
-	KcInit FLOAT DEFAULT 1, -- Kc initial
-	KcMid FLOAT DEFAULT 1, -- Kc mid
-	KcEnd FLOAT DEFAULT 1, -- Kc at end
-	height FLOAT, -- height of plant (m)
-	depth FLOAT, -- root depth (m)
-	MAD FLOAT NOT NULL, -- maximum allowed depletion without stress at 5mm/day ETc
+	Lini NONNEGINTEGER, -- days of initial stage
+	Ldev NONNEGINTEGER, -- days of development stage
+	Lmid NONNEGINTEGER, -- days of mid-season stage
+	Llate NONNEGINTEGER, -- days of final stage
+	KcInit POSFLOAT DEFAULT 1, -- Kc initial
+	KcMid POSFLOAT DEFAULT 1, -- Kc mid
+	KcEnd POSFLOAT DEFAULT 1, -- Kc at end
+	height FLOAT CHECK (height BETWEEN 0 AND 100), -- height of plant (m)
+	depth FLOAT CHECK (depth BETWEEN 0 AND 10), -- root depth (m)
+	MAD FLOAT CHECK (MAD BETWEEN 0 AND 100) NOT NULL, -- maximum allowed depletion without stress at 5mm/day ETc
 	notes TEXT -- Comment on coefficients
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
@@ -192,9 +215,9 @@ CREATE TABLE site( -- site information
 	name TEXT UNIQUE, -- descriptive name 
 	addr TEXT, -- street address 
 	timezone TEXT, -- timezone
-	latitude FLOAT, -- latitude in decimal degrees
-	longitude FLOAT, -- longitude in decimal degrees
-	elevation FLOAT -- elevation above MSL in feet
+	latitude LATITUDE, -- latitude in decimal degrees
+	longitude LONGITUDE, -- longitude in decimal degrees
+	elevation FLOAT CHECK (elevation BETWEEN -1000 AND 25000) -- elevation above MSL in feet
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
 	('site', 'name',   0,True, 'Site Name', 'text', 'Crab Shack'),
@@ -211,12 +234,12 @@ CREATE TABLE controller( -- controller information
 	id SERIAL PRIMARY KEY, -- id
 	site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
 	name TEXT, -- descriptive name
-	latitude FLOAT, -- latitude in decimal degrees
-	longitude FLOAT, -- longitude in decimal degrees
+	latitude LATITUDE, -- latitude in decimal degrees
+	longitude LONGITUDE, -- longitude in decimal degrees
 	driver TEXT, -- device driver
-	maxStations INTEGER DEFAULT 1, -- max # of stations on at a time
-	maxCurrent INTEGER DEFAULT 9990, -- max mAmps
-	delay INTEGER DEFAULT 1, -- delay between station actions seconds
+	maxStations POSINTEGER DEFAULT 1, -- max # of stations on at a time
+	maxCurrent POSINTEGER DEFAULT 9990, -- max mAmps
+	delay NONNEGINTEGER DEFAULT 1, -- delay between station actions seconds
 	make TEXT, -- manufacturer
 	model TEXT, -- model
 	installed DATE, -- date installed in UTC
@@ -246,14 +269,14 @@ CREATE TABLE sensor( -- hardware information about decoders/sensors
 	id SERIAL PRIMARY KEY, -- id
 	controller INTEGER REFERENCES controller(id) ON DELETE CASCADE, -- ctl's id
 	name TEXT, -- descriptive name
-	latitude FLOAT, -- latitude in decimal degrees
-	longitude FLOAT, -- longitude in decimal degrees
-	passiveCurrent FLOAT DEFAULT 0.5, -- current when not activated in mAmps
-	activeCurrent FLOAT DEFAULT 25, -- current when activated in mAmps
+	latitude LATITUDE, -- latitude in decimal degrees
+	longitude LONGITUDE, -- longitude in decimal degrees
+	passiveCurrent POSFLOAT DEFAULT 0.5, -- current when not activated in mAmps
+	activeCurrent POSFLOAT DEFAULT 25, -- current when activated in mAmps
 	devType INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- dev type
 	driver TEXT, -- device driver
-	addr INTEGER, -- device address in controller space
-	wirePath INTEGER, -- which wirepath this device is on
+	addr NONNEGINTEGER, -- device address in controller space
+	wirePath NONNEGINTEGER, -- which wirepath this device is on
 	make TEXT, -- manufacturer
 	model TEXT, -- model
 	installed DATE, -- date installed in UTC
@@ -289,10 +312,10 @@ CREATE TABLE poc( -- point-of-connects
 	id SERIAL PRIMARY KEY, -- id
 	site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
 	name TEXT, -- descriptive name
-	targetFlow FLOAT, -- target flow in GPM
-	maxFlow FLOAT, -- maximum allowed flow in GPM
-	delayOn INTEGER DEFAULT 0, -- delay between turning on multiple stations
-	delayOff INTEGER DEFAULT 0, -- delay between turning off multiple stations
+	targetFlow NONNEGFLOAT, -- target flow in GPM
+	maxFlow NONNEGFLOAT, -- maximum allowed flow in GPM
+	delayOn NONNEGINTEGER DEFAULT 0, -- delay between turning on multiple stations
+	delayOff NONNEGINTEGER DEFAULT 0, -- delay between turning off multiple stations
 	UNIQUE (site, name)
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
@@ -314,9 +337,9 @@ CREATE TABLE pocFlow( -- flow sensors associated with POCs
 	name TEXT, -- descriptive name
 	make TEXT, -- manufacturer
 	model TEXT, -- model
-	toHertz FLOAT DEFAULT 1, -- reading to Hertz
-	K FLOAT DEFAULT 1, -- Hertz -> GPM (reading * toHertz + offset) * K 
-	flowOffset FLOAT DEFAULT 1, -- offset of Hertz
+	toHertz POSFLOAT DEFAULT 1, -- reading to Hertz
+	K POSFLOAT DEFAULT 1, -- Hertz -> GPM (reading * toHertz + offset) * K 
+	flowOffset NONNEGFLOAT DEFAULT 1, -- offset of Hertz
 	UNIQUE (poc, name)
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
@@ -361,10 +384,10 @@ CREATE TABLE pocPump( -- booster pumps associated with POCs
 	name TEXT, -- descriptive name
 	make TEXT, -- manufacturer
 	model TEXT, -- model
-	minFlow FLOAT, -- minimum flow before turning on this pump
-	maxFlow FLOAT, -- maximum flow this pump can sustain
-	delayOn INTEGER, -- # of seconds to turn on before using
-	delayOff INTEGER, -- # of seconds to turn off before not needed
+	minFlow NONNEGFLOAT, -- minimum flow before turning on this pump
+	maxFlow NONNEGFLOAT, -- maximum flow this pump can sustain
+	delayOn NONNEGINTEGER, -- # of seconds to turn on before using
+	delayOff NONNEGINTEGER, -- # of seconds to turn off before not needed
 	priority INTEGER DEFAULT 0, -- Order to turn on, 0->first, ...
 	UNIQUE (poc, name)
 	);
@@ -393,16 +416,16 @@ CREATE TABLE station( -- irrigation station information
 	make TEXT, -- manufacturer
 	model TEXT, -- model
 	sortOrder INTEGER, -- display sorting order
-	minCycleTime FLOAT DEFAULT 0, -- minimum cycle time (min)
-	maxCycleTime FLOAT DEFAULT 1000, -- maximum cycle time (min)
-	soakTime FLOAT DEFAULT 0, -- minimum soak time (min)
-	maxCoStations INTEGER DEFAULT 200, -- max number of stations at same time
-	measuredFlow FLOAT, -- measured flow in GPM
-	userFlow FLOAT, -- user input in GPM
-	lowFlowFrac INTEGER DEFAULT 0, -- % of meas/user flow for alert
-	highFlowFrac INTEGER DEFAULT 400, -- % of meas/user flow for alert
-	flowDelayOn INTEGER DEFAULT 60, -- delay after on before flow alerts (s)
-	flowDelayOff INTEGER DEFAULT 10, -- delay after off before flow alerts (s)
+	minCycleTime NONNEGFLOAT DEFAULT 0, -- minimum cycle time (min)
+	maxCycleTime POSFLOAT DEFAULT 1000, -- maximum cycle time (min)
+	soakTime NONNEGFLOAT DEFAULT 0, -- minimum soak time (min)
+	maxCoStations POSINTEGER DEFAULT 200, -- number of stn at same time
+	measuredFlow NONNEGFLOAT, -- measured flow in GPM
+	userFlow NONNEGFLOAT, -- user input in GPM
+	lowFlowFrac PERCENT DEFAULT 0, -- % of meas/user flow for alert
+	highFlowFrac SMALLINT DEFAULT 400 CHECK (highFlowFrac BETWEEN 100 AND 1000), -- % of meas/user flow for alert
+	flowDelayOn NONNEGINTEGER DEFAULT 60, -- delay after on before flow alerts (s)
+	flowDelayOff NONNEGINTEGER DEFAULT 10, -- delay after off before flow alerts (s)
 	UNIQUE (poc, name),
 	UNIQUE (poc, station)
 	);
@@ -437,16 +460,16 @@ CREATE TABLE program( -- program information
 	priority INTEGER DEFAULT 0, -- sort order for windows within a program
 	qHide BOOLEAN DEFAULT False, -- should entry be displayed?
 	action INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- action 
-	nDays INTEGER, -- # of days between watering when n-days mode
+	nDays NONNEGINTEGER, -- # of days between watering when n-days mode
 	refDate DATE, -- reference date for action
 	startTime TIME, -- seconds into day to start
 	endTime TIME, -- seconds into day to stop, may be less than start, then wrap
 	startMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- starting
 	stopMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- stoping
-	attractorFrac INTEGER DEFAULT 0, -- % of interval to gravitate towards [0,100]
-	maxStations INTEGER DEFAULT 1, -- max # simultaneous stations
-	maxFlow FLOAT DEFAULT 100, -- max flow target flow
-	etThreshold FLOAT DEFAULT 100 -- Kicks on when ET is >= this value
+	attractorFrac PERCENT DEFAULT 0, -- % of interval to gravitate towards [0,100]
+	maxStations POSINTEGER DEFAULT 1, -- max # simultaneous stations
+	maxFlow POSFLOAT DEFAULT 100, -- max flow target flow
+	etThreshold NONNEGFLOAT DEFAULT 100 -- Kicks on when ET is >= this value
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
 	('program','site',   1, 'Point-of-connect', 'site');
@@ -489,7 +512,7 @@ CREATE TABLE pgmStn( -- station/program association
 	program INTEGER REFERENCES program(id) ON DELETE CASCADE, -- program's id
 	station INTEGER REFERENCES station(id) ON DELETE CASCADE, -- station's id
 	mode INTEGER REFERENCES webList(id) ON DELETE SET NULL,
-	runTime FLOAT DEFAULT 0, -- total runtime 
+	runTime NONNEGFLOAT DEFAULT 0, -- total runtime 
 	priority INTEGER DEFAULT 0, -- run priority
 	qSingle BOOLEAN DEFAULT False, -- Only run a single time
 	UNIQUE (program, station) -- one station/program pair
@@ -514,13 +537,13 @@ CREATE TABLE event( -- non-watering events
 	name TEXT UNIQUE, -- descriptive name
 	onOff INTEGER REFERENCES webList(id) ON DELETE SET NULL,
 	action INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- action 
-	nDays INTEGER, -- # of days between watering when n-days mode
+	nDays POSINTEGER, -- # of days between watering when n-days mode
 	refDate DATE, -- reference date for action
 	startTime TIME, -- seconds into day to start
 	endTime TIME, -- seconds into day to stop, may be less than start, then wrap
 	startMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- starting
 	stopMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- stoping
-	nRepeat INTEGER DEFAULT 0, -- How many times to repeat
+	nRepeat NONNEGINTEGER DEFAULT 0, -- How many times to repeat
 	notes TEXT -- Description
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
@@ -560,19 +583,19 @@ CREATE TABLE EtStation( -- ET information for each station
 	soil INTEGER REFERENCES soil(id) ON DELETE SET NULL, -- soil id 
 	sDate TIME, -- start date for Linitial in day/month seconds
 	eDate TIME, -- end date for Lfinal in day/month seconds
-	userRootNorm FLOAT DEFAULT 1, -- user's root depth normalization
-	userInfiltrationRate FLOAT, -- user's infiltration rate
-	userMAD INTEGER, -- user's maximum allowed depletion in %
-	precipRate FLOAT, -- effective precipitation rate for station
-	uniformity INTEGER, -- how uniform is the irrigation in %
-	fracRain INTEGER, -- Fraction of actual rain that reaches ground in %
-	fracSun INTEGER, -- Fraction of sunlight that reaches ground in %
-	slope INTEGER, -- ground slope in %
-	slopeLocation INTEGER, -- Irritation location in % from bottom
-	depletion INTEGER, -- PAW in %
+	userRootNorm POSFLOAT DEFAULT 1, -- user's root depth normalization
+	userInfiltrationRate POSFLOAT, -- user's infiltration rate
+	userMAD PERCENT, -- user's maximum allowed depletion in %
+	precipRate POSFLOAT, -- effective precipitation rate for station
+	uniformity PERCENT, -- how uniform is the irrigation in %
+	fracRain PERCENT, -- Fraction of actual rain that reaches ground in %
+	fracSun PERCENT, -- Fraction of sunlight that reaches ground in %
+	slope PERCENT, -- ground slope in %
+	slopeLocation PERCENT, -- Irritation location in % from bottom
+	depletion PERCENT, -- PAW in %
 	cycleTime TIME, -- ET estimated cycle time
 	soakTime TIME, -- ET estimated soak time
-	fracAdjust INTEGER -- % adjustment to ET rate 0-> no adjustment
+	fracAdjust SMALLINT CHECK (fracAdjust BETWEEN 1 AND 400) -- % adjustment to ET rate 0-> no adjustment
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
 	('ETStation','station', 0, 'Station', 'station'),
@@ -837,18 +860,18 @@ DROP TABLE IF EXISTS teeLog;
 CREATE TABLE teeLog( -- 1T log entries from TDI controller, pre/peak/post current tests
         sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- which flow sensor
 	timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL, -- time code was added
-	code INTEGER NOT NULL, -- returned code
-	pre INTEGER NOT NULL, -- pre on current in mAmps
-	peak INTEGER NOT NULL, -- peak on current in mAmps
-	post INTEGER NOT NULL, -- post on current in mAmps
+	code SMALLINT NOT NULL, -- returned code
+	pre SMALLINT NOT NULL, -- pre on current in mAmps
+	peak SMALLINT NOT NULL, -- peak on current in mAmps
+	post SMALLINT NOT NULL, -- post on current in mAmps
 	PRIMARY KEY (timestamp,sensor)
 );
 DROP INDEX IF EXISTS teeTS;
 CREATE INDEX teeTS ON teeLog (timestamp,sensor);
 
 -- Insert a record looking up site and controller
-CREATE OR REPLACE FUNCTION teeInsert(address INTEGER, code INTEGER, 
-				     pre INTEGER, peak INTEGER, post INTEGER, 
+CREATE OR REPLACE FUNCTION teeInsert(address INTEGER, code SMALLINT, 
+				     pre SMALLINT, peak SMALLINT, post SMALLINT, 
 				     site TEXT, controller TEXT)
 	RETURNS VOID AS $$
   INSERT INTO teeLog(code,pre,peak,post,sensor) VALUES
@@ -892,10 +915,10 @@ CREATE TABLE action( -- station on/off actions
 	pgmDate DATE NOT NULL, -- program date this command is for
         cmdOn INTEGER REFERENCES command(id) ON DELETE SET NULL, -- on command entry
 	cmdOff INTEGER REFERENCES command(id) ON DELETE SET NULL, -- off command entry
-	onCode INTEGER, -- return code from on command
-        pre  INTEGER, -- pre on current in mAmps
-        peak INTEGER, -- peak on current in mAmps
-        post INTEGER, -- post on current in mAmps
+	onCode SMALLINT, -- return code from on command
+        pre  SMALLINT, -- pre on current in mAmps
+        peak SMALLINT, -- peak on current in mAmps
+        post SMALLINT, -- post on current in mAmps
         CHECK (tOn < tOff) -- causality
 	);
 DROP INDEX IF EXISTS actionTS;
@@ -911,11 +934,11 @@ CREATE TABLE historical( -- sensor on/off actions in the past
 	tOff TIMESTAMP NOT NULL, -- when it went off
 	program INTEGER REFERENCES program(id) ON DELETE SET NULL, -- generating program
 	pgmDate DATE NOT NULL, -- program date
-	pre INTEGER, -- pre on current in mAmps
-	peak INTEGER, -- peak on current in mAmps
-	post INTEGER, -- post on current in mAmps
-	onCode INTEGER NOT NULL, -- returned code in on command
-	offCode INTEGER NOT NULL, -- returned code in off command
+	pre SMALLINT, -- pre on current in mAmps
+	peak SMALLINT, -- peak on current in mAmps
+	post SMALLINT, -- post on current in mAmps
+	onCode SMALLINT NOT NULL, -- returned code in on command
+	offCode SMALLINT NOT NULL, -- returned code in off command
 	PRIMARY KEY (sensor,tOn), -- for each sensor there can only be one on time
 	CHECK (tOn < tOff) -- casality
 	);
