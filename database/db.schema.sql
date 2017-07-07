@@ -455,7 +455,8 @@ DROP TABLE IF EXISTS program CASCADE;
 CREATE TABLE program( -- program information
 	id SERIAL PRIMARY KEY, -- id
 	site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
-	name TEXT UNIQUE, -- descriptive name
+	name TEXT UNIQUE NOT NULL, -- descriptive name
+	label TEXT UNIQUE NOT NULL, -- label in some tables
 	onOff INTEGER REFERENCES webList(id) ON DELETE SET NULL,
 	priority INTEGER DEFAULT 0, -- sort order for windows within a program
 	qHide BOOLEAN DEFAULT False, -- should entry be displayed?
@@ -480,18 +481,19 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,
   ('program', 'startmode', 8,'Start Mode','webList','label','grp=''evCel''','sortOrder,label'),
   ('program', 'stopmode', 10,'Start Mode','webList','label','grp=''evCel''','sortOrder,label');
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
-	('program', 'name',         0,True, 'Sensor Name', 'text', 'Shack'),
+	('program', 'name',         0,True, 'Program Name', 'text', 'Shack'),
 	('program', 'qhide',       16,False, 'Hide in Display', 'checkbox', NULL),
 	('program', 'refdate',      7,False, 'Reference Date', 'date', '2018-08-30'),
 	('program', 'starttime',    9,False, 'Start Time', 'time', '04:05:32'),
-	('program', 'endtime',     11,False, 'End Time', 'time', '04:05:32');
+	('program', 'endtime',     11,False, 'End Time', 'time', '04:05:32'),
+	('program', 'label',       12,True, 'Label', 'text', 'Shack');
 INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
 	('program', 'priority',      3,'Priority', '10', 0, 1000, NULL),
 	('program', 'ndays',         6,'# Days in cycle', '10', 1, 100, NULL),
-	('program', 'attractorfrac',12,'Attractor (%)', '0', 0, 100, NULL),
-	('program', 'maxstations',  13,'Max # stations', '200', 0, 1000, NULL),
-	('program', 'maxflow',      14,'Maximum Flow (GPM)', '200', 0, 1000, 0.1),
-	('program', 'etthreshold',  15,'High ET Threshold (in/day)', '0.5', 0, 5, 0.01);
+	('program', 'attractorfrac',13,'Attractor (%)', '0', 0, 100, NULL),
+	('program', 'maxstations',  14,'Max # stations', '200', 0, 1000, NULL),
+	('program', 'maxflow',      15,'Maximum Flow (GPM)', '200', 0, 1000, 0.1),
+	('program', 'etthreshold',  16,'High ET Threshold (in/day)', '0.5', 0, 5, 0.01);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,
 			refTable,refLabel,refCriteria,refOrderBy,secondaryKey,secondaryValue) VALUES
 	('program', 'pgmDOW', 5, 'Day of week', 'multiple', 'webList', 'label', 'grp=''dow''', 

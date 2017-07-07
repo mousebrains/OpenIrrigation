@@ -230,10 +230,10 @@ def getStation(db, info):
 def getProgram(db, info):
     sFields = OrderedDict([('site', info.site), ('onoff', info.list),
         ('action', info.list), ('startmode', info.list), ('stopmode', info.list)])
-    fields = ['name', 'priority', 'qhide', 'ndays', 'refdate', 
+    fields = ['name', 'label', 'priority', 'qhide', 'ndays', 'refdate', 
             'starttime', 'endtime', 'attractorfrac', 'maxstations',
             'etthreshold']
-    getSpecial(db, fields, sFields, 'SELECT * FROM program ORDER BY name;',
+    getSpecial(db, fields, sFields, 'SELECT *,name AS label FROM program ORDER BY name;',
             'program information', 'program')
 
 def getProgramDOW(db, info):
