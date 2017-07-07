@@ -68,9 +68,10 @@ try {
   $stations = $db->loadKeyValue('SELECT sensor,name FROM station ORDER BY name;');
 
   $sens2pgm = [];
-  $results = $db->execute("SELECT station.sensor,program.name FROM pgmStn"
+  $results = $db->execute("SELECT station.sensor,program.label FROM pgmStn"
 		. " INNER JOIN program ON pgmStn.qSingle IS False AND pgmStn.program=program.id"
-		. " INNER JOIN station ON pgmStn.station=station.id;");
+		. " INNER JOIN station ON pgmStn.station=station.id"
+		. " ORDER BY program.label;");
   while ($row = $results->fetchRow()) {
     $key = $row[0];
     if (!array_key_exists($key, $sens2pgm)) {$sens2pgm[$key] = [];}
