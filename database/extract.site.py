@@ -233,7 +233,7 @@ def getProgram(db, info):
     fields = ['name', 'label', 'priority', 'qhide', 'ndays', 'refdate', 
             'starttime', 'endtime', 'attractorfrac', 'maxstations',
             'etthreshold']
-    getSpecial(db, fields, sFields, 'SELECT *,name AS label FROM program ORDER BY name;',
+    getSpecial(db, fields, sFields, 'SELECT * FROM program ORDER BY priority,name;',
             'program information', 'program')
 
 def getProgramDOW(db, info):
