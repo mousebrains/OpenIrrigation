@@ -1082,7 +1082,8 @@ CREATE OR REPLACE FUNCTION offLogInsert(addr INTEGER, offCode INTEGER,
 	LOOP
 		INSERT INTO historical VALUES
 			(r.sensor,r.tOn,CURRENT_TIMESTAMP,r.program,r.pgmDate,
-			 r.pre,r.peak,r.post,r.onCode,offCode);
+			 r.pre,r.peak,r.post,r.onCode,offCode)
+			ON CONFLICT DO NOTHING;
                 DELETE FROM action WHERE id=r.id;
 	END LOOP;
         END;
