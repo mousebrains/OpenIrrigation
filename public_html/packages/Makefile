@@ -5,7 +5,9 @@
 
 include ../../Makefile.params
 
-SRC = Chart.min.js moment.min.js
+SRC = Chart.min.js moment.min.js jquery.tablesorter.min.js
+
+JQVERSION = 3.2.1
 
 .PHONY: all install clean
 
@@ -13,8 +15,8 @@ all:
 
 install:
 	$(INSTALL) --mode=0444 --target-directory $(JSDIR) $(SRC)
-	$(INSTALL) --mode=0444 jquery-3.2.0.min.js $(JSDIR)/jquery.min.js
-	$(INSTALL) --mode=0444 jquery-3.2.0.min.map $(JSDIR)/jquery.min.map
+	$(INSTALL) --mode=0444 jquery-$(JQVERSION).min.js $(JSDIR)/jquery.min.js
+	$(INSTALL) --mode=0444 jquery-$(JQVERSION).min.map $(JSDIR)/jquery.min.map
 	chown -R $(USER):$(GROUP) $(JSDIR)
 
 clean:
