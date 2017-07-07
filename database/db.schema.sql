@@ -482,7 +482,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,
   ('program', 'stopmode', 10,'Start Mode','webList','label','grp=''evCel''','sortOrder,label');
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
 	('program', 'name',         0,True, 'Program Name', 'text', 'Shack'),
-	('program', 'qhide',       16,False, 'Hide in Display', 'checkbox', NULL),
+	('program', 'qhide',       17,False, 'Hide in Display', 'checkbox', NULL),
 	('program', 'refdate',      7,False, 'Reference Date', 'date', '2018-08-30'),
 	('program', 'starttime',    9,False, 'Start Time', 'time', '04:05:32'),
 	('program', 'endtime',     11,False, 'End Time', 'time', '04:05:32'),
