@@ -947,20 +947,22 @@ CREATE INDEX historicalTS ON historical(tOn,sensor);
 DROP INDEX IF EXISTS historicalDate;
 CREATE INDEX historicalDate ON historical(pgmDate,sensor);
 
--- After update of cmdOn remove pgmStn where qSingle is True
-CREATE OR REPLACE FUNCTION actionCmdOnUpdate() RETURNS TRIGGER AS $$
+-- After delete of command remove pgmStn where qSingle is True
+CREATE OR REPLACE FUNCTION commandDelete() RETURNS TRIGGER AS $$
+        DECLARE pgmStnID INTEGER;
 	BEGIN
-	DELETE FROM pgmStn WHERE id=OLD.pgmStn AND qSingle=True;
+	SELECT pgmStn FROM action WHERE id=OLD.action INTO pgmStnID;
+	DELETE FROM pgmStn WHERE id=pgmStnID AND qSingle=True;
 	RETURN NEW;
 	END;
 	$$
 	LANGUAGE plpgSQL;
 
-DROP TRIGGER IF EXISTS actionCmdOnUpdate ON action CASCADE;
-CREATE TRIGGER actionCmdOnUpdate 
-	AFTER UPDATE OF cmdOn ON action
-	FOR EACH ROW WHEN (NEW.cmdOn IS NULL)
-	EXECUTE PROCEDURE actionCmdOnUpdate();
+DROP TRIGGER IF EXISTS commandDelete ON command CASCADE;
+CREATE TRIGGER commandDelete 
+	AFTER DELETE ON command
+	FOR EACH ROW
+	EXECUTE PROCEDURE commandDelete();
 
 -- When an on/off row is inserted into action
 CREATE OR REPLACE FUNCTION actionOnOffInsert() RETURNS TRIGGER AS $$
