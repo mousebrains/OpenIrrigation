@@ -20,7 +20,6 @@ try {
   $nBack = 11;
   $nFwd = 11;
 
-  $names = $db->loadKeyValue("SELECT sensor,name FROM station;");
   $past = [];
   $future = [];
 
@@ -67,11 +66,24 @@ try {
   }
 
   $stations = $db->loadKeyValue('SELECT sensor,name FROM station ORDER BY name;');
+
+  $sens2pgm = [];
+  $results = $db->execute("SELECT station.sensor,program.name FROM pgmStn"
+		. " INNER JOIN program ON pgmStn.qSingle IS False AND pgmStn.program=program.id"
+		. " INNER JOIN station ON pgmStn.station=station.id;");
+  while ($row = $results->fetchRow()) {
+    $key = $row[0];
+    if (!array_key_exists($key, $sens2pgm)) {$sens2pgm[$key] = [];}
+    array_push($sens2pgm[$key], $row[1]);
+  }
 } catch (Exception $e) {
   echo "<div><pre>" . $e->getMessage() . "</pre></div>\n";
 }
 
-$thead0 = "<tr><th colspan='$nBack'>Recent</th><th rowspan='2'>Station</th><th colspan='$nFwd'>Future</th></tr>";
+$thead0 = "<tr><th colspan='$nBack'>Recent</th>"
+	. "<th rowspan='2'>Station</th>"
+	. "<th rowspan='2'>Program</th>"
+	. "<th colspan='$nFwd'>Future</th></tr>";
 $tfoot1 = "<tr><th colspan='$nBack'>Recent</th><th colspan='$nFwd'>Future</th></tr>";
 $tfoot0 = "<tr>";
 $thead1 = "<tr>";
@@ -81,7 +93,8 @@ for ($cnt = $nBack-1; $cnt >= 0; $cnt--) {
   $thead1 .= "<th>$date</th>";
   $tfoot0 .= "<th>$date</th>";
 }
-$tfoot0 .= "<th rowspan='2'>Station</th>";
+$tfoot0 .= "<th rowspan='2'>Station</th>"
+	. "<th rowspan='2'>Program</th>";
 for ($cnt = 0; $cnt < $nFwd; $cnt++) {
   $date = $cnt == 0 ? "Today" : strftime("%m/%d", $now + $cnt * 86400);
   $thead1 .= "<th>$date</th>";
@@ -104,6 +117,9 @@ foreach ($stations as $sensor => $name) {
     echo "</td>\n";
   }
   echo "<th>$name</th>\n";
+  echo "<th>";
+  if (array_key_exists($sensor, $sens2pgm)) {echo implode(",", $sens2pgm[$sensor]);}
+  echo "</th>";
   for ($j = 0; $j < $nFwd; $j++) {
     echo "<td>";
     if (array_key_exists($sensor, $future) and array_key_exists($j, $future[$sensor])) {
