@@ -12,8 +12,14 @@
 <?php
 require_once 'php/navBar.php';
 
-function mkRT($dt) {
-  return sprintf('%d:%02d', floor($dt / 3600), intval(($dt % 3600) / 60));
+function mkRt($dt) {
+  $hours = floor($dt / 3600);
+  $minutes = round(($dt % 3600) / 60);
+  if ($minutes >= 60) {
+    $hours += 1;
+    $minutes -= 60;
+  }
+  return sprintf('%d:%02d', $hours, $minutes);
 }
 
 try {
