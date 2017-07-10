@@ -30,14 +30,14 @@ try {
   $future = [];
 
   $sql = "SELECT sensor"
-		. ",date_part('epoch',sum(tOff-tOn)) as dt"
-		. ",date_part('epoch',sum(tOff-CURRENT_TIMESTAMP)) as dtLeft"
-		. ",date_part('epoch',sum(CURRENT_TIMESTAMP-tOn)) as dtDone"
+		. ",date_part('epoch',tOff-tOn) as dt"
+		. ",date_part('epoch',tOff-CURRENT_TIMESTAMP) as dtLeft"
+		. ",date_part('epoch',CURRENT_TIMESTAMP-tOn) as dtDone"
 		. ",CAST(tOn AS DATE)-CURRENT_DATE AS n"
 		. " FROM everything"
   		. " WHERE tOn>=(CURRENT_DATE - INTERVAL '$nBack DAYS')"
 		. " AND tOn<=(CURRENT_DATE + INTERVAL '$nFwd DAYS')"
-		. " GROUP BY sensor,n;";
+		. ";";
   $results = $db->execute($sql);
   while ($row = $results->fetchRow()) {
     $id = $row[0];
