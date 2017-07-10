@@ -34,6 +34,8 @@ echo "</pre>";
       $db->execute("UPDATE action SET tOff=CURRENT_TIMESTAMP"
 		. " WHERE id=$1 AND cmdOn IS NULL AND cmdOff IS NOT NULL;", [$_POST['id']]);
     } elseif (array_key_exists('MVon', $_POST)) {
+      $db->execute("UPDATE action SET tOff=CURRENT_TIMESTAMP"
+		. " WHERE cmdOn IS NULL AND cmdOff IS NOT NULL;");
       $db->execute("INSERT INTO action(sensor,cmd,tOn,tOff,program,pgmDate) VALUES"
 		. " ($1,0,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP+INTERVAL '10 HOURS',"
 		. "getManualId(),CURRENT_DATE);",
