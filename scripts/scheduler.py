@@ -59,10 +59,8 @@ class Scheduler(threading.Thread): # When triggered schedule things up
       with psycopg2.connect(dbname=args.db) as db, \
          db.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
         nFwd = self.getNForward(cur)
-        sDate = datetime.datetime.now()
+        sDate = datetime.datetime.now() + datetime.timedelta(seconds=15)
         eDate = sDate + datetime.timedelta(days=self.getNForward(cur))
-        # sDate = datetime.datetime.combine(datetime.date(2017,7,14),datetime.time()) # TPW
-        # eDate = datetime.datetime.combine(datetime.date(2017,7,14),datetime.time()) # TPW
         self.logger.info('Starting Scheduler Run from %s to %s', sDate, eDate)
         dt = datetime.timedelta(days=1)
         midnight = datetime.time()
@@ -92,6 +90,8 @@ class Scheduler(threading.Thread): # When triggered schedule things up
             continue
           evOn = actions[event.actionId]
           evOff = event
+          dt = evOff.time - evOn.time
+          if dt < datetime.timedelta(seconds=5): continue # Skip really short ones
           if sql is None: # Prepare a statement
             cur.execute("PREPARE myInsert AS" \
                 + " INSERT INTO action(cmd,tOn,tOff,sensor,program,pgmStn,pgmDate)" \
@@ -103,7 +103,7 @@ class Scheduler(threading.Thread): # When triggered schedule things up
           pgmDate = evOn.sDate
           actionsSorted.append([evOn.time, evOff.time, evOn.stn.label(), pgmDate])
           cur.execute(sql, (evOn.time, evOff.time, sensorid, pgmid, pgmstnid, pgmDate))
-          if event.pgm.qnDays() and (event.time.date() == today):
+          if event.time.date() == today:
             refIDs.add(str(event.pgm.key()))
         self.updateRefDate(cur, refIDs)
         prevPgmDate = None
