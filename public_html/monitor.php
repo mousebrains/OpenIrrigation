@@ -188,6 +188,22 @@ function mkPending(array $rows, array $pgm, array $sens2name) {
 	}
 }
 
+function mkMaster(array $active, array $masterValve) {
+  $q = [];
+  foreach ($active as $entry) { $q[$entry['id']] = True; }
+
+  foreach ($masterValve as $key => $value) {
+    echo "<td><form method='post'>";
+    echo "<input type='hidden' name='id' value='$key'>\n";
+    if (array_key_exists($key, $q)) {
+      echo "<input type='submit' name='MVoff' value='$value Off' style='background_color:red'>\n";
+    } else {
+      echo "<input type='submit' name='MVon' value='$value On'>\n";
+    }
+    echo "</form></td>\n";
+  }
+}
+
 try {
   $pgm = $db->loadKeyValue("SELECT id,name FROM program ORDER BY name;");
   $masterValve = $db->loadKeyValue("SELECT sensor,name FROM pocMV ORDER BY name;");
@@ -207,17 +223,7 @@ try {
   echo "<input type='submit' name='allOff' value='All Off'>\n";
   echo "</form></td>\n";
 
-  foreach ($masterValve as $key => $value) {
-	  echo "<td><form method='post'>";
-	  echo "<input type='hidden' name='id' value='$key'>\n";
-          if (array_key_exists($key, $active) or array_key_exists($key, $pending)) {
-	  	echo "<input type='submit' name='MVoff' value='$value Off'"
-			. " style='background_color:red'>\n";
-          } else {
-	  	echo "<input type='submit' name='MVon' value='$value On'>\n";
-          }
-	  echo "</form></td>\n";
-  }
+  mkMaster($active, $masterValve);
   echo "</tr>\n</table>\n";
   mkCurrent($active, $pgm, $sens2name);
   mkPending($pending, $pgm, $sens2name);
