@@ -429,6 +429,7 @@ class Programs(ListTables):
       if (item.program() is not None) and \
 	(item.station() is not None) and \
 	(sensor == item.station().sensor().key()) and \
+	(not isinstance(item.program(), int)) and \
 	(pgm == item.program().key()):
         return item
     return None
