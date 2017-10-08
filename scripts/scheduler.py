@@ -141,13 +141,12 @@ class Trigger(threading.Thread): # Wait on events in the scheduler table
         cur.execute('SELECT * FROM scheduler WHERE date<=%s ORDER BY date;', (now + dt,))
         for line in cur:
           t0 = line[0]
-          if t0 <= now:
-            toDrop.append(t0)
-          else:
+          if t0 > now:
             dt = max(t0 - now, datetime.timedelta(seconds=1))
-          break
+            break
+          toDrop.append(t0)
 
-        currTime = datetime.datetime.now().time() # current time of day
+        currTime = now.time() # current time of day
         if currTime < lastTime: # Force a run on first wakeup after midnight
           toDrop.append(now)
         lastTime = currTime
@@ -156,6 +155,7 @@ class Trigger(threading.Thread): # Wait on events in the scheduler table
           q.put(toDrop[-1]) # Last one
           for t in toDrop:
             cur.execute('DELETE FROM scheduler WHERE date=%s;', (t,))
+            db.commit()
         time.sleep(dt.total_seconds())
 
 parser = argparse.ArgumentParser()
