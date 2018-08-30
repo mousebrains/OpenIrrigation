@@ -2,6 +2,23 @@
 #
 # Dump out the irrigation database and schema
 #
+# N.B. This script uses the "COPY TO" SQL feature which is done on
+#      the server as that user, typically postgres.
+#      So you will need to open up permissions in the target directory
+#      for that user to write to. For example, if
+#
+#      --dir=/home/irrigation/Backup
+#
+#      then you can set the ACL using
+#
+#      setfacl --modify=user:postgres:7 /home/irrigation/Backup
+#
+#      to see the result you can use
+#
+#      getfacl /home/irrigation/Backup
+#
+# Aug-2018, Pat Welch, pat@mousebrains.com
+#
 import getpass
 import socket
 import sys
