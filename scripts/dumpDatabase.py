@@ -39,7 +39,7 @@ class BufferingSMTPHandler(logging.handlers.BufferingHandler):
       self.buffer = []
 
 def doRsync(dirname, args, logger):
-  args = ["/usr/bin/rsync", "--archive", "--quiet", "--delete", dirname.as_posix(), args.rsyncto]
+  args = ["/usr/bin/rsync", "--archive", "--quiet", dirname.as_posix(), args.rsyncto]
   a = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   a = str(a.stdout, 'utf-8')
   if len(a) > 0:
