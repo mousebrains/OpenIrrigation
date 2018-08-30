@@ -6,7 +6,7 @@
 include ../Makefile.params
 
 LIB = DB.py Params.py TDI.py TDISimulate.py Programs.py Events.py
-BIN = TDIserver.py AgriMet.py scheduler.py notifier.py
+BIN = TDIserver.py AgriMet.py scheduler.py notifier.py dumpDatabase.py
 
 DEST = $(LIB:%=$(BINDIR)/%) $(BIN:%=$(BINDIR)/%)
 
