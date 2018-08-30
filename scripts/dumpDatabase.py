@@ -207,26 +207,29 @@ if args.email is not None:
   mh.setLevel(logging.DEBUG)
   logger.addHandler(mh)
 
-dirname = Path(args.dir).resolve()
+try:
+  dirname = Path(args.dir).resolve()
 
-saveSchema(dirname, args.db, logger)
-toSave = []
+  saveSchema(dirname, args.db, logger)
+  toSave = []
 
-with psycopg2.connect("dbname=" + args.db) as conn, conn.cursor() as cur:
-  tables = getTableNames(cur, knownTables, logger)
-  for key in tables:
-    val = tables[key]
-    if val in timeKeys:
-      saveMonthly(cur, key, dirname, timeKeys[val], logger)
-      conn.commit()
-    elif val == 'skip': # Will be saved as part of pg_dump
-      toSave.append(key)
-    elif val == 'ignore': # Just ignore
-      pass # Skip is dumped elsewhere, ignore is ignored totally
-    else:
-      logger.error('Unsupported action, %s for %s', val, key)
+  with psycopg2.connect("dbname=" + args.db) as conn, conn.cursor() as cur:
+    tables = getTableNames(cur, knownTables, logger)
+    for key in tables:
+      val = tables[key]
+      if val in timeKeys:
+        saveMonthly(cur, key, dirname, timeKeys[val], logger)
+        conn.commit()
+      elif val == 'skip': # Will be saved as part of pg_dump
+        toSave.append(key)
+      elif val == 'ignore': # Just ignore
+        pass # Skip is dumped elsewhere, ignore is ignored totally
+      else:
+        logger.error('Unsupported action, %s for %s', val, key)
 
-saveData(dirname, args.db, toSave, logger)
+  saveData(dirname, args.db, toSave, logger)
 
-if args.rsyncto is not None:
-  doRsync(dirname, args, logger)
+  if args.rsyncto is not None:
+    doRsync(dirname, args, logger)
+except:
+  logger.exception(str(args))
