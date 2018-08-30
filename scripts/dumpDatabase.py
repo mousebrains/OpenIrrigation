@@ -21,7 +21,6 @@ class BufferingSMTPHandler(logging.handlers.BufferingHandler):
     self.args = args
 
   def flush(self):
-    print(self.args)
     if len(self.buffer) > 0:
       try:
         msg = EmailMessage()
@@ -127,6 +126,11 @@ def saveMonthly(cur, tbl, dirname, tname, logger):
             + " TO '{}' ".format(fn) \
             + " WITH (FORMAT 'csv', HEADER TRUE);")
 
+def mkHandler(ch, qVerbose, level):
+  ch.setLevel(logging.DEBUG if qVerbose else level)
+  ch.setFormatter(logging.Formatter('%(asctime)s: %(threadName)s:%(levelname)s - %(message)s'))
+  return ch
+
 knownTables = {
   'event': 'skip',
   'action': 'ignore', # Dynamic actions to be executed
@@ -176,12 +180,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--db', help='ET database name', required=True)
 parser.add_argument('--dir', help='Directory to dump data to', required=True)
 parser.add_argument('--log', help='logfile, if not specified use the console')
+parser.add_argument('--logMaxSize', help='logfile maximum size in bytes', default=1000000, type=int)
+parser.add_argument('--logBackupCount', help='logfile maximum size in bytes', default=3, type=int)
 parser.add_argument('--email', help='Who to email log to', nargs='*')
 parser.add_argument('--sentFrom', help='Who is sending the email', 
                     default= getpass.getuser() + "@" + socket.gethostname())
 parser.add_argument('--smtphost', help='SMTP hostname', default='localhost')
-parser.add_argument('--smtpport', help='SMTP port', default=25)
-parser.add_argument('--emailSize', help='Maximum email size', default=100000)
+parser.add_argument('--smtpport', help='SMTP port', default=25, type=int)
+parser.add_argument('--emailSize', help='Maximum email size', default=100000, type=int)
 parser.add_argument('--subject', help='email subject', default=sys.argv[0])
 parser.add_argument('--rsyncto', help='target of rsync')
 parser.add_argument('--verbose', help='Increase verbosity level', action='store_true')
@@ -190,22 +196,17 @@ args = parser.parse_args()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-if args.log is None:
-    ch = logging.StreamHandler()
-else:
-    ch = logging.FileHandler(args.log)
+if args.log is None and args.email is None:
+  logger.addHandler(mkHandler(logging.StreamHandler(), args.verbose, logging.INFO))
 
-ch.setLevel(logging.DEBUG if args.verbose else logging.INFO)
-
-formatter = logging.Formatter('%(asctime)s: %(threadName)s:%(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-
-logger.addHandler(ch)
+if args.log is not None:
+  ch = logging.handlers.RotatingFileHandler(filename=args.log, 
+                                            maxBytes=args.logMaxSize,
+                                            backupCount=args.logBackupCount)
+  logger.addHandler(mkHandler(ch, args.verbose, logging.INFO))
 
 if args.email is not None:
-  mh = BufferingSMTPHandler(args)
-  mh.setLevel(logging.DEBUG)
-  logger.addHandler(mh)
+  logger.addHandler(mkHandler(BufferingSMTPHandler(args), args.verbose, logging.WARN))
 
 try:
   dirname = Path(args.dir).resolve()
