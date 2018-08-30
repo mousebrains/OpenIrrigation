@@ -49,11 +49,13 @@
 #   XX so far has only been 0x60 -> 96 decimal
 #   XX in [1,200] decimal
 #
-# -- 2-wire ??
+# -- 2-wire enable/query
 # 02XXYY -- Request, XX is 0 or 1, YY is 0, 1, or FF
 # 12XXYY -- Reply, XX is same as request, YY is 0, 1, or 2
 #   XX is 0 or 1
 #   YY is 0, 1, or FF
+#
+#   YY on Request 0 disables two wire path, 1 enables FF query
 #
 # -- Wire Path ??
 # 0PXXYY -- Request
