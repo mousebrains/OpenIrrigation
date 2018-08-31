@@ -207,6 +207,7 @@ parser.add_argument('--smtpport', help='SMTP port', default=25, type=int)
 parser.add_argument('--emailSize', help='Maximum email size', default=100000, type=int)
 parser.add_argument('--subject', help='email subject', default=sys.argv[0])
 parser.add_argument('--rsyncto', help='target of rsync')
+parser.add_argument('--noLoggingTables', help='Do not dump logging database tables', action='store_true')
 parser.add_argument('--verbose', help='Increase verbosity level', action='store_true')
 args = parser.parse_args()
 
@@ -236,8 +237,9 @@ try:
     for key in tables:
       val = tables[key]
       if val in timeKeys:
-        saveMonthly(cur, key, dirname, timeKeys[val], logger)
-        conn.commit()
+        if not args.noLoggingTables:
+          saveMonthly(cur, key, dirname, timeKeys[val], logger)
+          conn.commit()
       elif val == 'skip': # Will be saved as part of pg_dump
         toSave.append(key)
       elif val == 'ignore': # Just ignore
