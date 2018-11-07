@@ -17,7 +17,7 @@ def mkSerial(args, params, logger):
     db.commit()
 
   if not args.simul: # Simulating a controller
-    return (serial.Serial(port=params['port'], baudrate=params['baudrate']), None)
+    return (Serial(port=params['port'], baudrate=params['baudrate']), None)
 
   # Running a simulated controller
   (master, slave) = pty.openpty() # Get a pseudo TTY pair
