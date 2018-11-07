@@ -79,6 +79,7 @@ class Dispatcher(threading.Thread): # Dispatch sentences, if a timeout/NAK is re
         while True: # Wait for something to send
             a = qIn.get()
             for cnt in range(a.nRetries + 1):
+              # logger.info('Writing %s', a.msg)
               qWriter.put(a.msg)
               try:
                 b = qReader.get(timeout=a.timeout)
@@ -107,44 +108,76 @@ class Builder(threading.Thread): # construct sentences and send ACK/NAK
     qBuilder = self.q
     logger.info('Starting')
     state = 0
+    msg = None
+    msgLen = None
+    chkSum = None
     while True:
-      a = qReader.get()
-      if state == 0:
-        if a == b'\x16': # Start a sentence
-          state += 1  # Get length
-          msgLen = 0
-          chkSum = 0
-          msg = ''
-        elif a != b'\r': # # Ignore if c/r
-          logger.warn('Bad character, "%s"', str(a, 'UTF-8'))
+      try:
+        a = qReader.get(timeout=1) # Get a character or throw and exception after a second
+        qReader.task_done()
+      except queue.Empty: # Timed out in read from qReader
+        if state != 0: # in the middle of a sentence, so upchuck
+          logger.warn('Unexpected timeout in the middle of a sentence, state=%s len=%s msg=%s chksum=%s',
+                      state, msgLen, msg, chkSum)
+          state = 0 # Reset state
+          msg = None
+          msgLen = None
+          chkSum = None
+          qWriter.put(b'\x15') # In the middle of a sentence, and timed out, so send NAK
+        continue
+
+      if a == b'\x16': # A start of a sentence
+        if state != 0: # We were processing a sentence, so tell the logger
+          logger.warn('Interrupted a sentence with a SYNC, len=%s, msg=%s, chkSum=%X state=%s',
+                      msgLen, bytes(msg), chkSum & 255, state)
+        state = 1 # Get length next
+        msgLen = 0
+        chkSum = 0
+        msg = bytearray()
+      elif state == 0:
+        if a != b'\r': # Ignore carriage returns
+          logger.warn('Unexpected character, %s, waiting on SYNC', a)
       elif (state == 1) or (state == 2): # message length
         state += 1
         try:
           msgLen = msgLen * 16 + int(a, 16)
           chkSum += sum(a)
         except Exception as e:
-          logger.error('Unable to convert %s to an integer', str(a, 'UTF-8'))
-          state == 0
+          logger.error('Unable to convert length(%s) %s to an integer', state, a)
+          state = 0
+          qWriter.put(b'\x15') # Send NAK for this sentence
+          continue
       elif len(msg) < msgLen: # Build message
-        msg += str(a, 'UTF-8')
+        msg += a
         chkSum += sum(a)
       elif state == 3: # First character of checksum
         try:
           chk = int(a, 16)
           state += 1
         except Exception as e:
-          logger.error('Unable to convert %s to an integer', str(a, 'UTF-8'))
-          state == 0
+          logger.error('Unable to convert first checksum character %s to an integer', a)
+          state = 0
+          qWriter.put(b'\x15') # Send NAK for this sentence
       else: # Second character of checksum
         state = 0
-        chk = chk * 16 + int(a, 16)
-        if chk == (chkSum & 255): # Send back an ACK
-          qWriter.put(b'\x06')
-          qBuilder.put(msg)
-        else:
-          qWriter.put(b'\x15')
-          logger.warn('Bad checksum for inbound message "%s"', msg)
-      qReader.task_done()
+        try: # For hex to int
+          chk = chk * 16 + int(a, 16)
+        except Exception as e:
+          logger.error('Unable to convert second checksum character %s to an integer', a)
+          state = 0
+          qWriter.put(b'\x15') # Send NAK for this sentence
+          continue
+        if chk != (chkSum & 255): # Bad checksum
+          logger.warn('Bad checksum for inbound message "%s"', bytes(msg))
+          qWriter.put(b'\x15') # Send NAK for this sentence
+          continue
+        try:
+          msg = str(msg, 'utf-8')
+          qBuilder.put(msg) # Send message to consumer
+          qWriter.put(b'\x06') # Send ACK
+        except:
+          logger.warn('Unable to convert "%s" to str', bytes(msg))
+          qWriter.put(b'\x15') # Send NAK for this sentence
 
 class Consumer(threading.Thread):
   def __init__(self, args, dbName, logger, qBuilder):

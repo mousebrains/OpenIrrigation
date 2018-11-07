@@ -8,6 +8,8 @@
 # the tty device to use
 # the name of the output log file
 #
+# It can also setup a simulated controller via a pseudo TTY
+#
 import TDI 
 import TDISimulate 
 import Params
@@ -22,8 +24,33 @@ parser.add_argument('--controller', help='controller name', required=True)
 parser.add_argument('--log', help='logfile, if not specified use the console')
 parser.add_argument('--group', help='parameter group name to use', default='TDI')
 parser.add_argument('--simul', help='simulate controller', action='store_true')
-parser.add_argument('--maxlogsize', help='logging verbosity', default=1000000)
-parser.add_argument('--backupcount', help='logging verbosity', default=7)
+parser.add_argument('--simNAK', help='controller fraction to send NAKs for good sentences',
+                    type=float, default=0)
+parser.add_argument('--simResend', help='controller fraction to resend a bad sentence',
+                    type=float, default=0)
+parser.add_argument('--simBad', help='controller fraction to send bad character in sentence',
+                    type=float, default=0)
+parser.add_argument('--simLenLess',
+                    help='controller fraction to send length shorter than sentence length',
+                    type=float, default=0)
+parser.add_argument('--simLenMore',
+                    help='controller fraction to send length longer than sentence length',
+                    type=float, default=0)
+parser.add_argument('--simBadLen0', help='controller fraction to send invalid 1st char of length',
+                    type=float, default=0)
+parser.add_argument('--simBadLen1', help='controller fraction to send invalid 2nd char of length',
+                    type=float, default=0)
+parser.add_argument('--simBadChk0', help='controller fraction to send invalid 1st char of checksum',
+                    type=float, default=0)
+parser.add_argument('--simBadChk1', help='controller fraction to send invalid 2nd char of checksum',
+                    type=float, default=0)
+parser.add_argument('--simDelayFrac', help='controller fraction to delay message',
+                    type=float, default=0)
+parser.add_argument('--simDelayMaxSecs', help='controller max seconds to delay message sending',
+                    type=float, default=0)
+parser.add_argument('--maxlogsize', help='logging verbosity',
+                    type=int, default=1000000)
+parser.add_argument('--backupcount', help='logging verbosity', type=int, default=7)
 parser.add_argument('--verbose', help='logging verbosity', action='store_true')
 args = parser.parse_args()
 
@@ -46,7 +73,7 @@ logger.addHandler(ch)
 params = Params.Params(args.db, args.group)
 logger.info(params)
 
-s0 = TDISimulate.mkSerial(args, params, logger)
+[s0, ctl] = TDISimulate.mkSerial(args, params, logger)
 
 thrReader = TDI.Reader(s0, logger)
 thrWriter = TDI.Writer(s0, logger)
