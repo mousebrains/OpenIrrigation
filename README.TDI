@@ -1,3 +1,18 @@
+0A Valve on
+0D Valve off
+0E Error no args, ignores arguments
+0N 0NXXYY returns ZZ Check all XX and YY
+0P Path
+0S Sensor 0SXX where XX is [0-3] returns XXYYZZZZ Check all XX
+0T 0TXx where XX is station [0-] returns XXYYYYZZZZQQQQ
+0U 0U ignores arguments
+0V 0V version
+0Z No reply
+
+02 02
+
+0#
+
 # The communications to the Tucor TDI expanse port is a 9600 baud serial link.
 #
 # The TDI uses a command/response protocol. The sentence structure is:
@@ -43,25 +58,27 @@
 #           YY 02 -> no response/never seen
 #           YY 04 -> new reading
 #
-# -- Number of stations
+# -- Maximum Number of stations, 0x60 = 96
 # 0#XX -- Request, XX so far has only been 60
 # 1#XX -- Reply, 
 #   XX so far has only been 0x60 -> 96 decimal
 #   XX in [1,200] decimal
 #
-# -- 2-wire enable/query
-# 02XXYY -- Request, XX is 0 or 1, YY is 0, 1, or FF
-# 12XXYY -- Reply, XX is same as request, YY is 0, 1, or 2
-#   XX is 0 or 1
-#   YY is 0, 1, or FF
+# -- 2-wire path enable/disable/query
+# 02XXYY -- Request
+# 12XXZZ -- Reply
+#   XX is 0 or 1, wire path 0 or 1
+#   YY is 0 to turn path off ZZ will be number of paths enabled
+#         1 to turn path on ZZ will be number of paths enabled
+#        FF to query path status ZZ will be 0 if off 1 if on
 #
-#   YY on Request 0 disables two wire path, 1 enables FF query
-#
-# -- Wire Path ??
+# -- wire paths enable/disable/query ?
 # 0PXXYY -- Request
-# 1PXXYYYY -- Reply, so far XX is 0 or 1 and YYYY is 000A
-#   XX is 0 or 1
-#   YY is 0, 1, or FF
+# 1PXXYYYY -- Reply
+#   XX is 0 or 1, wire path 0 or 1
+#   YY is 0 to turn path off
+#         1 to turn path on
+#        FF to query path status
 #
 # -- Valve on
 # 0AXXYY -- Request to turn on valve XX in hex
@@ -97,7 +114,7 @@
 # 1ZCXXYY
 #
 #   C -- is the command from the improperly formated sentence
-#   XX -- 02 too short 01 too long
+#   XX -- 00 unknown command, 01 too long, 02 too short
 #   YY --
 #
 #   Commands:
