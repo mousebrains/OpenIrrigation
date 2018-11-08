@@ -37,6 +37,7 @@ class controller(threading.Thread):
     self.args = args
     self.qOn = {}
     self.prevSentence = None
+    self.resendCount = 100
     self.notHex = set(range(256)) # All values from 0 to 255
     self.notHex = self.notHex.difference(set(range(ord('0'), ord('9')))) # Take out 0-9
     self.notHex = self.notHex.difference(set(range(ord('A'), ord('F')))) # Take out A-F
@@ -94,19 +95,24 @@ class controller(threading.Thread):
 
   def resend(self):
     sentence = self.prevSentence
-    if sentence is None:
+    cnt = self.resendCount
+    if (sentence is None) or (cnt >= 2):
+      self.prevSentence = None
+      self.resendCount = 100
       logger.warn('Received a NAK')
       return
     self.logger.warn('Received a NAK to %s, resending', sentence);
     if self.args.simResend and (self.args.simResend > random.random()):
       sentence = self.corruptSentence(sentence)
     self.writeSentence(sentence)
+    self.resendCount += 1 # Increament resend count
 
   def sendSentence(self, msg): # Write a message with length and checksum
     sentence = '\x16{:02X}{}'.format(len(msg), msg) # Make a correct sentence
     sentence += '{:02X}'.format(self.calcCheckSum(sentence[1:]))
     sentence = bytes(sentence, 'utf-8')
     self.prevSentence = sentence # For resending if needed
+    self.resendCount = 0
     sentence = self.corruptSentence(sentence) # Corrupt the sentence if needed
     self.writeSentence(sentence)
 
