@@ -16,6 +16,7 @@ import Params
 import logging
 import logging.handlers
 import argparse
+import queue
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--db', help='database name', required=True)
@@ -70,34 +71,40 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
-params = Params.Params(args.db, args.group)
-logger.info(params)
+try:
+    qExcept = queue.Queue()
 
-[s0, ctl] = TDISimulate.mkSerial(args, params, logger)
+    params = Params.Params(args.db, args.group)
+    logger.info(params)
 
-thrReader = TDI.Reader(s0, logger)
-thrWriter = TDI.Writer(s0, logger)
-thrDispatcher = TDI.Dispatcher(logger, thrReader.qAck, thrWriter.q)
-thrBuilder = TDI.Builder(logger, thrReader.qSent, thrWriter.q)
+    [s0, ctl] = TDISimulate.mkSerial(args, params, logger, qExcept)
 
-thr = []
-thr.append(TDI.Consumer(args, args.db, logger, thrBuilder.q))
-thr.append(TDI.Number(params, logger, thrDispatcher.q))
-thr.append(TDI.Version(params, logger, thrDispatcher.q))
-thr.append(TDI.Error(params, logger, thrDispatcher.q))
-thr.append(TDI.Current(params, logger, thrDispatcher.q))
-thr.append(TDI.Sensor(params, logger, thrDispatcher.q))
-thr.append(TDI.Two(params, logger, thrDispatcher.q))
-thr.append(TDI.Pee(params, logger, thrDispatcher.q))
-thr.append(TDI.Command(params, args, logger, thrDispatcher.q))
+    thrReader = TDI.Reader(s0, logger, qExcept)
+    thrWriter = TDI.Writer(s0, logger, qExcept)
+    thrDispatcher = TDI.Dispatcher(logger, qExcept, thrReader.qAck, thrWriter.q)
+    thrBuilder = TDI.Builder(logger, qExcept, thrReader.qSent, thrWriter.q)
 
-thrReader.start()
-thrWriter.start()
-thrDispatcher.start()
-thrBuilder.start()
+    thr = []
+    thr.append(TDI.Consumer(args, args.db, logger, qExcept, thrBuilder.q))
+    thr.append(TDI.Number(params, logger, qExcept, thrDispatcher.q))
+    thr.append(TDI.Version(params, logger, qExcept, thrDispatcher.q))
+    thr.append(TDI.Error(params, logger, qExcept, thrDispatcher.q))
+    thr.append(TDI.Current(params, logger, qExcept, thrDispatcher.q))
+    thr.append(TDI.Sensor(params, logger, qExcept, thrDispatcher.q))
+    thr.append(TDI.Two(params, logger, qExcept, thrDispatcher.q))
+    thr.append(TDI.Pee(params, logger, qExcept, thrDispatcher.q))
+    thr.append(TDI.Command(params, args, logger, qExcept, thrDispatcher.q))
 
-for i in range(len(thr)): thr[i].start()
+    thrReader.start()
+    thrWriter.start()
+    thrDispatcher.start()
+    thrBuilder.start()
 
-thrReader.join()
+    for i in range(len(thr)): thr[i].start()
 
-s0.close()
+    e = qExcept.get()
+    qExcept.task_done()
+    s0.close()
+    raise(e)
+except Exception as e:
+    logger.exception('Thread exception')

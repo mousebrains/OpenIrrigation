@@ -5,12 +5,12 @@
 import os
 import pty
 from serial import Serial
-import threading
+from MyBaseThread import MyBaseThread
 import random
 import time
 import psycopg2
 
-def mkSerial(args, params, logger):
+def mkSerial(args, params, logger, qExcept):
   with psycopg2.connect(dbname=args.db) as db, \
        db.cursor() as cur:
     cur.execute("INSERT INTO simulate(qSimulate) VALUES(%s);", [args.simul])
@@ -24,16 +24,14 @@ def mkSerial(args, params, logger):
   port = os.ttyname(slave)
   logger.info('Simulated controller, port %s baudrate %s', port, params['baudrate'])
   s0 = Serial(port=port, baudrate=params['baudrate'])
-  ctl = controller(master, logger, args) # Simulated controller object
+  ctl = controller(master, logger, qExcept, args) # Simulated controller object
   ctl.start() # Start the simulated controller
   return (s0, ctl)
 
-class controller(threading.Thread):
-  def __init__(self, fd, logger, args):
-    threading.Thread.__init__(self)
-    self.name = 'SIMUL'
+class controller(MyBaseThread):
+  def __init__(self, fd, logger, qExcept, args):
+    MyBaseThread.__init__(self, 'SIMUL', logger, qExcept)
     self.fd = fd
-    self.logger = logger
     self.args = args
     self.qOn = {}
     self.prevSentence = None
@@ -122,7 +120,7 @@ class controller(threading.Thread):
     self.logger.warn(msg)
     os.write(self.fd, b'\x15')
 
-  def run(self): # Called on thread.start
+  def runMain(self): # Called on thread.start
     fd = self.fd;
     logger = self.logger
     args = self.args

@@ -16,20 +16,17 @@ import argparse
 import queue
 import time
 import datetime
-import threading
+from MyBaseThread import MyBaseThread
 import psycopg2
 import psycopg2.extras
 from Programs import Programs
 from Events import Events
 
-
-class Scheduler(threading.Thread): # When triggered schedule things up
-  def __init__(self, args, logger):
-    threading.Thread.__init__(self, daemon=True)
-    self.name = 'Scheduler'  # For logger
-    self.args = args
-    self.logger = logger
-    self.q = queue.Queue()
+class Scheduler(MyBaseThread): # When triggered schedule things up
+  def __init__(self, args, logger, qExcept):
+      MyBaseThread.__init__(self, 'Scheduler', logger, qExcept)
+      self.args = args
+      self.q = queue.Queue()
 
   def rmPending(self, cur, date):
     # Delete pending transactions and their associated commands
@@ -44,13 +41,13 @@ class Scheduler(threading.Thread): # When triggered schedule things up
                   (datetime.date.today(),))
 
   def getNForward(self, cur):
-    cur.execute("SELECT val FROM params WHERE grp='SCHED' AND name='nDays';");
-    n = cur.fetchone()['val'];
+    cur.execute("SELECT val FROM params WHERE grp='SCHED' AND name='nDays';")
+    n = cur.fetchone()['val']
     if n is None: return 10
     if isinstance(n, str) and n.isnumeric(): return int(n)
     return n 
 
-  def run(self):  # Called on thread start
+  def runMain(self):  # Called on thread start
     q = self.q
     self.logger.info('Starting')
     while True:
@@ -118,15 +115,13 @@ class Scheduler(threading.Thread): # When triggered schedule things up
       else:
         db.commit()
 
-class Trigger(threading.Thread): # Wait on events in the scheduler table
-  def __init__(self, args, logger, q):
-    threading.Thread.__init__(self, daemon=True)
-    self.name = 'Trigger'  # For logger
-    self.args = args
-    self.logger = logger
-    self.q = q
+class Trigger(MyBaseThread): # Wait on events in the scheduler table
+  def __init__(self, args, logger, qExcept, q):
+      MyBaseThread.__init__(self, 'Trigger', logger, qExcept)
+      self.args = args
+      self.q = q
 
-  def run(self):  # Called on thread start
+  def runMain(self):  # Called on thread start
     q = self.q
     self.logger.info('Starting')
     with psycopg2.connect(dbname=args.db) as db, \
@@ -183,11 +178,20 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
-thrSched = Scheduler(args, logger)  # Fetch Agrimet information
-thrSched.start()
+try:
+    qExcept = queue.Queue() # Where thread exceptions are sent
 
-# Read scheduler table and trigger scheduler
-thrTrigger = Trigger(args, logger, thrSched.q)
-thrTrigger.start()
+    thrSched = Scheduler(args, logger, qExcept)  # Fetch Agrimet information
+    thrSched.start()
 
-thrSched.join()  # Wait until finished, which should never happen
+    # Read scheduler table and trigger scheduler
+    thrTrigger = Trigger(args, logger, qExcept, thrSched.q)
+    thrTrigger.start()
+
+    e = qExcept.get()
+    qExcept.task_done()
+    raise(e)
+except Exception as e:
+    logger.exception('Thread Exception')
+
+sys.exit(1)

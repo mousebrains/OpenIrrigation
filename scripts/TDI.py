@@ -1,6 +1,6 @@
 # Talk to a Tucor TDI 2-wire controller
 
-import threading
+from MyBaseThread import MyBaseThread
 import queue
 import time
 import math
@@ -8,16 +8,14 @@ import datetime
 import random
 import psycopg2
 
-class Reader(threading.Thread):
-  def __init__(self, s0, logger):
-    threading.Thread.__init__(self, daemon=True)
-    self.name='Reader'
-    self.s0 = s0
-    self.logger = logger
-    self.qAck = queue.Queue()
-    self.qSent = queue.Queue()
+class Reader(MyBaseThread):
+  def __init__(self, s0, logger, qExcept):
+      MyBaseThread.__init__(self, 'Reader', logger, qExcept)
+      self.s0 = s0
+      self.qAck = queue.Queue()
+      self.qSent = queue.Queue()
 
-  def run(self): # Called on thread start
+  def runMain(self): # Called on thread start
     self.logger.info('Starting')
     s0 = self.s0
     qAck = self.qAck
@@ -29,15 +27,13 @@ class Reader(threading.Thread):
       else:
           qSent.put(a)
 
-class Writer(threading.Thread):
-  def __init__(self, s0, logger):
-    threading.Thread.__init__(self, daemon=True)
-    self.name='Writer'
-    self.s0 = s0
-    self.logger = logger
-    self.q = queue.Queue()
+class Writer(MyBaseThread):
+  def __init__(self, s0, logger, qExcept):
+      MyBaseThread.__init__(self, 'Writer', logger, qExcept)
+      self.s0 = s0
+      self.q = queue.Queue()
 
-  def run(self): # Called on thread start
+  def runMain(self): # Called on thread start
     self.logger.info('Starting')
     s0 = self.s0
     q = self.q
@@ -61,16 +57,14 @@ class DispatchItem:
         self.nRetries = nRetries
         self.timeout = timeout
 
-class Dispatcher(threading.Thread): # Dispatch sentences, if a timeout/NAK is returned, then try again
-    def __init__(self, logger, qReader, qWriter):
-        threading.Thread.__init__(self, daemon=True)
-        self.name='Dispatcher'
-        self.logger = logger
+class Dispatcher(MyBaseThread): # Dispatch sentences, if a timeout/NAK is returned, then try again
+    def __init__(self, logger, qExcept, qReader, qWriter):
+        MyBaseThread.__init__(self, 'Dispatcher', logger, qExcept)
         self.qReader = qReader
         self.qWriter = qWriter
         self.q = queue.Queue()
 
-    def run(self): # Called on thread start
+    def runMain(self): # Called on thread start
         logger = self.logger
         qReader = self.qReader
         qWriter = self.qWriter
@@ -92,16 +86,15 @@ class Dispatcher(threading.Thread): # Dispatch sentences, if a timeout/NAK is re
                 logger.warn('Timeout for "%s"', a.msg)
             qIn.task_done() # I'm done with with sentence
 
-class Builder(threading.Thread): # construct sentences and send ACK/NAK
-  def __init__(self, logger, qReader, qWriter):
-    threading.Thread.__init__(self, daemon=True)
+class Builder(MyBaseThread): # construct sentences and send ACK/NAK
+  def __init__(self, logger, qExcept, qReader, qWriter):
+    MyBaseThread.__init__(self, 'Builder', logger, qExcept)
     self.name='Builder'
-    self.logger = logger
     self.qReader = qReader
     self.qWriter = qWriter
     self.q = queue.Queue()
 
-  def run(self): # Called on thread start
+  def runMain(self): # Called on thread start
     logger = self.logger
     qReader = self.qReader
     qWriter = self.qWriter
@@ -179,15 +172,13 @@ class Builder(threading.Thread): # construct sentences and send ACK/NAK
           logger.warn('Unable to convert "%s" to str', bytes(msg))
           qWriter.put(b'\x15') # Send NAK for this sentence
 
-class Consumer(threading.Thread):
-  def __init__(self, args, dbName, logger, qBuilder):
-    threading.Thread.__init__(self, daemon=True)
-    self.name = 'Consumer'
+class Consumer(MyBaseThread):
+  def __init__(self, args, dbName, logger, qExcept, qBuilder):
+    MyBaseThread.__init__(self, 'Consumer', logger, qExcept)
     self.site = args.site
     self.controller = args.controller
     self.dbName = dbName
     self.db = None
-    self.logger = logger
     self.qBuilder = qBuilder
     self.previous = {}
     self.commands = {'#': self.Number,
@@ -202,7 +193,7 @@ class Consumer(threading.Thread):
                      'D': self.Off,
                      'E': self.Error}
 
-  def run(self): # Called on thread start
+  def runMain(self): # Called on thread start
     logger = self.logger
     q = self.qBuilder
     cmds = self.commands
@@ -324,20 +315,18 @@ class Consumer(threading.Thread):
       self.logger.info('Off addr=%s code=%s', addr, code)
       self.toDB(sql, [addr, code])
 
-class MyBase(threading.Thread):
-  def __init__(self, logger, qWriter, label, dt):
-    threading.Thread.__init__(self, daemon=True)
-    self.logger = logger
+class MyBase(MyBaseThread):
+  def __init__(self, logger, qExcept, qWriter, label, dt):
+    MyBaseThread.__init__(self, label, logger, qExcept)
     self.qWriter = qWriter
-    self.name = label
     self.dt = dt
 
 class NoArgs(MyBase):
-  def __init__(self, logger, qWriter, label, msg, dt):
-    MyBase.__init__(self, logger, qWriter, label, dt)
+  def __init__(self, logger, qExcept, qWriter, label, msg, dt):
+    MyBase.__init__(self, logger, qExcept, qWriter, label, dt)
     self.msg = msg
 
-  def run(self): # Called on thread start
+  def runMain(self): # Called on thread start
     q = self.qWriter
     dt = self.dt
     msg = self.msg
@@ -349,36 +338,36 @@ class NoArgs(MyBase):
       time.sleep(dt);
 
 class Number(NoArgs):
-  def __init__(self, params, logger, qWriter):
-    NoArgs.__init__(self, logger, qWriter, 'Number', 
+  def __init__(self, params, logger, qExcept, qWriter):
+    NoArgs.__init__(self, logger, qExcept, qWriter, 'Number', 
         '0#{:02X}'.format(params['numberStations']),
         params['numberPeriod'])
 
 class Version(NoArgs):
-  def __init__(self, params, logger, qWriter):
-    NoArgs.__init__(self, logger, qWriter, 'Version', '0V',
+  def __init__(self, params, logger, qExcept, qWriter):
+    NoArgs.__init__(self, logger, qExcept, qWriter, 'Version', '0V',
         params['versionPeriod'])
 
 class Error(NoArgs):
-  def __init__(self, params, logger, qWriter):
-    NoArgs.__init__(self, logger, qWriter, 'Error', '0E',
+  def __init__(self, params, logger, qExcept, qWriter):
+    NoArgs.__init__(self, logger, qExcept, qWriter, 'Error', '0E',
         params['errorPeriod'])
 
 class Current(NoArgs):
-  def __init__(self, params, logger, qWriter):
-    NoArgs.__init__(self, logger, qWriter, 'Current', '0U',
+  def __init__(self, params, logger, qExcept, qWriter):
+    NoArgs.__init__(self, logger, qExcept, qWriter, 'Current', '0U',
         params['currentPeriod'])
 
 class Args(MyBase):
-  def __init__(self, logger, qWriter, label, msg, dt, sensors):
-    MyBase.__init__(self, logger, qWriter, label, dt)
+  def __init__(self, logger, qExcept, qWriter, label, msg, dt, sensors):
+    MyBase.__init__(self, logger, qExcept, qWriter, label, dt)
     self.msg = msg
     if isinstance(sensors, list):
       self.sensors = sensors
     else:
       self.sensors = [sensors]
 
-  def run(self): # Called on thread start
+  def runMain(self): # Called on thread start
     q = self.qWriter
     dt = self.dt
     msg = self.msg
@@ -392,30 +381,28 @@ class Args(MyBase):
       time.sleep(dt)
 
 class Sensor(Args):
-  def __init__(self, params, logger, qWriter):
-    Args.__init__(self, logger, qWriter, 'Sensor', '0S{:02X}',
+  def __init__(self, params, logger, qExcept, qWriter):
+    Args.__init__(self, logger, qExcept, qWriter, 'Sensor', '0S{:02X}',
                   params['sensorPeriod'], params['sensors'])
 
 class Two(Args):
-  def __init__(self, params, logger, qWriter):
-    Args.__init__(self, logger, qWriter, 'Two', '02{:02X}FF',
+  def __init__(self, params, logger, qExcept, qWriter):
+    Args.__init__(self, logger, qExcept, qWriter, 'Two', '02{:02X}FF',
                   params['twoPeriod'], params['twoChannels'])
 
 class Pee(Args):
-  def __init__(self, params, logger, qWriter):
-    Args.__init__(self, logger, qWriter, 'Pee', '0P{:02X}FF',
+  def __init__(self, params, logger, qExcept, qWriter):
+    Args.__init__(self, logger, qExcept, qWriter, 'Pee', '0P{:02X}FF',
                   params['peePeriod'], params['peeChannels'])
 
-class Command(threading.Thread):
-  def __init__(self, params, args, logger, qWriter):
-    threading.Thread.__init__(self, daemon=True)
+class Command(MyBaseThread):
+  def __init__(self, params, args, logger, qExcept, qWriter):
+    MyBaseThread.__init__(self, 'Cmd', logger, qExcept)
     self.maxStations = params['maxStations'] # Max stations on at a time
     self.dbName = args.db
     self.site = args.site
     self.controller = args.controller
-    self.logger = logger
     self.qWriter = qWriter
-    self.name = 'Cmd'
     self.db = None
     self.nOn = 0
 
@@ -476,7 +463,7 @@ class Command(threading.Thread):
     self.qWriter.put(DispatchItem('0T{:02X}00'.format(addr)))
     
 
-  def run(self): # Called on thread start
+  def runMain(self): # Called on thread start
     logger = self.logger
     logger.info('Starting maxStations=%s', self.maxStations);
     while True:

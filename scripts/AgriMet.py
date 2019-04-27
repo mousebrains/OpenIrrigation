@@ -12,18 +12,17 @@ import argparse
 import urllib.request
 import time
 import datetime
-import threading
+from MyBaseThread import MyBaseThread
 import math
+import queue
 
-class Fetcher(threading.Thread):
-  def __init__(self, args, params, logger):
-    threading.Thread.__init__(self, daemon=True)
-    self.name = 'Fetcher' # For logger
-    self.args = args
-    self.params = params
-    self.logger = logger
+class Fetcher(MyBaseThread):
+  def __init__(self, args, params, logger, qExcept):
+      MyBaseThread.__init__(self, 'Fetcher', logger, qExcept)
+      self.args = args
+      self.params = params
 
-  def run(self): # Called on thread start
+  def runMain(self): # Called on thread start
     logger = self.logger.info
     logger('Starting')
     earliestDate = datetime.datetime.strptime(self.params['earliestDate'], "%Y-%m-%d").date()
@@ -101,15 +100,13 @@ class Fetcher(threading.Thread):
       self.logger.info('Inserted %s records in %s', cnt, datetime.datetime.now()-stime)
 
 
-class Stats(threading.Thread):
-  def __init__(self, args, params, logger):
-    threading.Thread.__init__(self, daemon=True)
-    self.name = 'Stats' # For logger
-    self.args = args
-    self.params = params
-    self.logger = logger
+class Stats(MyBaseThread):
+  def __init__(self, args, params, logger, qExcept):
+      MyBaseThread.__init__(self, 'Stats', logger, qExcept)
+      self.args = args
+      self.params = params
 
-  def run(self): # Called on thread start
+  def runMain(self): # Called on thread start
     logger = self.logger.info
     logger('Starting')
     dom = self.params['statDayOfMonth']
@@ -165,14 +162,22 @@ ch.setFormatter(formatter)
 
 logger.addHandler(ch)
 
-params = Params.Params(args.db, args.group)
-logger.info(params)
+try:
+    params = Params.Params(args.db, args.group)
+    logger.info(params)
 
-thrFetch = Fetcher(args, params, logger) # Fetch Agrimet information
-thrFetch.start()
+    qExcept = queue.Queue()
 
-thrStats = Stats(args, params, logger) # Build summary information
-thrStats.start()
+    thrFetch = Fetcher(args, params, logger, qExcept) # Fetch Agrimet information
+    thrFetch.start()
 
-thrStats.join() # Wait until finished, which should never happen
-thrFetch.join() # Wait until finished, which should never happen
+    thrStats = Stats(args, params, logger, qExcept) # Build summary information
+    thrStats.start()
+
+    e = qExcept.get()
+    qExcept.task_done()
+    raise(e)
+except Exception as e:
+    logger.exception('Thread Exception')
+
+sys.exit(1)
