@@ -21,9 +21,9 @@ class Query {
     $this->current = $db->prepare("SELECT DISTINCT ON (controller)"
 		. " controller,timestamp,volts,mAmps FROM currentLog"
 		. " WHERE timeStamp>=$1 ORDER BY controller,timeStamp DESC;");
-    $this->sensor = $db->prepare("SELECT DISTINCT ON (pocFlow)"
+    $this->sensor = $db->prepare("SELECT "
 		. " pocFlow,timestamp,round(CAST(flow AS numeric),1) FROM sensorLog"
-		. " WHERE timeStamp>=$1 ORDER BY pocFlow,timeStamp DESC;");
+		. " WHERE timeStamp>=$1 ORDER BY timeStamp DESC LIMIT 10;");
 
     $this->nOn = $db->prepare("SELECT count(DISTINCT sensor) FROM active;");
     $this->nPending = $db->prepare("SELECT count(DISTINCT sensor) FROM pending WHERE tOn<=$1;");
