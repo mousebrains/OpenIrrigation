@@ -248,18 +248,14 @@ class PgmStation(DictTable):
     self['totalTime'] = datetime.timedelta()
     tOn = None
     for e in events:
-      if e.stn.key() == stnId: # relavant to myself
-        if e.qOn: # Turning on a station
-          if e.time > eDate: break # No need to go further
-          tOn = None if e.time < sDate else e.time
-        else: # Turning off a station
-          if e.time < sDate: # Too early
-            tOn = None
-          elif e.time <= eDate: # Within interval
-            self['totalTime'] += e.time - tOn
-          else: # Past interval
-            self['totalTime'] += eDate - tOn
-            break
+      if e.stn.key() != stnId: continue # Not relavant to myself
+      if e.qOn: # Turning on a station
+        if e.time > eDate: break # No need to go further
+        tOn = None if e.time < sDate else e.time
+      elif tOn is not None: # Some time to adjust for
+        self['totalTime'] += min(e.time, eDate) - tOn # How much time left to run
+      else: # No run time yet, so use current time for time left
+        self['totalTime'] += min(e.time, eDate) - date # How much time left to run
 
   def resetManualTotalTime(self):
     if self.qSingle(): self['totalTime'] = datetime.timedelta()
