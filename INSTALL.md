@@ -1,3 +1,8 @@
+
+Python packages to install:
+ 1. python3-psycopg2
+ 2. python3-astral
+
 In root director of OpenIrrigation run ./config
 Here is my implementation:
 
