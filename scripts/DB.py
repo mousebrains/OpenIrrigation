@@ -11,7 +11,7 @@ def dict_factory(cursor, row):
 class DB:
     # overlay on top of sqlite for handling thread locking
     def __init__(self, dbname):
-        db = psycopg2.connect("dbname=interface")
+        db = psycopg2.connect(dbname=dbname)
 
     def __enter__(self):
         return self
