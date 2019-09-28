@@ -1,1 +1,6 @@
 __pycache__
+.db.site.sql
+.drop.role.sql
+.make.role.sql
+.make.tables.sql
+dump.irrigation

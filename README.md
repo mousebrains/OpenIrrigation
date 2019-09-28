@@ -31,16 +31,16 @@ Enterprise class irrigation control software with a well defined hardware interf
   * Backend software includes:
  1. NGINX or Apache software supporting PHP 7.x and CGI scripts,
  2. Python 3.x,
- 3. SQLite 3.x,
+ 3. PostgreSQL
  4. PHP 7.x, and php-fpm
  5. Some form of service/crontab process managment.
 
   * The non-standard Python modules installed are:
- 1. sqlite3
+ 1. postgresql
  1. Astral
 
   * It is tested on the following system:
- 1. A Raspberry Pi 3 running Raspbian Jessie Lite and a MacOS 10.12 system,
+ 1. A Raspberry Pi 3 running Raspbian Buster Lite and a MacOS 10.12 system,
  2. a USB-Serial connection to a Tucor TDI board,
  3. 50+ valves, and
  4. Agrimet for evapotranspiration, ET, information.
