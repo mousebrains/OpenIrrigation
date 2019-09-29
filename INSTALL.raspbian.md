@@ -29,3 +29,9 @@
    9. Install PHP7.x-FPM, "sudo apt-get install php-fpm"
    9. Follow instructions at "https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-nginx-in-ubuntu-16-04" for setting up NGINX for SSL. Please note the perfect forwarding key generating can take a long time on a Pi. I used a faster computer. I also changed all my key lengths to 4096.
    9. Uncomment lines in /etc/nginx/sites-enabled/default for php-fpm setup
+   9. setup of http to redirect to https
+   9. Add signed ssl certificates
+   10. change root to /home/irrigation/public_html
+   9. Add index.php to index line in https
+   9. in nginx.conf change user to irrigation
+   9. change user/group in /etc/php/.../www.conf to irrigation from www-data, there are four spots
