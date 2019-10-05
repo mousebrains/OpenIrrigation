@@ -7,13 +7,43 @@ import sys
 import os
 import grp
 import time
+from datetime import date
 
 def rewrite(prefixOld,prefixNew,name):
 	if prefixOld != prefixNew:
 		a = os.path.relpath(name, prefixOld)
 		name = os.path.join(prefixNew, a)
 	return os.path.normcase(os.path.normpath(os.path.expanduser(name)))
-	
+
+def wrt(f, key, val, comment):
+    f.write(key + " =")
+    if val is not None: 
+        if not isinstance(val, str):
+            val = str(val)
+        f.write(" " + val)
+    if comment: f.write("# " + comment)
+    f.write("\n")
+
+def addArg(parser, key, info):
+    if 'name' not in info:
+        info['name'] = key.upper()
+
+    key = '--' + key
+
+    if 'action' in info:
+        parser.add_argument(key, action=info['action'], help=info['help'])
+        return info['name']
+    val = info['default']
+    tval = str
+    if isinstance(val, float):
+        tval = float
+    elif isinstance(val, int):
+        tval = int
+    elif isinstance(val, date):
+        tval = date
+    parser.add_argument(key, default=info['default'], type=tval, help=info['help'])
+    return info['name']
+
 mydir = os.path.dirname(sys.argv[0])
 
 user = os.getlogin()
@@ -21,52 +51,54 @@ group = grp.getgrgid(os.getgid()).gr_name
 prefix = os.path.expanduser('~')
 webdir = os.path.join(prefix, "public_html")
 
+serviceDir = '/etc/systemd/system'
+for item in ['/etc/systemd/system', '/run/systemd/system']:
+    if os.path.isdir(item):
+        serviceDir = item
+        break
+
 installCmd = 'install --compare --group=$(GROUP) --owner=$(USER) --backup -D'
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--prefix', help='directory tree prefix', default=prefix)
-parser.add_argument('--user', help='user to set ownership to', default=user)
-parser.add_argument('--group', help='group name to set ownerhip to', default=group)
-parser.add_argument('--logdir', help='Where to store log files', 
-			default=os.path.join(prefix, "logs"))
-parser.add_argument('--bindir', help='Where to store log files', 
-			default=os.path.join(prefix, "bin"))
-parser.add_argument('--dbname', help='Name of database in server', default='irrigation')
-parser.add_argument('--site', help='Name of site', default='Casa')
-parser.add_argument('--controller', help='Name of controller', default='Casa')
-parser.add_argument('--webdir', help='Where to store log files', default=webdir)
-parser.add_argument('--phpdir', help='Where to store log files', 
-			default=os.path.join(webdir, "php"))
-parser.add_argument('--cssdir', help='Where to store log files', 
-			default=os.path.join(webdir, "css"))
-parser.add_argument('--jsdir', help='Where to store log files', 
-			default=os.path.join(webdir, "js"))
-parser.add_argument('--servicedir', help='Where to store log files', default="/etc/systemd/system")
-parser.add_argument('--install', help='How to install',  default=installCmd)
-parser.add_argument('--simulate', help='Run as a simulator',  action='store_true')
+opts = { # Dictionary of dictionaries which define the options and how to write them
+        'simulate': {'action': 'store_true', 'help':'Simulate the controller'},
+        'dbname': {'default':'irrigation', 'help':'Database name'},
+        'prefix': {'name':'USERDIR', 'default':prefix, 'help':'Directory tree prefix'},
+        'user': {'default':user, 'help':'User who will own all files'},
+        'group': {'default':group, 'help':'Group which will own all files'},
+        'logdir': {'default':os.path.join(prefix, 'logs'), 'help':'Where to store log files'},
+        'bindir': {'default':os.path.join(prefix, 'bin'), 'help':'Where to store scripts'},
+        'webdir': {'default':webdir, 'help':'Where to store web files'},
+        'phpdir': {'default':os.path.join(webdir, 'php'), 'help':'Where to store php files'},
+        'cssdir': {'default':os.path.join(webdir, 'css'), 'help':'Where to store css files'},
+        'jsdir': {'default':os.path.join(webdir, 'js'), 'help':'Where to store javascript files'},
+        'servicedir': {'default':serviceDir, 'help':'Where to store service scripts'},
+        'install': {'default':installCmd, 'help':'Install command to use'},
+        'owner': {'name':'PARENTROLE', 'default':'irrParent', 'help':'Parent role which owns everything'},
+        'roles': {'action':'append', 'help':'Supplemental roles to create'},
+        }
+
+parser = argparse.ArgumentParser(description='Generate configuration file for OpenIrrigation')
+for key in opts:
+    opts[key]['name'] = addArg(parser, key, opts[key])
 
 args = parser.parse_args()
+
+if not args.roles: 
+    args.roles = args.user # If no roles specified
+else:
+    args.roles = " ".join(args.roles) # list of all roles specified
+
+if args.simulate:
+    args.simulate = '--simul'
+else:
+    args.simulate = None
+
+args = vars(args)
 
 with open(os.path.join(mydir, "Makefile.params"), "w") as f:
   f.write("# This file automatically generated on " + time.asctime() + "\n")
   f.write("# by\n")
   f.write("#  " + " ".join(sys.argv) + "\n\n")
-  f.write("USER = " + args.user + "\n")
-  f.write("GROUP = " + args.group + "\n")
-  f.write("DBNAME = " + args.dbname + "\n")
-  f.write("SITENAME = " + args.site + "\n")
-  f.write("CONTROLLERNAME = " + args.controller + "\n")
-  f.write("USERDIR = " + rewrite(prefix,prefix,args.prefix) + "\n")
-  f.write("LOGDIR = " + rewrite(prefix, args.prefix, args.logdir) + "\n")
-  f.write("BINDIR = " + rewrite(prefix, args.prefix, args.bindir) + "\n")
-  f.write("WEBDIR = " + rewrite(prefix, args.prefix, args.webdir) + "\n")
-  f.write("PHPDIR = " + rewrite(prefix, args.prefix, args.phpdir) + "\n")
-  f.write("CSSDIR = " + rewrite(prefix, args.prefix, args.cssdir) + "\n")
-  f.write("JSDIR = " + rewrite(prefix, args.prefix, args.jsdir) + "\n")
-  f.write("SERVICEDIR = " + rewrite(prefix, args.prefix, args.servicedir) + "\n")
-
-  f.write("\n")
-  f.write("INSTALL = " + args.install + "\n");
-
-  f.write("\n")
-  f.write("SIMULATE =" + (" --simul\n" if args.simulate else "\n"))
+  for key in opts:
+      info = opts[key]
+      wrt(f, info['name'], args[key], info['help'])

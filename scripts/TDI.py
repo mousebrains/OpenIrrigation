@@ -232,6 +232,7 @@ class Consumer(MyBaseThread):
       with self.db.cursor() as cur:
         cur.execute(sql, args)
     except Exception as e:
+      self.logger.error('toDB failed on SQL %s args %s', sql, args)
       if self.db:
         self.db.close()
         self.db = None 
