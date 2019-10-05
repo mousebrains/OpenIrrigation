@@ -40,7 +40,7 @@ class Fetcher(MyBaseThread):
           t = cur.fetchone()[0]
           if t is None: t = earliestDate
         page = self.procURL(db, max(datetime.timedelta(), now.date()-t) + extraBack)
-        if len(page): self.procPage(page, db) # Process any data we got
+        if (page is not None) and len(page): self.procPage(page, db) # Process any data we got
       if qForce: break
       self.sleeper(tod)
 
@@ -63,10 +63,16 @@ class Fetcher(MyBaseThread):
     urlBase = self.params['URL']
     url = '{}{}'.format(urlBase, nBack.days)
     logger('Fetching %s', url)
-    with urllib.request.urlopen(url) as fd:
-      page = fd.read().decode('utf-8') # Load the entire page so we don't get timeout issues
-      logger('Loaded %s bytes', len(page))
-    return page
+    try:
+        fd = urllib.request.urlopen(url)
+        page = fd.read().decode('utf-8') # Load the entire page so we don't get timeout issues
+        logger('Loaded %s bytes', len(page))
+        return page
+    except urllib.error.URLError as e:
+        logger('Error fetching %s, %s', url, e.reason)
+        return None
+    except Exception as e:
+        raise (e)
 
   def procPage(self, page, db):
     stime = datetime.datetime.now()
