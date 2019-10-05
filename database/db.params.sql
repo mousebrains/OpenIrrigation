@@ -16,8 +16,7 @@ INSERT INTO params (grp,name,val) VALUES
 	('TDI', 'maxStations', 10), -- maximum allowed stations to be on at same time
 -- Agrimet parameters
 	('AGRIMET', 'station', 'CRVO'),
-	('AGRIMET', 'URL', 
-	'https://www.usbr.gov/pn-bin/AGRIMET.pl?cbtt=CRVO&interval=daily&back='),
+	('AGRIMET', 'URL', 'https://www.usbr.gov/pn-bin/daily.pl?list=crvo&back='),
 	('AGRIMET', 'extraBack', 5),
 	('AGRIMET', 'times', '0:00,2:00,4:00,18:00,20:00,22:00'),
 	('AGRIMET', 'statDayOfMonth', '3'),

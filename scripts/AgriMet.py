@@ -59,27 +59,28 @@ class Fetcher(MyBaseThread):
     time.sleep(dt.total_seconds())
 
   def procURL(self, db, nBack):
-    logger = self.logger.info
     urlBase = self.params['URL']
     url = '{}{}'.format(urlBase, nBack.days)
-    logger('Fetching %s', url)
+    self.url = url
     try:
         fd = urllib.request.urlopen(url)
         page = fd.read().decode('utf-8') # Load the entire page so we don't get timeout issues
-        logger('Loaded %s bytes', len(page))
+        self.logger.info('Loaded %s bytes from %s', len(page), url)
         return page
     except urllib.error.URLError as e:
-        logger('Error fetching %s, %s', url, e.reason)
+        self.logger.error('Error fetching %s, %s', url, e.reason)
         return None
     except Exception as e:
+        self.logger.error('Unexpected exception fetching %s', url)
         raise (e)
 
   def procPage(self, page, db):
     stime = datetime.datetime.now()
     with db.cursor() as cur: 
-      station = []
-      column = []
+      columns = []
+      n = 0
       cnt = 0
+      state = 0 # 0->Look for BEGIN DATA, 1->header, 2->Data or END DATA
       myID = 'ETInsert' # Prepare my statement once, and use many times
       cur.execute("PREPARE " + myID \
 		+ " AS INSERT INTO ET(t,station,code,value)" \
@@ -88,19 +89,43 @@ class Fetcher(MyBaseThread):
                 + " ON CONFLICT (station,code,t) DO UPDATE SET value=EXCLUDED.value;")
       sql = "EXECUTE " + myID + "(%s,%s,%s,%s);"
       for line in page.split('\n'):
-        line = line.split(',')
-        n = len(line)
-        if n < 2: continue
-        if line[0] == 'DateTime':
-          for i in range(n):
-            fields = line[i].split('_')
-            station.append(fields[0])
-            column.append(fields[1] if len(fields) > 1 else fields[0])
-        else: # Data line
-          for i in range(1,n):
-            if (len(line) > i) and len(line[i]):
+          if state == 0: # Looking for BEGIN DATA
+              if line.strip() == 'BEGIN DATA':
+                  state += 1
+              continue
+          if state == 1: # Should be a header line
+              fields = line.split(',')
+              if fields[0].strip() != 'DATE':
+                  self.logger.warn('Unexpected line while looking for header in %s\n%s', 
+                          self.url, line)
+                  continue
+              for field in fields:
+                  field = field.strip() # Strip off leading/trailing white space
+                  if field == 'DATE':
+                      columns.append((field, None))
+                  else:
+                      parts = field.split(" ")
+                      if len(parts) != 2:
+                          self.logger.warn('Unexpected number of parts breaking apart %s in %s\n%s',
+                                  field, self.url, line)
+                      else:
+                          columns.append((parts[0].lower(), parts[1].lower()))
+              n = len(columns)
+              state += 1 # Now look for data lines
+              continue
+          if line.strip() == 'END DATA':
+              state = 0
+              continue
+          fields = line.split(',')
+          if len(fields) != n:
+              self.logger.warn('Unexpected number of fields(%s!=%s) in %s\n%s',
+                  len(fields), n, self.url, line)
+              continue
+          t = fields[0].strip() # Date
+          for i in range(1,n): # Walk through data columns
+              cur.execute(sql, [t, columns[i][0], fields[i].strip(), columns[i][1]])
               cnt += 1
-              cur.execute(sql, [line[0], station[i], line[i], column[i]])
+
       if cnt:
         db.commit() # commit records written
       self.logger.info('Inserted %s records in %s', cnt, datetime.datetime.now()-stime)
@@ -142,14 +167,15 @@ class Stats(MyBaseThread):
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--db', help='ET database name', required=True)
-parser.add_argument('--log', help='logfile, if not specified use the console')
 parser.add_argument('--group', help='parameter group name to use', default='AGRIMET')
 parser.add_argument('--force', help='run once fetching information', action='store_true')
 parser.add_argument('--forceStats', help='run stats generation once ', action='store_true')
 parser.add_argument('--earliestDate', help='Earliest date to fetch')
-parser.add_argument('--maxlogsize', help='logging verbosity', default=1000000)
-parser.add_argument('--backupcount', help='logging verbosity', default=7)
-parser.add_argument('--verbose', help='logging verbosity', action='store_true')
+grp = parser.add_argument_group('Log file related options')
+grp.add_argument('--log', help='logfile, if not specified use the console')
+grp.add_argument('--maxlogsize', help='logging verbosity', default=1000000)
+grp.add_argument('--backupcount', help='logging verbosity', default=7)
+grp.add_argument('--verbose', help='logging verbosity', action='store_true')
 args = parser.parse_args()
 
 logger = logging.getLogger(__name__)
