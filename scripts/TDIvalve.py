@@ -68,20 +68,21 @@ class ValveOps(MyBaseThread):
     def doPending(self) -> None:
         """ Get the pending events and execute them """
         with self.db.cursor() as cur0, self.db.cursor() as cur1:
-            sql = "SELECT id,addr,cmd FROM command" \
+            sql = "SELECT id,addr,name,cmd FROM command" \
                     + " WHERE EXTRACT(EPOCH FROM timestamp) <= %s AND controller=%s" \
                     + " ORDER BY timestamp"
             cur0.execute(sql, (time.time(),self.controller))
             for row in cur0:
+                cmd = row[-1]
                 self.logger.debug('doPending row=%s', row)
-                if row[-1] == 0:  # On command
-                    self.valveOn(row[0], row[1], cur1)
-                elif row[-1] == 1:  # Off command
-                    self.valveOff(row[0], row[1], cur1)
-                elif row[-1] == 2:  # Off command
-                    self.valveTest(row[0], row[1], cur1)
+                if cmd == 0:  # On command
+                    self.valveOn(row[0], row[1], row[2], row[3], cur1)
+                elif cmd == 1:  # Off command
+                    self.valveOff(row[0], row[1], row[2], row[3], cur1)
+                elif cmd == 2:  # Off command
+                    self.valveTest(row[0], row[1], row[2], row[3], cur1)
                 else:
-                    self.logger.warning('Invalid command, %s, for command row %s', row[3], row)
+                    self.logger.warning('Invalid command, %s, for command row %s', cmd, row)
                     self.dbExec(cur1, 'DELETE FROM command WHERE id=%s', (row[0],))
 
 
@@ -110,21 +111,21 @@ class ValveOps(MyBaseThread):
             return True
         return False
 
-    def valveOn(self, cmdID:int, addr:int, cur:psycopg2.extensions.cursor) -> bool:
+    def valveOn(self, cmdID:int, addr:int, name:str, cur:psycopg2.extensions.cursor) -> bool:
         """ Turn a valve on """
         sqlOkay = 'SELECT command_on_done(%s,%s,%s,%s,%s,%s);'
         sqlFail = 'SELECT command_on_failed(%s,%s);'
         logger = self.logger
         (tOn, nOn)  = self.onInfo(cur, addr)
         if tOn:
-            logger.warning('Address %s was turned on at %s', addr, tOn)
+            logger.warning('%s(%s) was turned on at %s', name, addr, tOn)
         elif nOn >= self.maxStations:  # Not on but over limit
-            logger.warning('Maximum number of stations, %s, reached for addr %s, nOn=%s', 
-                    self.maxStations, addr, nOn)
+            logger.warning('Maximum number of stations, %s, reached for %s(%s), nOn=%s', 
+                    self.maxStations, name, addr, nOn)
             self.dbExec(cur, sqlFail, (cmdID,-1))
             return False
         else:
-            logger.info('Turning on address %s', addr)
+            logger.info('Turning on %s(%s)', name, addr)
         msg = self.msgOn.buildMessage((addr, 0)) # 0AXXYY
         for i in range(2): # Try turning it on twice if need be
             self.serial.put(msg, self) # Send to controller
@@ -149,16 +150,16 @@ class ValveOps(MyBaseThread):
         self.dbExec(cur, sqlFail, (cmdID,-2))
         return False
 
-    def valveOff(self, cmdID:int, addr:int, cur:psycopg2.extensions.cursor) -> bool:
+    def valveOff(self, cmdID:int, addr:int, name:str, cur:psycopg2.extensions.cursor) -> bool:
         """ Turn a valve off """
         sqlOkay = 'SELECT command_off_done(%s,%s,%s);'
         sqlFail = 'SELECT command_off_failed(%s,%s);'
         logger = self.logger
         (tOn, nOn)  = self.onInfo(cur, addr)
         if tOn: # Turned on
-            logger.info('Turning off address %s which was turned on %s', addr, tOn.isoformat())
+            logger.info('Turning off %s(%s) which was turned on %s', name, addr, tOn.isoformat())
         else: # Not turned on
-            logger.info('Address %s is not turned on', addr)
+            logger.info('%s(%s) is not turned on, trying to turn off anyway', name, addr)
         codigo = 0xff if tOn and (nOn <= 1) else addr # Turn off all if only addr is on
         msg = self.msgOff.buildMessage((codigo,)) # 0DXX
         for i in range(2): # Try turning it off twice if need be
@@ -178,22 +179,23 @@ class ValveOps(MyBaseThread):
                 continue # error processing reply message, so try again
             if self.dbExec(cur, sqlOkay, [cmdID, t, args[1]]):
                 return True
-        self.logger.info('Failed to turn off addr=%s cmdID=%s', addr, cmdID)
+        self.logger.info('Failed to turn off %s(%s) cmdID=%s', name, addr, cmdID)
         self.dbExec(cur, sqlFail, (cmdID,-3))
 
-    def valveTest(self, cmdID:int, addr:int, cur:psycopg2.extensions.cursor) -> bool:
+    def valveTest(self, cmdID:int, addr:int, name:str, cur:psycopg2.extensions.cursor) -> bool:
         """ Run a valve test """
         sqlOkay = 'SELECT command_tee_done(%s,%s,%s,%s,%s,%s);'
         sqlFail = 'SELECT command_tee_failed(%s,%s);'
         logger = self.logger
         (tOn, nOn)  = self.onInfo(cur, addr)
         if tOn:
-            logger.info('Can not test addr %s since it has been on since %s', addr, tOn.isoformat())
+            logger.info('Can not test %s(%s) since it has been on since %s', 
+                    name, addr, tOn.isoformat())
             self.dbExec(cur, sqlFail, (cmdID,-4))
             return False
         if nOn >= self.maxStations:  # Not on but over limit
-            logger.info('Can not test %s since maximum number of stations, %s <= %s',
-                    addr, self.maxStations, nOn)
+            logger.info('Can not test %s(%s) since maximum number of stations, %s <= %s',
+                    name, addr, self.maxStations, nOn)
             self.dbExec(cur, sqlFail, (cmdID,-5))
             return False
         msg = self.msgTest.buildMessage((addr,)) # 0TXX
@@ -217,7 +219,8 @@ class ValveOps(MyBaseThread):
             logger.info('ValveTest Failed')
             self.dbExec(cur, sqlFail, (cmdID,-9))
             return False
-        logger.info('ValveTest passed addr=%s, pre=%s peak=%s post=%s', addr, args[1], args[2], args[3])
+        logger.info('ValveTest passed %s(%s), pre=%s peak=%s post=%s', 
+                name, addr, args[1], args[2], args[3])
         return True
 
     def onInfo(self, cur:psycopg2.extensions.cursor, addr:int) -> tuple:

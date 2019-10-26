@@ -993,6 +993,7 @@ CREATE INDEX action_index ON action(tOn,tOff);
 DROP TABLE IF EXISTS command CASCADE;
 CREATE TABLE command( -- command to be executed by controller
 	id SERIAL PRIMARY KEY, -- id
+	name TEXT, -- station.name
 	addr INTEGER NOT NULL, -- sensor address field
 	controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which ctrl
 	action INTEGER REFERENCES action(id) ON DELETE CASCADE NOT NULL, -- id in action
@@ -1051,6 +1052,7 @@ DECLARE onID command.id%TYPE; -- id field in command table
 DECLARE offID command.id%TYPE; -- id field in command table
 DECLARE address sensor.addr%TYPE; -- addr column from sensor table for sensor id
 DECLARE ctrlID command.controller%TYPE; -- controller id
+DECLARE stnName TEXT; -- station.name for pgmstn.station
 DECLARE nOn BIGINT; -- Number of times I'm already on between timeOn and timeOff
 BEGIN
 	SELECT addr,controller INTO address,ctrlID FROM sensor WHERE id=sensorID;
@@ -1067,14 +1069,19 @@ BEGIN
 			address, ctrlID, timeOn, timeOff;
 	END IF;
 
+	SELECT station.name INTO stnName 
+		FROM pgmStn 
+		INNER JOIN station ON station.id=pgmStn.station 
+		WHERE pgmStn.id=pStnID;
+
 	INSERT INTO action (cmd, tOn, tOff, sensor, addr, controller, program, pgmStn, pgmDate) 
 		VALUES (0, timeOn, timeOff, sensorID, address, ctrlID, pID, pStnID, pDate)
 		RETURNING id INTO actID;
-	INSERT INTO command (addr,controller,action,timestamp,cmd) VALUES
-		(address, ctrlID, actID, timeOn, 0)
+	INSERT INTO command (addr,name,controller,action,timestamp,cmd) VALUES
+		(address, stnName, ctrlID, actID, timeOn, 0)
 		RETURNING id INTO onID;
-	INSERT INTO command (addr,controller,action,timestamp,cmd) VALUES
-		(address, ctrlID, actID, timeOff, 1)
+	INSERT INTO command (addr,name,controller,action,timestamp,cmd) VALUES
+		(address, stnName, ctrlID, actID, timeOff, 1)
 		RETURNING id INTO offID;
 	UPDATE action SET cmdOn=onID, cmdOff=offID WHERE id=actID;
 	-- Send notifation that a new row has been added
@@ -1092,6 +1099,7 @@ DECLARE actID action.id%TYPE; -- id field in action table
 DECLARE cmdID command.id%TYPE; -- id field in command table
 DECLARE address sensor.addr%TYPE; -- addr column from sensor table for sensor id
 DECLARE ctrlID command.controller%TYPE; -- controller id
+DECLARE stnName TEXT; -- station.name for pgmstn.station
 DECLARE nOn BIGINT; -- Number of times I'm already on between timeOn and timeOff
 BEGIN
 	SELECT addr,controller INTO address,ctrlID FROM sensor WHERE id=sensorID;
@@ -1107,11 +1115,16 @@ BEGIN
 			address, ctrlID, timeOn;
 	END IF;
 
+	SELECT station.name INTO stnName 
+		FROM pgmStn 
+		INNER JOIN station ON station.id=pgmStn.station 
+		WHERE pgmStn.id=pStnID;
+
 	INSERT INTO action (cmd, tOn, tOff, sensor, addr, controller, program, pgmStn, pgmDate) 
 		VALUES (2, timeOn, timeOn, sensorID, address, ctrlID, NULL, NULL, NULL)
 		RETURNING id INTO actID;
-	INSERT INTO command (addr,controller,action,timestamp,cmd) VALUES
-		(address, ctrlID, actID, timeOn, 2)
+	INSERT INTO command (addr,name,controller,action,timestamp,cmd) VALUES
+		(address, stnName, ctrlID, actID, timeOn, 2)
 		RETURNING id INTO cmdID;
 	UPDATE action SET cmdOn=cmdID WHERE id=actID;
 	-- Send notifation that a new row has been added
