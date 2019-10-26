@@ -5,8 +5,11 @@
 
 include ../Makefile.params
 
-LIB = DB.py Params.py TDI.py TDISimulate.py Programs.py Events.py MyBaseThread.py
-BIN = TDIserver.py AgriMet.py scheduler.py notifier.py dumpDatabase.py
+LIB = DB.py MyBaseThread.py MyLogger.py Params.py 
+LIB+= SchedMain.py SchedProgram.py SchedProgramStation.py SchedSensor.py
+LIB+= SchedTimeline.py
+LIB+= TDI.py TDIbase.py TDIserial.py TDISimulate.py TDIvalve.py
+BIN = AgriMet.py dumpDatabase.py notifier.py scheduler.py TDIserver.py 
 
 DEST = $(LIB:%=$(BINDIR)/%) $(BIN:%=$(BINDIR)/%)
 
