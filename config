@@ -6,52 +6,15 @@ import argparse
 import sys
 import os
 import grp
-import time
-from datetime import date
-
-def rewrite(prefixOld,prefixNew,name):
-	if prefixOld != prefixNew:
-		a = os.path.relpath(name, prefixOld)
-		name = os.path.join(prefixNew, a)
-	return os.path.normcase(os.path.normpath(os.path.expanduser(name)))
-
-def wrt(f, key, val, comment):
-    f.write(key + " =")
-    if val is not None: 
-        if not isinstance(val, str):
-            val = str(val)
-        f.write(" " + val)
-    if comment: f.write("# " + comment)
-    f.write("\n")
-
-def addArg(parser, key, info):
-    if 'name' not in info:
-        info['name'] = key.upper()
-
-    key = '--' + key
-
-    if 'action' in info:
-        parser.add_argument(key, action=info['action'], help=info['help'])
-        return info['name']
-    val = info['default']
-    tval = str
-    if isinstance(val, float):
-        tval = float
-    elif isinstance(val, int):
-        tval = int
-    elif isinstance(val, date):
-        tval = date
-    parser.add_argument(key, default=info['default'], type=tval, help=info['help'])
-    return info['name']
+import datetime
 
 mydir = os.path.dirname(sys.argv[0])
 
 user = os.getlogin()
 group = grp.getgrgid(os.getgid()).gr_name
 prefix = os.path.expanduser('~')
-webdir = os.path.join(prefix, "public_html")
 
-serviceDir = '/etc/systemd/system'
+serviceDir = None
 for item in ['/etc/systemd/system', '/run/systemd/system']:
     if os.path.isdir(item):
         serviceDir = item
@@ -59,46 +22,62 @@ for item in ['/etc/systemd/system', '/run/systemd/system']:
 
 installCmd = 'install --compare --group=$(GROUP) --owner=$(USER) --backup -D'
 
-opts = { # Dictionary of dictionaries which define the options and how to write them
-        'simulate': {'action': 'store_true', 'help':'Simulate the controller'},
-        'dbname': {'default':'irrigation', 'help':'Database name'},
-        'prefix': {'name':'USERDIR', 'default':prefix, 'help':'Directory tree prefix'},
-        'user': {'default':user, 'help':'User who will own all files'},
-        'group': {'default':group, 'help':'Group which will own all files'},
-        'logdir': {'default':os.path.join(prefix, 'logs'), 'help':'Where to store log files'},
-        'bindir': {'default':os.path.join(prefix, 'bin'), 'help':'Where to store scripts'},
-        'webdir': {'default':webdir, 'help':'Where to store web files'},
-        'phpdir': {'default':os.path.join(webdir, 'php'), 'help':'Where to store php files'},
-        'cssdir': {'default':os.path.join(webdir, 'css'), 'help':'Where to store css files'},
-        'jsdir': {'default':os.path.join(webdir, 'js'), 'help':'Where to store javascript files'},
-        'servicedir': {'default':serviceDir, 'help':'Where to store service scripts'},
-        'install': {'default':installCmd, 'help':'Install command to use'},
-        'owner': {'name':'PARENTROLE', 'default':'irrParent', 'help':'Parent role which owns everything'},
-        'roles': {'action':'append', 'help':'Supplemental roles to create'},
-        }
-
 parser = argparse.ArgumentParser(description='Generate configuration file for OpenIrrigation')
-for key in opts:
-    opts[key]['name'] = addArg(parser, key, opts[key])
+
+g = parser.add_argument_group('Database related options')
+g.add_argument('--dbname', type=str, default='irrigation', help='Database name')
+g.add_argument('--parentRole', type=str, default='irrParent', 
+        help='Parent roll which owns everything in the database')
+g.add_argument('--roles', action='append', help='Supplemental roles to create')
+g.add_argument('--siteName', type=str, default='Casa', help='Name of site in database')
+g.add_argument('--controllerName', type=str, default='Casa', 
+        help='Name of controller in database')
+
+g = parser.add_argument_group('Directory related options')
+g.add_argument('--prefix', type=str, default=prefix, help='Directory tree prefix')
+g.add_argument('--logdir', type=str, default='logs', help='Where to store log files')
+g.add_argument('--bindir', type=str, default='bin', help='Where to store scripts')
+g.add_argument('--webdir', type=str, default='public_html', help='Where to store web files')
+g.add_argument('--phpdir', type=str, default='public_html/php', 
+        help='Where to store php files')
+g.add_argument('--cssdir', type=str, default='public_html/css', 
+        help='Where to store css files')
+g.add_argument('--jsdir', type=str, default='public_html/js',
+        help='Where to store javascript files')
+g.add_argument('--serviceDir', type=str, default=serviceDir, 
+        help='Where to store service files')
+g.add_argument('--user', type=str, help='User who will own the installed files')
+g.add_argument('--group', type=str, help='Group of the installed files')
+
+parser.add_argument('--simulate', action='store_true', help='Simulate the controller(s)')
+parser.add_argument('--install', type=str, default=installCmd, help='Install command to use')
 
 args = parser.parse_args()
 
-if not args.roles: 
-    args.roles = args.user # If no roles specified
-else:
-    args.roles = " ".join(args.roles) # list of all roles specified
+if args.serviceDir is None:
+    parser.error('--serviceDir must be specified when a common location does not exist')
 
-if args.simulate:
-    args.simulate = '--simul'
-else:
-    args.simulate = None
+if args.group is None: args.group = args.user
 
-args = vars(args)
+args.roles = args.user if args.roles is None else " ".join(args.roles)
 
+args.simulate = '--simulate' if args.simulate else ''
+
+args.prefix = os.path.expanduser(args.prefix)
+args.logdir = os.path.expanduser(os.path.join(args.prefix, args.logdir))
+args.bindir = os.path.expanduser(os.path.join(args.prefix, args.bindir))
+args.webdir = os.path.expanduser(os.path.join(args.prefix, args.webdir))
+args.phpdir = os.path.expanduser(os.path.join(args.prefix, args.phpdir))
+args.cssdir = os.path.expanduser(os.path.join(args.prefix, args.cssdir))
+args.jsdir  = os.path.expanduser(os.path.join(args.prefix, args.jsdir))
+
+opts = vars(args)
 with open(os.path.join(mydir, "Makefile.params"), "w") as f:
-  f.write("# This file automatically generated on " + time.asctime() + "\n")
-  f.write("# by\n")
-  f.write("#  " + " ".join(sys.argv) + "\n\n")
-  for key in opts:
-      info = opts[key]
-      wrt(f, info['name'], args[key], info['help'])
+    now = datetime.datetime.now()
+    now.replace(microsecond=0)
+    f.write('# This file automatically generated on {}\n'.format(now))
+    f.write("# by\n")
+    f.write("#  " + " ".join(sys.argv) + "\n\n")
+    for key in opts:
+        val = '' if opts[key] is None else opts[key]
+        f.write('{} = {}\n'.format(key.upper(), val))
