@@ -67,7 +67,7 @@ class Fetcher(MyBaseThread):
             if qForce: break
             dt = tNext - datetime.datetime.now()
             self.logger.info('Sleeping until %s which is %s from now', tNext, dt)
-            time.sleep(dt.total_secodns()) # sleep until tNext
+            time.sleep(dt.total_seconds()) # sleep until tNext
         raise(Exception('Broke out of while loop'))
     
     def sleepTillTime(self, tod:list) -> None:
