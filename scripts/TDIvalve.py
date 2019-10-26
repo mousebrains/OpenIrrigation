@@ -54,7 +54,7 @@ class ValveOps(MyBaseThread):
                 self.doPending() # Execute any pending commands
                 tNext = self.nextTime() # Get the next wakeup time from the list
             else:
-                self.logger.info('Sleeping until %s, %s', time.ctime(tNext), dt)
+                self.logger.debug('Sleeping until %s, %s', time.ctime(tNext), dt)
                 notifications = self.listen.fetch(dt)
                 if notifications: # Got notifications
                     for i in range(len(notifications)):
@@ -117,7 +117,7 @@ class ValveOps(MyBaseThread):
         logger = self.logger
         (tOn, nOn)  = self.onInfo(cur, addr)
         if tOn:
-            logger.warning('Address %s was turned on %s', addr, tOn)
+            logger.warning('Address %s was turned on at %s', addr, tOn)
         elif nOn >= self.maxStations:  # Not on but over limit
             logger.warning('Maximum number of stations, %s, reached for addr %s, nOn=%s', 
                     self.maxStations, addr, nOn)
@@ -233,7 +233,7 @@ class ValveOps(MyBaseThread):
 
     def dbExec(self, cur:psycopg2.extensions.cursor, sql:str, args:list) -> bool:
         try:
-            self.logger.info('dbExec %s %s', sql, args)
+            self.logger.debug('dbExec %s %s', sql, args)
             cur.execute(sql, args)
             cur.execute('COMMIT;')
             return True
