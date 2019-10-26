@@ -160,8 +160,8 @@ class Base(MyBaseThread):
 
     def procReply(self, t, reply, args):
         if not self.previous or (self.previous != args): # Fresh reading
-            self.logger.info('Reply t=%s %s %s', t, reply, args)
+            self.logger.debug('Reply t=%s %s %s', t, reply, args)
             self.dbOut.put(self.msgHandler.sql, t, args)
             self.previous = args
         else: # Repeat
-            self.logger.info('Repeated t=%s %s %s', t, reply, args)
+            self.logger.debug('Repeated t=%s %s %s', t, reply, args)
