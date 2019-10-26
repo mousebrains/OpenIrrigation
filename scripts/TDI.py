@@ -41,7 +41,7 @@ class Pee(Base):
         (channel, val) = args
         if (channel not in self.previous) or (self.previous[channel] != val): # different reading
             self.previous[channel] = val
-            self.logger.info('Fresh reading t=%s %s %s', t, reply, args)
+            self.logger.debug('Fresh reading t=%s %s %s', t, reply, args)
             self.dbOut.put(self.msgHandler.sql, t, [channel, val])
         else:
             self.logger.debug('Dropped reading t=%s %s %s', t, reply, args)
@@ -72,7 +72,7 @@ class Sensor(Base):
         if (flag == 4) and ((channel not in self.previous) or (self.previous[channel] != val)):
             # fresh and different reading
             self.previous[channel] = val
-            self.logger.info('Fresh reading t=%s %s %s', t, reply, args)
+            self.logger.debug('Fresh reading t=%s %s %s', t, reply, args)
             self.dbOut.put(self.msgHandler.sql, t, [channel, val])
         else:
             self.logger.debug('Dropped reading t=%s %s %s', t, reply, args)
@@ -91,7 +91,7 @@ class Two(Base): # 02XXYY -> 12XXZZ
         (channel, val) = args
         if (channel not in self.previous) or (self.previous[channel] != val): # different reading
             self.previous[channel] = val
-            self.logger.info('Fresh reading t=%s %s %s', t, reply, args)
+            self.logger.debug('Fresh reading t=%s %s %s', t, reply, args)
             self.dbOut.put(self.msgHandler.sql, t, [channel, val])
         else:
             self.logger.debug('Dropped reading t=%s %s %s', t, reply, args)

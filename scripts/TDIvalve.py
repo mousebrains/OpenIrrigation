@@ -73,7 +73,7 @@ class ValveOps(MyBaseThread):
                     + " ORDER BY timestamp"
             cur0.execute(sql, (time.time(),self.controller))
             for row in cur0:
-                self.logger.info('doPending row=%s', row)
+                self.logger.debug('doPending row=%s', row)
                 if row[-1] == 0:  # On command
                     self.valveOn(row[0], row[1], cur1)
                 elif row[-1] == 1:  # Off command
@@ -123,6 +123,8 @@ class ValveOps(MyBaseThread):
                     self.maxStations, addr, nOn)
             self.dbExec(cur, sqlFail, (cmdID,-1))
             return False
+        else:
+            logger.info('Turning on address %s', addr)
         msg = self.msgOn.buildMessage((addr, 0)) # 0AXXYY
         for i in range(2): # Try turning it on twice if need be
             self.serial.put(msg, self) # Send to controller
