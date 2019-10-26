@@ -136,8 +136,7 @@ class Base(MyBaseThread):
         msgHandler = self.msgHandler
         if not args: args = [None]
 
-        initialDelay = random.uniform(10,60) # Startup delay
-        initialDelay = random.uniform(1,2) # Startup delay
+        initialDelay = random.uniform(30,60) # Startup delay
         logger.info('Starting dt=%s cmd=%s initial sleep %s seconds', 
                 dt, self.msgHandler.cmd, initialDelay)
         time.sleep(initialDelay)
