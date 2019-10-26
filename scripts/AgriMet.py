@@ -65,8 +65,9 @@ class Fetcher(MyBaseThread):
             db.updateState(myName, 'Sleeping until {}'.format(tNext))
             db.close() # I'm going to be a while before I need the connection again, so close it
             if qForce: break
+            dt = tNext - datetime.datetime.now()
             self.logger.info('Sleeping until %s which is %s from now', tNext, dt)
-            time.sleep((tNext - datetime.datetime.now()).total_secodns()) # sleep until tNext
+            time.sleep(dt.total_secodns()) # sleep until tNext
         raise(Exception('Broke out of while loop'))
     
     def sleepTillTime(self, tod:list) -> None:
