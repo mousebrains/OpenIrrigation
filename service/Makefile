@@ -29,7 +29,7 @@ install-logs:
 clean:
 	$(RM) $(DEST)
 
-$(SERVICEDIR)/%: %
+$(SERVICEDIR)/%: % ../Makefile.params
 	sed -e 's?__USER__?$(USER)?g' \
 	    -e 's?__GROUP__?$(GROUP)?g' \
 	    -e 's?__LOGDIR__?$(LOGDIR)?g' \
