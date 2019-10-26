@@ -53,8 +53,8 @@ try:
 
     if args.nDays is None: args.nDays = params['nDays']
 
+    db = DB.DB(args.db, logger)
     listener = DB.Listen(args.db, args.channel, logger)
-    stater = DB.State(args.db, logger)
     tNext = datetime.now() + timedelta(seconds=args.initialDelay)
 
     while True: # Infinite loop
@@ -62,20 +62,21 @@ try:
         if dt > timedelta(seconds=0):
             msg = 'Sleeping till {}'.format(tNext)
             logger.info(msg)
-            stater.update(myName, msg)
+            db.updateState(myName, msg)
+            db.close() # Should be a while before I'm needed again
             reply = listener.fetch(dt.total_seconds())
             if reply:
                 logger.info('Woke up due to notification(s), %s', reply)
-                stater.update(myName, 'Starting notification {}'.format(reply))
+                db.updateState(myName, 'Starting notification {}'.format(reply))
             else:
-                stater.update(myName, 'Starting')
+                db.updateState(myName, 'Starting')
         logger.info('Starting scheduler run')
         runScheduler(args, logger)
-        stater.update(myName, 'Done')
+        db.updateState(myName, 'Done')
         if args.single: break # Break out of loop if only to be done once
         # Just after midnight
         tNext = datetime.combine(date.today() + timedelta(days=1), time(0,0,1))
-    stater.update(myName, 'Exiting')
+    db.updateState(myName, 'Exiting')
 
 except Exception as e:
     logger.exception('Unexpected exception')
