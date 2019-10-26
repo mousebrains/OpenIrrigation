@@ -76,11 +76,11 @@ class ValveOps(MyBaseThread):
                 cmd = row[-1]
                 self.logger.debug('doPending row=%s', row)
                 if cmd == 0:  # On command
-                    self.valveOn(row[0], row[1], row[2], row[3], cur1)
+                    self.valveOn(row[0], row[1], row[2], cur1)
                 elif cmd == 1:  # Off command
-                    self.valveOff(row[0], row[1], row[2], row[3], cur1)
+                    self.valveOff(row[0], row[1], row[2], cur1)
                 elif cmd == 2:  # Off command
-                    self.valveTest(row[0], row[1], row[2], row[3], cur1)
+                    self.valveTest(row[0], row[1], row[2], cur1)
                 else:
                     self.logger.warning('Invalid command, %s, for command row %s', cmd, row)
                     self.dbExec(cur1, 'DELETE FROM command WHERE id=%s', (row[0],))
