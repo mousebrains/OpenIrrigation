@@ -207,12 +207,14 @@ class Stats(MyBaseThread):
         qForce = self.args.forceStats
         db = DB.DB(self.args.db, self.logger)
         logger('Starting hod=%s qForce=%s', hod, qForce)
+        myName = 'Stats'
         while True:
             dt = max(datetime.timedelta(), tNext - datetime.datetime.now())
             if not qForce:
                 logger('Sleeping until %s dt %s', tNext, dt)
                 time.sleep(dt.total_seconds())
             logger('Building statistics')
+            db.updateState(myName, 'Building statistics')
             with db.cursor() as cur:
                 cur.execute("CREATE TEMPORARY TABLE ETbyDOY AS" \
                         + " SELECT station,code,value,EXTRACT('DOY' from t) AS doy FROM ET;")
@@ -222,10 +224,11 @@ class Stats(MyBaseThread):
                         + " ON CONFLICT (station,code,doy)" \
                         + " DO UPDATE SET value=EXCLUDED.value,n=EXCLUDED.n;")
                 db.commit()
-            db.close() # It will be a while until I need a connection again
             now = datetime.datetime.now().date()
             dNext = datetime.date(now.year+1, 1, 1) # Rerun on first of year
             tNext = datetime.datetime.combine(dNext, hod)
+            db.updateState(myName, 'Sleeping until {}'.format(tNext))
+            db.close() # It will be a while until I need a connection again
             if qForce: break
         raise(Exception('Broke out of while loop'))
 
