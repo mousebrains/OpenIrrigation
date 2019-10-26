@@ -14,7 +14,7 @@ Description=OpenIrrigation Agrimet Harvester
 User=__USER__
 Group=__GROUP__
 WorkingDirectory=__LOGDIR__
-ExecStart=__BINDIR__/AgriMet.py --db __DBNAME__ --log=__LOGDIR__/AgriMet.log
+ExecStart=__BINDIR__/AgriMet.py --db=__DBNAME__ --log=__LOGDIR__/AgriMet.log
 RestartSec=86400 # Once a day is fine 
 Restart=always
 

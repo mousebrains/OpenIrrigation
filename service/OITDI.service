@@ -19,7 +19,7 @@ User=__USER__
 Group=__GROUP__
 SupplementaryGroups=dialout
 WorkingDirectory=__LOGDIR__
-ExecStart=__BINDIR__/TDIserver.py --db __DBNAME__ --site __SITENAME__ --controller __CONTROLLERNAME__ --log=__LOGDIR__/TDI.log __SIMULATE__
+ExecStart=__BINDIR__/TDIserver.py --db=__DBNAME__ --site=__SITENAME__ --controller=__CONTROLLERNAME__ --log=__LOGDIR__/TDI.log __SIMULATE__
 RestartSec=10 
 Restart=always
 

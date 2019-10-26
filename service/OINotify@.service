@@ -15,4 +15,4 @@ Type=simple
 User=__USER__
 Group=__GROUP__
 WorkingDirectory=__LOGDIR__
-ExecStart=__BINDIR__/notifier.py --params=__DBDIR__/params.db --log=__LOGDIR__/Notifier.log --instance %i --host %H
+ExecStart=__BINDIR__/notifier.py --params=__DBDIR__/params.db --log=__LOGDIR__/Notifier.log --instance=%i --host=%H
