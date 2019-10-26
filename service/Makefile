@@ -1,5 +1,5 @@
 #
-# Install scripts into appropriate directories for a Raspbian Stretch system
+# Install scripts into appropriate directories for a Raspbian Buster system
 # with a user/group
 #
 
