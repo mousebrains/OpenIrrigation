@@ -1,238 +1,403 @@
-#! /usr/bin/python3 -b
-# 
-# Simulate a TDI controller, if desired, using a pseudo TTY connection.
+#! /usr/bin/env python3
 #
+# Generate a serial object, and if needed a simulation thread to
+# communicate with the serial object.
+#
+# Oct-2019, Pat Welch, pat@mousebrains.com
+#
+
 import os
-import pty
-from serial import Serial
-from MyBaseThread import MyBaseThread
-import random
 import time
-import psycopg2
+import pty
+import serial
+import select
+import random
+import math
+from MyBaseThread import MyBaseThread
 
-def mkSerial(args, params, logger, qExcept):
-  with psycopg2.connect(dbname=args.db) as db, \
-       db.cursor() as cur:
-    cur.execute("INSERT INTO simulate(qSimulate) VALUES(%s);", [args.simul])
-    db.commit()
+def mkSerial(args, logger, qExcept):
+    if args.simulate:
+        (master, slave) = pty.openpty() # Create a psuedo TTY pair
+        thr = TDISimul(master, args, logger, qExcept)
+        thr.start()
+        return serial.Serial(os.ttyname(slave)) # Open the slave side as a serial device
+    # A real serial port
+    parities = {'none': serial.PARITY_NONE, 'even': serial.PARITY_EVEN,
+            'odd': serial.PARITY_ODD, 'mark': serial.PARITY_MARK, 'space': serial.PARITY_SPACE}
+    stopbits = {'1': serial.STOPBITS_ONE, '1.5': serial.STOPBITS_ONE_POINT_FIVE,
+            '2': serialSTOPBITS_TWO}
+    return serial.Serial(port=args.port, 
+            baudrate=args.baudrate,
+            bytesize=args.bytesize,
+            parity=parities[args.parity],
+            stopbits=stopbits[args.stopbits])
 
-  if not args.simul: # Simulating a controller
-    return (Serial(port=params['port'], baudrate=params['baudrate']), None)
+def mkArgs(parser): # Add simulation related options
+    grp = parser.add_argument_group('Serial port related options')
+    grp.add_argument('--baud', type=int, default=9600, help='Serial port baud rate')
+    grp.add_argument('--bytesize', type=int, choices={5,6,7,8}, default=8, 
+            help='Serial port number of bits per char')
+    grp.add_argument('--parity', type=str, choices={'none', 'even', 'odd', 'mark', 'space'},
+            default='none', help='Serial port parity')
+    grp.add_argument('--stopbits', type=str, choices={'1', '1.5', '2'},
+            default=1, help='Serial port stop bits')
 
-  # Running a simulated controller
-  (master, slave) = pty.openpty() # Get a pseudo TTY pair
-  port = os.ttyname(slave)
-  logger.info('Simulated controller, port %s baudrate %s', port, params['baudrate'])
-  s0 = Serial(port=port, baudrate=params['baudrate'])
-  ctl = controller(master, logger, qExcept, args) # Simulated controller object
-  ctl.start() # Start the simulated controller
-  return (s0, ctl)
+    grp = parser.add_argument_group('Simulation related options')
+    grp.add_argument('--simResend', action='store_true', help='Should not ACK messages be resent?')
+    grp.add_argument('--simNAK', type=float, default=0, 
+            help='controller fraction to send NAKs for good sentences')
+    grp.add_argument('--simZee', type=float, default=0, 
+            help='Fraction of time to send a 1Z response')
+    grp.add_argument('--simBad', type=float, default=0,
+            help='controller fraction to send bad character in sentence')
+    grp.add_argument('--simLenLess', type=float, default=0,
+            help='controller fraction to send length shorter than sentence length')
+    grp.add_argument('--simLenMore', type=float, default=0,
+            help='controller fraction to send length longer than sentence length')
+    grp.add_argument('--simBadLen0', type=float, default=0,
+            help='controller fraction to send invalid 1st char of length')
+    grp.add_argument('--simBadLen1', type=float, default=0,
+            help='controller fraction to send invalid 2nd char of length')
+    grp.add_argument('--simBadChk0', type=float, default=0,
+            help='controller fraction to send invalid 1st char of checksum')
+    grp.add_argument('--simBadChk1', type=float, default=0,
+            help='controller fraction to send invalid 2nd char of checksum')
+    grp.add_argument('--simDelayFrac', type=float, default=0,
+            help='controller fraction to delay message')
+    grp.add_argument('--simDelayMaxSecs', type=float, default=0,
+            help='controller max seconds to delay message sending')
 
-class controller(MyBaseThread):
-  def __init__(self, fd, logger, qExcept, args):
-    MyBaseThread.__init__(self, 'SIMUL', logger, qExcept)
-    self.fd = fd
-    self.args = args
-    self.qOn = {}
-    self.prevSentence = None
-    self.resendCount = 100
-    self.notHex = set(range(256)) # All values from 0 to 255
-    self.notHex = self.notHex.difference(set(range(ord('0'), ord('9')))) # Take out 0-9
-    self.notHex = self.notHex.difference(set(range(ord('A'), ord('F')))) # Take out A-F
-    self.notHex = self.notHex.difference(set(range(ord('a'), ord('f')))) # Take out a-f
-    self.notHex = list(self.notHex) # Turn set into a list
+class TDISimul(MyBaseThread):
+    def __init__(self, fd, args, logger, qExcept):
+        MyBaseThread.__init__(self, 'SIMUL', logger, qExcept)
+        self.fd = fd
+        self.args = args
+        self.wirePaths = [True, True] # Both paths initially on
+        self.sensors = [0, 0, 0, 0] # Time of last sensor lookup
+        self.valves = {} # Valves which are on
+        self.valveInfo = {} # Currents of last valve on operation for T command
 
-  def calcCheckSum(self, sentence):
-    val = 0
-    for c in sentence:
-      val += ord(c)
-    return val & 255
+    def read(self, t1, n):
+        msg = bytearray()
+        fd = self.fd
+        while len(msg) < n:
+            now = time.time()
+            if now > t1:
+                self.logger.warning('Timeout while reading %s bytes, %s', n, bytes(msg))
+                return None
+            (ifds, ofds, efds) = select.select([fd], [], [], t1 - now)
+            c = os.read(fd, 1) # Read a byte
+            if not len(c): raise('EOF while reading character')
+            msg += c
+        return bytes(msg)
 
-  def corruptReplace(self, sentence, index, n, vals, msg):
-    if isinstance(vals, int):
-      vals = (vals & 255).to_bytes(1, byteorder='big')
+    def runMain(self): # Called on thread.start
+        args = self.args
+        self.logger.info('Starting fd=%s', self.fd)
+        while True: # Loop forever reading a message, responding, all in a single thread
+            msg = self.readMessage()
+            if not msg: # No response needed
+                continue
+            if args.simDelayFrac and args.simDelayMaxSecs and (args.simDelayFrac > random.random()):
+                time.sleep(random.random() * args.simDelayMaxSecs)
+            if not self.procMessage(msg) and args.simResend:
+                time.sleep(0.5) # Delay before resending
+                self.procMessage(msg)
 
-    a = bytearray(sentence)
-    a[index:(index+n)] = vals
-    a = bytes(a)
-    self.logger.info('index=%s n=%s vals=%s', index, n, vals)
-    self.logger.info(msg, sentence, a)
-    return a
+    def readMessage(self):
+        SYNC = b'\x16' # Sync which indicates the start of a message
+        NAK = b'\x15' # Not acknowledge
+        logger = self.logger
 
-  def corruptSentence(self, sentence):
-    logger = self.logger.info
-    args = self.args
-    n = len(sentence)
-    if args.simLenLess and (args.simLenLess > random.random()): # Send a short length
-      return self.corruptReplace(sentence, 1, 2,
-                                 bytes('{:02X}'.format(random.randrange(1, n - 5)), 'utf-8'),
-                                 'Shortened %s to %s')
-    if args.simLenMore and (args.simLenMore > random.random()): # Send a long length
-      return self.corruptReplace(sentence, 1, 2,
-                                 bytes('{:02X}'.format(random.randrange(n - 5, 256)), 'utf-8'),
-                                 'Lengthened %s to %s')
-    if args.simBad and (args.simBad > random.random()): # Mess up a charager in sentence
-      index = random.randrange(1, n)
-      val = random.randrange(0,256)
-      while sentence[index] == val:
-        val = random.randrange(0, 256)
-      return self.corruptReplace(sentence, index, 1, val, 'Changed off={} %s to %s'.format(index))
-    if args.simBadLen0 and (args.simBadLen0 > random.random()): # Invalid first len char
-      return self.corruptReplace(sentence, 1, 1, random.choice(self.notHex),
-                                 'Changed first length character %s to %s')
-    if args.simBadLen1 and (args.simBadLen1 > random.random()): # Invalid second len char
-      return self.corruptReplace(sentence, 2, 1, random.choice(self.notHex),
-                                 'Changed second length character %s to %s')
-    if args.simBadChk0 and (args.simBadChk0 > random.random()): # Invalid first len char
-      return self.corruptReplace(sentence, n-2, 1, random.choice(self.notHex),
-                                 'Changed first chksum character %s to %s')
-    elif args.simBadChk1 and (args.simBadChk1 > random.random()): # Invalid second len char
-      return self.corruptReplace(sentence, n-1, 1, random.choice(self.notHex),
-                                 'Changed second chksum character %s to %s')
-    return sentence
+        c = os.read(self.fd, 1) # Read a byte which should be a SYNC character
+        if not c: raise(Exception('EOF while reading'))
+        if c != SYNC: # Didn't find a sync
+            logger.warning('Unexpected character %s', c)
+            return None
+        t1 = time.time() + 0.1 # Read within 0.1 seconds
+        hdr = self.read(t1, 2) # Read 2 bytes for the length of the message
+        if hdr is None:
+            logger.warning("Didn't get two byte length field, %s", hdr)
+            os.write(fd, NAK) # Send back a NAK, there was a problem
+            return None
+        try: # Try converting to string and integer
+            msgLen = int(str(hdr, 'utf-8'), 16) # msg length
+        except Exception as e:
+            logger.warning('Error converting length %s to a hex number, %s', hdr, e.reason)
+            os.write(fd, NAK) # Send back a NAK, there was a problem
+            return None
+        body = self.read(t1, msgLen) # Read message body
+        if body is None: # Not enough read
+            logger.warning("Didn't get %s bytes while reading body", msgLen)
+            os.write(fd, NAK) # Send back a NAK, there was a problem
+            return None
+        chkSum = self.read(t1, 2) # Read checksum
+        if chkSum is None: # Not enough read
+            logger.warning("Didn't get 2 bytes while reading checksum, %s", hdr + body)
+            os.write(fd, NAK) # Send back a NAK, there was a problem
+            return None
+        try: # Try converting to string and integer
+            csum = int(str(chkSum, 'utf-8'), 16) # check sum
+        except Exception as e:
+            logger.warning('Error converting checksum %s to a hex number, %s', chkSum, hdr + body)
+            os.write(fd, NAK) # Send back a NAK, there was a problem
+            return None
+        asum = 0
+        for c in hdr: asum += c
+        for c in body: asum += c
+        if (asum & 0xff) != csum: # Checksum mismatch
+            logger.warning('Checksum missmatch %s!=%s for %s',asum & 0xff, csum, hdr + body + chkSum)
+            os.write(fd, NAK) # Send back a NAK, there was a problem
+            return None
+        if self.args.simNAK and (self.args.simNAK > random.random()):
+            self.logger.info('Generate a random NAK for %s', hdr + body + chkSum)
+            os.write(self.fd, NAK)
+            return None
+        return body
 
-  def resend(self):
-    sentence = self.prevSentence
-    cnt = self.resendCount
-    if (sentence is None) or (cnt >= 2):
-      self.prevSentence = None
-      self.resendCount = 100
-      logger.warn('Received a NAK')
-      return
-    self.logger.warn('Received a NAK to %s, resending', sentence);
-    if self.args.simResend and (self.args.simResend > random.random()):
-      sentence = self.corruptSentence(sentence)
-    self.writeSentence(sentence)
-    self.resendCount += 1 # Increament resend count
+    def procMessage(self, msg):
+        SYNC = b'\x16' # Sync character to indicate the start of a message
+        NAK = b'\x15' # Not acknowledge
+        ACK = b'\x06' # Acknowledge
 
-  def sendSentence(self, msg): # Write a message with length and checksum
-    sentence = '\x16{:02X}{}'.format(len(msg), msg) # Make a correct sentence
-    sentence += '{:02X}'.format(self.calcCheckSum(sentence[1:]))
-    sentence = bytes(sentence, 'utf-8')
-    self.prevSentence = sentence # For resending if needed
-    self.resendCount = 0
-    sentence = self.corruptSentence(sentence) # Corrupt the sentence if needed
-    self.writeSentence(sentence)
+        self.logger.debug('Received %s', msg)
 
-  def writeSentence(self, sentence):
-    args = self.args
-    if args.simDelayFrac and (args.simDelayFrac > random.random()): # Delay the message
-      dt = random.uniform(0, args.simDelayMaxSecs)
-      self.logger.info('Delaying %s seconds', dt)
-      time.sleep(dt)
-    os.write(self.fd, sentence)
+        codigo = msg[0:2]
+        body = msg[2:]
+      
+        
+        if self.args.simZee and (self.args.simZee > random.random()): # Generate a 1Z message
+            (dt0, dt1, reply) = self.cmdZ(codigo, body, random.randrange(0,3))
+            self.logger.info('Generate a random Zee, %s, for %s', reply, codigo + body)
+        elif codigo == b'0#': (dt0, dt1, reply) = self.cmdPound(codigo, body)
+        elif codigo == b'02': (dt0, dt1, reply) = self.cmdTwo(codigo, body)
+        elif codigo == b'0A': (dt0, dt1, reply) = self.cmdValveOn(codigo, body)
+        elif codigo == b'0D': (dt0, dt1, reply) = self.cmdValveOff(codigo, body)
+        elif codigo == b'0E': (dt0, dt1, reply) = self.cmdError(codigo, body)
+        elif codigo == b'0P': (dt0, dt1, reply) = self.cmdPath(codigo, body)
+        elif codigo == b'0S': (dt0, dt1, reply) = self.cmdSensor(codigo, body)
+        elif codigo == b'0T': (dt0, dt1, reply) = self.cmdTest(codigo, body)
+        elif codigo == b'0U': (dt0, dt1, reply) = self.cmdU(codigo, body)
+        elif codigo == b'0V': (dt0, dt1, reply) = self.cmdVersion(codigo, body)
+        else:
+            (dt0, dt1, reply) = self.cmdZ(codigo, body, 0)
+        time.sleep(dt0) # Delay before sending ACK
+        os.write(self.fd, ACK) # Acknowledge a well formated message
+        if not reply: return True
+        time.sleep(dt1) # Wait a specified amount of time
+        self.logger.debug('Sending %s in response to %s', reply, msg)
+        os.write(self.fd, SYNC + self.mkMessage(reply)) # Send the message
 
-  def sendNAK(self, msg): # log message and write a NAK
-    self.logger.warn(msg)
-    os.write(self.fd, b'\x15')
+        c = self.read(time.time() + 1, 1) # Wait for ACK/NAK
+        qOkay = c == ACK # Did I get an ACK back? i.e. message was sent properly
+        if c == ACK: # Message sent properly
+            return True
+        if c is None: # Time out while reading
+            self.logger.warning('Did not receive a response to %s', msg)
+        elif c == NAK:
+            self.logger.warning('Received NAK in response to %s', msg)
+        else:
+            self.logger.warning('Invalid response(%s) to sending %s', c, msg)
+        return False
 
-  def runMain(self): # Called on thread.start
-    fd = self.fd;
-    logger = self.logger
-    args = self.args
-    cmds = {
-            '0E': self.cmdE, '0U': self.cmdU, '0S': self.cmdS, '02': self.cmd2,
-	    '0P': self.cmdP, '0A': self.cmdA, '0D': self.cmdD, '0T': self.cmdT,
-	    '0V': self.cmdV, '0#': self.cmdPound}
+    def mkMessage(self, body):
+        n = len(body)
+        if self.args.simLenLess and (self.args.simLenLess > random.random()): 
+            n = random.randrange(0,n)
+            self.logger.info('Reduced length from %s to %s', len(body), n)
+        elif self.args.simLenMore and (self.args.simLenMore > random.random()):
+            n = random.randrange(n+1,256)
+            self.logger.info('Increased length from %s to %s', len(body), n)
+        msg = bytearray('{:02X}'.format(n), 'utf-8') + body
+        if self.args.simBadLen0 and (self.args.simBadLen0 > random.random()):
+            c = msg[0]
+            msg[0] = random.randrange(256)
+            self.logger.info('Changed first length byte %s to %s', c, bytes(msg))
+        if self.args.simBadLen1 and (self.args.simBadLen1 > random.random()):
+            c = msg[1]
+            msg[1] = random.randrange(256)
+            self.logger.info('Changed second length byte %s to %s', c, bytes(msg))
 
-    while True:
-      a = os.read(fd, 1) # Read in a character
-      if a == b'\x06': # An ACK
-        continue
-      if a == b'\x15': # A NAK
-        self.resend()
-        continue
-      if a != b'\x16': # A SYNC
-        logger.info('Received an unexpected character %s', a);
-        continue
-      l = os.read(fd, 2) # Read two hex characters of length
-      if len(l) != 2: # Not two characters
-        self.sendNAK('Message length {} != 2, {}'.format(len(n), l))
-        continue
-      try:
-        l = str(l, 'utf-8')
-        n = int(l, 16) # Convert hex to integer
-      except:
-        self.sendNAK('Message length({}) is not a proper hexadecimal string'.format(l))
-        continue
-      msg = os.read(fd, n) # Read message
-      if len(msg) != n: # Not enough characters read
-        self.sendNAK('Length of message {} != {}, {}'.format(len(msg), n, msg))
-        continue
-      chksum = os.read(fd, 2) # Get message checksum
-      if len(chksum) != 2: # Not enough characters read
-        self.sendNAK('Length of message checksum {} != 2, {}'.format(len(chksum), chksum))
-        continue
-      try:
-        chksum = str(chksum, 'utf-8')
-        chkval = int(chksum, 16) # Convert hex to integer
-      except:
-        self.sendNAK('Message checksum({}) is not a proper hexadecimal string'.format(chksum))
-        continue
-      msg = str(msg, 'utf-8')
-      msgval = self.calcCheckSum(l + msg)
-      if msgval != chkval:
-        self.sendNAK('Checksum mismatch {} != {}, {}'.format(chkval, msgval, msg))
+        chkSum = 0
+        for c in msg: chkSum += c
+        msg += bytes('{:02X}'.format(chkSum & 0xff), 'utf-8')
+        if self.args.simBad and (self.args.simBad > random.random()):
+            msg2 = msg
+            msg[random.randrange(len(msg))] = random.randrange(256)
+            self.logger.info('Mucked up %s to %s', bytes(msg2), bytes(msg))
+        if self.args.simBadChk0 and (self.args.simBadChk0 > random.random()):
+            c = msg[-2]
+            msg[-2] = random.randrange(256)
+            self.logger.info('Changed first checksum byte %s in %s', c, bytes(msg))
+        if self.args.simBadChk1 and (self.args.simBadChk1 > random.random()):
+            c = msg[-1]
+            msg[-1] = random.randrange(256)
+            self.logger.info('Changed second checksum byte %s in %s', c, bytes(msg))
 
-      if args.simNAK and (args.simNAK > random.random()): # Randomly say a sentence failed
-        logger.info('Sending a random NAK')
-        os.write(fd, b'\15') # Send a NAK
-        continue
+        return bytes(msg)
 
-      os.write(fd, b'\x06') # Acknowledge we got the message
-      cmd = msg[0:2]
-      if cmd not in cmds:
-        logger.warn('Unrecognized command in %s', msg)
-        self.sendSentence('1Z0102')
-      else:
-        self.sendSentence(cmds[cmd](msg))
+    def chkLength(self, n, codigo, body):
+        if not body and n > 0: # Body empty but we want something
+            self.logger.warning('Messge empty for %s, wanted %s bytes', codigo, n)
+            return self.cmdZ(codigo, body, 1)
+        if len(body) == n: return None
+        return self.cmdZ(codigo, body, 1 if len(body) < n else 2)
 
-  def cmdA(self, msg):
-    addr = msg[2:4]
-    self.qOn[addr] = 1
-    pre = 28 + random.uniform(-1,1)
-    peak = 650 + random.uniform(-10,10)
-    post = 50 + random.uniform(-2,2)
-    return "1A{}00{:04X}{:04X}{:04X}".format(addr, int(pre), int(peak), int(post))
+    def convert2Hex(self, codigo, body, item):
+        try:
+            return int(str(item, 'utf-8'), 16)
+        except:
+            self.logger.warning('Error converting %s to an hex number for %s', item, codigo + body)
+        return self.cmdZ(codigo, body, 0)
 
-  def cmdD(self, msg):
-    addr = msg[2:4]
-    code = 0 if addr in self.qOn else 2
-    if addr == 'FF':
-      code = 0 if len(self.qOn) else 2
-      self.qOn = {}
-    elif code == 0: # In the dictionary
-      del self.qOn[addr]
-    return "1D{}{:02X}".format(addr, code)
+    def cmdError(self, codigo, body): # Error queury
+        a = self.chkLength(0, codigo, body)
+        if a is not None: return a
+        return (0.05 * (0.5 + random.random()),
+                0.10 * (0.5 + random.random()), 
+                b'1E00')
 
-  def cmdE(self, msg):
-    return '1E00'
+    def cmdPound(self, codigo, body): # Maximum number of stations
+        a = self.chkLength(2, codigo, body)
+        if a is not None: return a
+        XX = self.convert2Hex(codigo, body, body)
+        if not isinstance(XX, int): return XX
+        return (0.05 * (0.5 + random.random()),
+                0.05 * (0.5 + random.random()), 
+                b'1#' + body)
 
-  def cmdPound(self, msg):
-    return '1#{}'.format(msg[2:])
+    def cmdPathTwo(self, codigo, body, fmt): # Common code for 02 and 0P
+        a = self.chkLength(4, codigo, body)
+        if a is not None: return a
+        XX = self.convert2Hex(codigo, body, body[0:2])
+        if not isinstance(XX, int): return XX
+        YY = self.convert2Hex(codigo, body, body[2:])
+        if not isinstance(YY, int): return YY
+        if XX > 1:
+            self.logger.warning('XX(%s) too big, %s', XX, codigo + body)
+            return self.cmdZ(codigo, body, 0)
+        if (YY > 1) and (YY != 0xff):
+            self.logger.warning('YY(%s) invalid, %s', YY, codigo + body)
+            return self.cmdZ(codigo, body, 0)
 
-  def cmdU(self, msg):
-    n = len(self.qOn)
-    volts = 34 - n * 0.05 + random.uniform(-0.07,0.07)
-    mAmps = 25 + n * 25 + random.uniform(-1,1)
-    return "1U{:04X}{:04X}".format(int(volts * 10), int(mAmps))
+        dt0 = 0.05 * (0.5 + random.random())
+        dt1 = 0.05 * (0.5 + random.random())
 
-  def cmdS(self, msg):
-    n = len(self.qOn)
-    flow = n * (100 + random.uniform(-2,2)) # In Hertz*10
-    return "1S{}04{:04X}".format(msg[2:4], int(flow))
+        if YY == 0xff:
+            return (dt0, dt1, 
+                    b'12'+body[0:2]+bytes(fmt.format(self.wirePaths[XX]), 'utf-8'))
 
-  def cmd2(self, msg):
-    return '12{}'.format(msg[2:])
+        self.wirePaths[XX] = (YY == 1)
 
-  def cmdP(self, msg):
-    return '1P000A'
+        return (dt0, dt1, b'12'+body[0:2]+bytes(fmt.format(sum(self.wirePaths)), 'utf-8'))
 
-  def cmdV(self, msg):
-    return '1VSimul'
+    def cmdPath(self, codigo, body): # 2-wire path enable/disable/queury
+        # I don't know how this is different from 02 other than the return format
+        return self.cmdPathTwo(codigo, body, '{:04X}')
 
-  def cmdT(self, msg):
-    pre = 28 + random.uniform(-1,1)
-    peak = 650 + random.uniform(-10,10)
-    post = 50 + random.uniform(-2,2)
-    return "1T{}00{:04X}{:04X}{:04X}".format(msg[2:4], int(pre), int(peak), int(post))
+    def cmdTwo(self, codigo, body): # 2-wire path enable/disable/queury
+        # I don't know how this is different from 0P other than the return format
+        return self.cmdPathTwo(codigo, body, '{:02X}')
+
+    def cmdSensor(self, codigo, body): # flow sensor reading
+        a = self.chkLength(2, codigo, body)
+        if a is not None: return a
+        XX = self.convert2Hex(codigo, body, body)
+        if not isinstance(XX, int): return XX
+        if XX > 3:
+            self.logger.warning('Sensor value, %s, out of range in %s', XX, codigo + body)
+            return self.cmdZ(codigo, body, 0)
+
+        t = time.time() # Current time
+        dt = t - self.sensors[XX]
+        self.sensors[XX] = t
+
+        flag = 2 # Never seen
+        if XX == 0: 
+            flag = 4 if dt > 10 else 0 # 0->old reading, 4-> fresh reading
+
+        n = len(self.valves)
+        flow = n * random.uniform(0.9,1.1) if n and (XX == 0) else 0
+        # Creative Sensor FSI-T10-001: freq=(GPM/K) - offset
+        k = 0.322 # GPM-Sec
+        offset = 0.200 # 1/sec
+        freq = max(0, (flow / k) - offset)
+
+        return (0.05 * (0.5 + random.random()),
+                0.05 * (0.5 + random.random()), 
+                b'1S' + body + bytes('{:02X}{:04X}'.format(flag, math.floor(freq * 10)), 'utf-8'))
+
+    def cmdTest(self, codigo, body): # Test a valve
+        a = self.chkLength(2, codigo, body)
+        if a is not None: return a
+        XX = self.convert2Hex(codigo, body, body)
+        if not isinstance(XX, int): return XX
+        if XX in self.valveInfo:
+            (pre, peak, post) = self.valveInfo[XX]
+        else:
+            (pre, peak, post) = (0, 0, 0)
+        return (0.05 * (0.5 + random.random()),
+                0.15 * (0.5 + random.random()), 
+                b'1T' + bytes('{:02X}{:04X}{:04X}{:04X}'.format(XX, pre, peak, post), 'utf-8'))
+
+    def cmdU(self, codigo, body): # Current draw of system
+        a = self.chkLength(0, codigo, body)
+        if a is not None: return a
+        n = len(self.valves)
+        voltage = random.randrange(240, 251) # Voltage * 10
+        current = random.randrange(23,31) + math.floor(n * random.uniform(45,55))
+        return (0.05 * (0.5 + random.random()),
+                0.15 * (0.5 + random.random()), 
+                b'1U' + bytes('{:04X}{:04X}'.format(voltage, current), 'utf-8'))
+
+    def cmdValveOff(self, codigo, body): # Turn a valve on if not already on
+        a = self.chkLength(2, codigo, body)
+        if a is not None: return a
+        XX = self.convert2Hex(codigo, body, body)
+        if not isinstance(XX, int): return XX
+        YY = 2
+        if XX in self.valves:
+            del self.valves[XX]
+            YY = 0
+        if (XX == 0xff) and len(self.valves):
+            self.valves = {}
+            YY = 0
+
+        return (0.05 * (0.5 + random.random()),
+                0.25 * (0.5 + random.random()), 
+                b'1D' + bytes('{:02X}{:02X}'.format(XX, YY), 'utf-8'))
+
+    def cmdValveOn(self, codigo, body): # Turn a valve on if not already on
+        a = self.chkLength(4, codigo, body)
+        if a is not None: return a
+        XX = self.convert2Hex(codigo, body, body[0:2])
+        if not isinstance(XX, int): return XX
+        YY = self.convert2Hex(codigo, body, body[2:])
+        if not isinstance(YY, int): return YY
+        if XX not in self.valves:
+            self.valves[XX] = True
+            ZZ = 0
+            pre = random.randrange(23, 31)
+            peak = pre + random.randrange(620, 701)
+            post = pre + random.randrange(45, 56)
+            self.valveInfo[XX] = (pre, peak, post)
+        else:
+            ZZ = 8 # Already turned on
+            (pre, peak, post) = self.valveInfo[XX]
+
+        return (0.05 * (0.5 + random.random()),
+                0.25 * (0.5 + random.random()), 
+                b'1A' + 
+                bytes('{:02X}{:02X}{:04X}{:04X}{:04X}'.format(XX, ZZ, pre, peak, post), 'utf-8'))
+
+    def cmdVersion(self, codigo, body): # Version queury
+        a = self.chkLength(0, codigo, body)
+        if a is not None: return a
+        return (0.05 * (0.5 + random.random()),
+                0.05 * (0.5 + random.random()), 
+                b'1V3.0b4')
+
+    def cmdZ(self, codigo, body, reason): # Unknown sentence, but checksum okay
+        return (0.05 * (0.5 + random.random()),
+                0.05 * (0.5 + random.random()), 
+                b'1Z' + codigo[1:2] + bytes('{:02X}'.format(reason), 'utf-8') + b'00')

@@ -1,110 +1,70 @@
 #! /usr/bin/env python3
 #
-# This script is designed to run as a service and talk to the 
-# TDI irrigation controller via a serial port. 
+# Interface betweeen irrigation database and TDI controller via a serial port
 #
-# The input arguments are:
-# the database name
-# the tty device to use
-# the name of the output log file
+# Oct-2019, Pat Welch, pat@mousebrains.com
 #
-# It can also setup a simulated controller via a pseudo TTY
-#
-import TDI 
-import TDISimulate 
+
+import MyLogger
 import Params
-import logging
-import logging.handlers
+import TDISimulate
+import TDI
+import TDIserial
+import DB
+import TDIvalve
 import argparse
 import queue
 
-parser = argparse.ArgumentParser()
-parser.add_argument('--db', help='database name', required=True)
-parser.add_argument('--site', help='Site name', required=True)
-parser.add_argument('--controller', help='controller name', required=True)
-parser.add_argument('--log', help='logfile, if not specified use the console')
-parser.add_argument('--group', help='parameter group name to use', default='TDI')
-parser.add_argument('--simul', help='simulate controller', action='store_true')
-parser.add_argument('--simNAK', help='controller fraction to send NAKs for good sentences',
-                    type=float, default=0)
-parser.add_argument('--simResend', help='controller fraction to resend a bad sentence',
-                    type=float, default=0)
-parser.add_argument('--simBad', help='controller fraction to send bad character in sentence',
-                    type=float, default=0)
-parser.add_argument('--simLenLess',
-                    help='controller fraction to send length shorter than sentence length',
-                    type=float, default=0)
-parser.add_argument('--simLenMore',
-                    help='controller fraction to send length longer than sentence length',
-                    type=float, default=0)
-parser.add_argument('--simBadLen0', help='controller fraction to send invalid 1st char of length',
-                    type=float, default=0)
-parser.add_argument('--simBadLen1', help='controller fraction to send invalid 2nd char of length',
-                    type=float, default=0)
-parser.add_argument('--simBadChk0', help='controller fraction to send invalid 1st char of checksum',
-                    type=float, default=0)
-parser.add_argument('--simBadChk1', help='controller fraction to send invalid 2nd char of checksum',
-                    type=float, default=0)
-parser.add_argument('--simDelayFrac', help='controller fraction to delay message',
-                    type=float, default=0)
-parser.add_argument('--simDelayMaxSecs', help='controller max seconds to delay message sending',
-                    type=float, default=0)
-parser.add_argument('--maxlogsize', help='logging verbosity',
-                    type=int, default=1000000)
-parser.add_argument('--backupcount', help='logging verbosity', type=int, default=7)
-parser.add_argument('--verbose', help='logging verbosity', action='store_true')
+parser = argparse.ArgumentParser('TDI serial interface')
+parser.add_argument('--noPeriodic', action='store_true', help='Do not start periodic threads to test valve ops')
+grp = parser.add_argument_group('Database related options')
+grp.add_argument('--db', type=str, required=True, help='database name')
+grp.add_argument('--site', type=str, required=True, help='Site name')
+grp.add_argument('--controller', type=str, required=True, help='Controller name')
+grp.add_argument('--group', type=str, default='TDI', help='Parameter group name to use')
+
+grp = parser.add_mutually_exclusive_group(required=True)
+grp.add_argument('--simulate', action='store_true', help='Simulate the TDI')
+grp.add_argument('--port', type=str, help='Serial Port')
+
+MyLogger.addArgs(parser) # Add logger related options
+TDISimulate.mkArgs(parser) # Add serial and simulation related options
 args = parser.parse_args()
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger = MyLogger.mkLogger(args, __name__)
+logger.info('Args=%s', args)
 
-if args.log is None:
-    ch = logging.StreamHandler()
-else:
-    ch = logging.handlers.RotatingFileHandler(args.log,
-                                maxBytes=args.maxlogsize, backupCount=args.backupcount)
-
-ch.setLevel(logging.DEBUG if args.verbose else logging.INFO)
-
-formatter = logging.Formatter('%(asctime)s: %(threadName)s:%(levelname)s - %(message)s')
-ch.setFormatter(formatter)
-
-logger.addHandler(ch)
+# s = None
 
 try:
-    qExcept = queue.Queue()
+    myName = 'TDI'
+    params = Params.load(args.db, args.group, logger)
+    logger.info('Params=%s', params)
+    qExcept = queue.Queue() # Exceptions from threads
+    s = TDISimulate.mkSerial(args, logger, qExcept)
+    thrSerial = TDIserial.Serial(s, logger, qExcept) # Interface to serial port
+    thrValve = TDIvalve.ValveOps(args, params, logger, qExcept, thrSerial)
+    thrDBout = DB.DBout(args, logger, qExcept) # Queue to send SQL commands to
+    threads = [thrSerial, thrValve, thrDBout]
+    if not args.noPeriodic: # Don't start periodic events when testing valves
+        threads.append(TDI.Error(params, logger, qExcept, thrSerial, thrDBout))
+        threads.append(TDI.Pee(params, logger, qExcept, thrSerial, thrDBout))
+        threads.append(TDI.Pound(params, logger, qExcept, thrSerial, thrDBout))
+        threads.append(TDI.Sensor(params, logger, qExcept, thrSerial, thrDBout))
+        threads.append(TDI.Two(params, logger, qExcept, thrSerial, thrDBout))
+        threads.append(TDI.Version(params, logger, qExcept, thrSerial, thrDBout))
+        threads.append(TDI.Current(params, logger, qExcept, thrSerial, thrDBout))
+    for thr in threads: thr.start()
 
-    params = Params.Params(args.db, args.group)
-    logger.info(params)
+    thrDBout.putShort('SELECT simulate_insert(%s);', (True if args.simulate else False,))
+    thrDBout.putShort('SELECT processState_insert(%s,%s);', ('TDI', 'Running'))
 
-    [s0, ctl] = TDISimulate.mkSerial(args, params, logger, qExcept)
-
-    thrReader = TDI.Reader(s0, logger, qExcept)
-    thrWriter = TDI.Writer(s0, logger, qExcept)
-    thrDispatcher = TDI.Dispatcher(logger, qExcept, thrReader.qAck, thrWriter.q)
-    thrBuilder = TDI.Builder(logger, qExcept, thrReader.qSent, thrWriter.q)
-
-    thr = []
-    thr.append(TDI.Consumer(args, args.db, logger, qExcept, thrBuilder.q))
-    thr.append(TDI.Number(params, logger, qExcept, thrDispatcher.q))
-    thr.append(TDI.Version(params, logger, qExcept, thrDispatcher.q))
-    thr.append(TDI.Error(params, logger, qExcept, thrDispatcher.q))
-    thr.append(TDI.Current(params, logger, qExcept, thrDispatcher.q))
-    thr.append(TDI.Sensor(params, logger, qExcept, thrDispatcher.q))
-    thr.append(TDI.Two(params, logger, qExcept, thrDispatcher.q))
-    thr.append(TDI.Pee(params, logger, qExcept, thrDispatcher.q))
-    thr.append(TDI.Command(params, args, logger, qExcept, thrDispatcher.q))
-
-    thrReader.start()
-    thrWriter.start()
-    thrDispatcher.start()
-    thrBuilder.start()
-
-    for i in range(len(thr)): thr[i].start()
-
-    e = qExcept.get()
+    e = qExcept.get() # wait on a thread to throw an exception
     qExcept.task_done()
-    s0.close()
     raise(e)
 except Exception as e:
     logger.exception('Thread exception')
+    db = DB.DB(args.db, logger)
+    db.updateState(myName, repr(e))
+finally:
+    if s: s.close() # Close the serial port

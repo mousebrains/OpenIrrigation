@@ -12,30 +12,35 @@
 #            a float, or 
 #            leading/trailing blanks are stripped off
 
-import psycopg2 
+from DB import DB
 
-class Params(dict): # Parameters loaded from a database
-    def __init__(self, dbname, grp):
-        dict.__init__(self)
-        db = psycopg2.connect(dbname=dbname) # For transaction safety 1 connection/thread
-        with db.cursor() as c:
-          c.execute('SELECT name,val FROM params WHERE grp=%s', [grp])
-          for row in c:
-              val = row[1]
-              if ',' in val:
-                  a = []
-                  for item in val.split(','):
-                      a.append(self.__toNum(item))
-                  val = a
-              else:
-                  val = self.__toNum(val)
-              self[row[0]] = val
-
-    def __toNum(self, val):
+def __toNum(val: str):
+    try: # Try and convert to an integer
+        return int(val)
+    except: # Failed, so now try a float
         try:
-            return int(val)
-        except:
-            try:
-                return float(val)
-            except:
-                return val.strip()
+            return float(val)
+        except: # Failed, so return the string
+            return val.strip()
+
+def __decode(val: str): 
+    """ Try and split str by commas and convert elements to numbers 
+        if all the elements are numeric """
+
+    if ',' not in val: return __toNum(val.strip())
+    a = []
+    nNumeric =  0
+    for item in val.split(','):
+        a.append(__toNum(item))
+        nNumeric += isinstance(a[-1], int) or isinstance(a[-1], float)
+    return a if nNumeric == len(a) else val.strip()
+
+def load(dbName:str, grp:str, logger) -> dict:
+    """ Load parameters for group grp from database dbName """
+    db = DB(dbName, logger)
+    info = {}
+    with db.cursor() as cur:
+        cur.execute('SELECT name,val FROM params WHERE grp=%s;', (grp,))
+        for row in cur:
+            info[row[0]] = __decode(row[1])
+    return info if info else None

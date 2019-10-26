@@ -60,7 +60,7 @@ def doRsync(dirname, args, logger):
   a = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   a = str(a.stdout, 'utf-8')
   if len(a) > 0:
-    logger.warn(a)
+    logger.warning(a)
 
 def saveSchema(dirname, dbname, logger):
   fn = dirname.joinpath(dbname + ".schema.sql")
@@ -76,7 +76,7 @@ def saveSchema(dirname, dbname, logger):
   a = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   a = str(a.stdout, 'utf-8')
   if len(a) > 0:
-    logger.warn(a)
+    logger.warning(a)
 
 def saveData(dirname, dbname, names, logger):
   fn = dirname.joinpath(dbname + ".data.sql")
