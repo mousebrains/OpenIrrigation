@@ -40,6 +40,7 @@ def doit(cur:psycopg2.extensions.cursor,
         sDate = datetime.date.fromisoformat(args.sDate)
 
     eDate = sDate + datetime.timedelta(days=args.nDays) # Last date to schedule for
+    sDateOrig = sDate + datetime.timedelta(days=0) # Force a copy
 
     logger.info('minTime=%s sDate=%s eDate=%s', minTime, sDate, eDate)
 
@@ -49,7 +50,6 @@ def doit(cur:psycopg2.extensions.cursor,
     timeline = Timeline(logger, sensors, stations) # A time ordered list of events
     historical(cur, sDate, timeline) # Add historical events to timeline
     nearPending(cur, timeline, minTime, logger) # Add active and near pending to timeline
-    singleStations = set()
     while sDate <= eDate:
         for pgm in programs: # Walk through programs in priority order
             (sTime, eTime) = pgm.mkTime(sDate)
@@ -62,8 +62,11 @@ def doit(cur:psycopg2.extensions.cursor,
                 logger.warning('sTime>=eTime, %s >= %s', sTime, eTime)
                 continue
             for stn in pgm.stations: # Walk through the stations for this program
-                timeline.addStation(sDate, stn, sTime, eTime)
-                if stn.qSingle: singleStations.add(stn.id)
+                if stn.qSingle and sDate != sDateOrig: continue # Only do manual on first sDate
+                if stn.qSingle: # Extend eTime for single events
+                    timeline.addStation(sDate, stn, sTime, eTime + datetime.timedelta(days=1))
+                else:
+                    timeline.addStation(sDate, stn, sTime, eTime)
         sDate += datetime.timedelta(days=1)
 
     # Insert new scheduled actions into action table
@@ -72,12 +75,6 @@ def doit(cur:psycopg2.extensions.cursor,
     for act in timeline.actions: # Save the new actions to the database
         logger.info('%s', act)
         cur.execute(sql, (act.tOn, act.tOff, act.sensor.id, act.pgm, act.pgmStn, act.pgmDate))
-
-    # Delete single show program stations, typically mannual ones
-    sql = 'DELETE FROM pgmStn WHERE id=%s;'
-    for stn in singleStations:
-        cur.info('deleting single station %s', stn)
-        cur.execute(sql, (stn,))
 
     return True
 

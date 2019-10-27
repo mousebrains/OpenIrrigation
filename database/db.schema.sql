@@ -1037,13 +1037,22 @@ RETURNS TIMESTAMP WITH TIME ZONE AS $$
 		LIMIT 1;
 $$ LANGUAGE SQL;
 
+-- Send a notification that the command table has been updated
+DROP FUNCTION IF EXISTS command_notify;
+CREATE OR REPLACE FUNCTION command_notify(t TIMESTAMP WITH TIME ZONE)
+RETURNS VOID LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(SELECT pg_notify('command_update', extract(epoch from t)::text));
+END;
+$$;
+
 -- Insert a row into action for an on/off command set, then update command with these entries
 DROP FUNCTION IF EXISTS action_onOff_insert;
 CREATE OR REPLACE FUNCTION action_onOff_insert(
 	timeOn TIMESTAMP WITH TIME ZONE, -- tOn
 	timeOff TIMESTAMP WITH TIME ZONE, -- tOff
 	sensorID sensor.id%TYPE,  -- id in sensor table
-	pID program.id%TYPE, 
+	pgmID program.id%TYPE, 
 	pStnID pgmStn.id%TYPE, 
 	pDate DATE) -- pgmDate
 RETURNS VOID LANGUAGE plpgSQL AS $$
@@ -1075,7 +1084,7 @@ BEGIN
 		WHERE pgmStn.id=pStnID;
 
 	INSERT INTO action (cmd, tOn, tOff, sensor, addr, controller, program, pgmStn, pgmDate) 
-		VALUES (0, timeOn, timeOff, sensorID, address, ctrlID, pID, pStnID, pDate)
+		VALUES (0, timeOn, timeOff, sensorID, address, ctrlID, pgmID, pStnID, pDate)
 		RETURNING id INTO actID;
 	INSERT INTO command (addr,name,controller,action,timestamp,cmd) VALUES
 		(address, stnName, ctrlID, actID, timeOn, 0)
@@ -1085,7 +1094,7 @@ BEGIN
 		RETURNING id INTO offID;
 	UPDATE action SET cmdOn=onID, cmdOff=offID WHERE id=actID;
 	-- Send notifation that a new row has been added
-	PERFORM(SELECT pg_notify('command_update', extract(epoch from timeOn)::text));
+	PERFORM(SELECT command_notify(timeOn));
 END;
 $$;
 
@@ -1128,7 +1137,7 @@ BEGIN
 		RETURNING id INTO cmdID;
 	UPDATE action SET cmdOn=cmdID WHERE id=actID;
 	-- Send notifation that a new row has been added
-	PERFORM(SELECT pg_notify('command_update', extract(epoch from timeOn)::text));
+	PERFORM(SELECT command_notify(timeOn));
 END;
 $$;
 
@@ -1146,6 +1155,7 @@ DECLARE actID action.id%TYPE; -- id field in action table
 DECLARE sensorID sensor.id%TYPE; -- id field in sensor table
 DECLARE offID action.cmdOff%TYPE; -- id field in command table of off command
 DECLARE offTime action.tOff%TYPE; -- adjusted timestamp
+DECLARE pgmStnID pgmStn.id%TYPE; -- program station id
 BEGIN
 	DELETE FROM command WHERE id=cmdID RETURNING action INTO actID;
 	-- Update tOn, adjust tOff, and set onCode,pre,peak,post
@@ -1157,9 +1167,11 @@ BEGIN
 	-- I tried using RETURNING but with PostgreSQL 11 it didn't work
 		-- RETURNING tOff,cmdOff AS offTime,offID;
 	-- Adjust the command off time
-	SELECT tOff,cmdOff INTO offTime,offID FROM action WHERE id=actID;
+	SELECT tOff,cmdOff,pgmStn INTO offTime,offID,pgmStnID FROM action WHERE id=actID;
 	UPDATE command SET timestamp=offTime WHERE id=offID;
 	-- No need to send notification since TDIvalve will query next time to wakeup
+	-- Drop corresponding pgmStn record for single shot actions
+	DELETE FROM pgmStn WHERE id=pgmStnID AND qSingle; 
 END;
 $$;
 
