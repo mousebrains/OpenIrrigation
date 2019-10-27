@@ -1144,13 +1144,22 @@ CREATE OR REPLACE FUNCTION command_on_done(
 RETURNS VOID LANGUAGE plpgSQL AS $$
 DECLARE actID action.id%TYPE; -- id field in action table
 DECLARE sensorID sensor.id%TYPE; -- id field in sensor table
+DECLARE offID action.cmdOff%TYPE; -- id field in command table of off command
+DECLARE offTime action.tOff%TYPE; -- adjusted timestamp
 BEGIN
 	DELETE FROM command WHERE id=cmdID RETURNING action INTO actID;
+	-- Update tOn, adjust tOff, and set onCode,pre,peak,post
 	UPDATE action SET 
 		tOn=t,
 		tOff=GREATEST(tOff,t+(tOff-tOn)),
 		onCode=codigo,pre=preCur,peak=peakCur,post=postCur 
 		WHERE id=actID;
+	-- I tried using RETURNING but with PostgreSQL 11 it didn't work
+		-- RETURNING tOff,cmdOff AS offTime,offID;
+	-- Adjust the command off time
+	SELECT tOff,cmdOff INTO offTime,offID FROM action WHERE id=actID;
+	UPDATE command SET timestamp=offTime WHERE id=offID;
+	-- No need to send notification since TDIvalve will query next time to wakeup
 END;
 $$;
 
@@ -1186,7 +1195,6 @@ BEGIN
 END;
 $$;
 
-
 -- When an off command completes
 DROP FUNCTION IF EXISTS command_off_done;
 CREATE OR REPLACE FUNCTION command_off_done(
@@ -1200,7 +1208,7 @@ BEGIN
 	SELECT action INTO actID FROM command WHERE id=cmdID;
 	SELECT sensor INTO sensorID FROM action WHERE id=actID;
 	-- For all actions with this sensor id, which are on, turn them off
-	FOR actID IN SELECT id FROM action 
+	FOR actID IN SELECT id FROM action
 			WHERE sensor=sensorID AND cmdOn IS NULL AND cmdOff IS NOT NULL
 	LOOP
 		PERFORM(SELECT action_copy_to_historical(actID,t,codigo));
