@@ -199,13 +199,12 @@ class DBout(MyBaseThread):
             items = q.get()
             if len(items) == 3:
                 (sql, t, args) = items
-                a = [datetime.datetime.utcfromtimestamp(t)]
+                a = [datetime.datetime.fromtimestamp(t).astimezone()]
                 a.extend(args)
                 a.append(self.site)
                 a.append(self.controller)
             else: # 2 items
-                (sql, args) = items
-                a = args
+                (sql, a) = items
             q.task_done() # Indicate we're done with this task
             self.logger.debug('sql=%s args=%s', sql, a)
             if self.db.execute(sql, a): # Execute the SQL
