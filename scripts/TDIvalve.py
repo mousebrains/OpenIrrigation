@@ -133,7 +133,7 @@ class ValveOps(MyBaseThread):
             if t is None: # Bad reply
                 self.logger.warning('Valve on attempt %s failed in sending %s', i, msg)
                 continue
-            t = datetime.datetime.utcfromtimestamp(t)
+            t = datetime.datetime.fromtimestamp(t).astimezone()
             if self.chkZee(cur, msg, t, reply): 
                 self.logger.warning('Valve on recieved a Zee message, %s, in reply to %s',
                         reply, msg)
@@ -168,7 +168,7 @@ class ValveOps(MyBaseThread):
             if t is None: # Bad reply
                 self.logger.warning('Valve off attempt %s failed in sending %s', i, msg)
                 continue
-            t = datetime.datetime.utcfromtimestamp(t)
+            t = datetime.datetime.fromtimestamp(t).astimezone()
             if self.chkZee(cur, msg, t, reply):
                 self.logger.warning('Valve off recieved a Zee message, %s, in reply to %s',
                         reply, msg)
@@ -205,7 +205,7 @@ class ValveOps(MyBaseThread):
             logger.warning('Valve test failed in sending %s', msg)
             self.dbExec(cur, sqlFail, (cmdID,-6))
             return False
-        t = datetime.datetime.utcfromtimestamp(t)
+        t = datetime.datetime.fromtimestamp(t).astimezone()
         if self.chkZee(cur, msg, t, reply): 
             self.logger.warning('Valve off recieved a Zee message, %s, in reply to %s', reply, msg)
             self.dbExec(cur, sqlFail, (cmdID,-7))
