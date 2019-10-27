@@ -65,7 +65,7 @@ class Fetcher(MyBaseThread):
             db.updateState(myName, 'Sleeping until {}'.format(tNext))
             db.close() # I'm going to be a while before I need the connection again, so close it
             if qForce: break
-            self.logger.info('Fetcher sleeping until %s', tNext)
+            self.logger.info('Sleeping until %s', tNext)
             time.sleep((tNext - datetime.datetime.now()).total_seconds()) # sleep until tNext
         raise(Exception('Broke out of while loop'))
     
@@ -210,7 +210,7 @@ class Stats(MyBaseThread):
         while True:
             dt = max(datetime.timedelta(), tNext - datetime.datetime.now())
             if not qForce:
-                logger('Stats: sleeping until %s dt %s', tNext, dt)
+                logger('Sleeping until %s dt %s', tNext, dt)
                 time.sleep(dt.total_seconds())
             logger('Building statistics')
             db.updateState(myName, 'Building statistics')
