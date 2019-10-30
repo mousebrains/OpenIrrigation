@@ -24,7 +24,7 @@ grp.add_argument('--nDays', type=int,
 grp0 = grp.add_mutually_exclusive_group()
 grp0.add_argument('--minCleanTime', type=str, 
         help='Clean out actions past this date/time, isoformat, only in single mode')
-grp0.add_argument('--minCleanSeconds', type=float, default=60,
+grp0.add_argument('--minCleanSeconds', type=float, default=5,
         help='Clean out actions past this many seconds from current time')
 grp.add_argument('--initialDelay', type=float, default=60, 
         help='How long to wait until the first scheduler run in seconds')
