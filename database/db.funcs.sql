@@ -173,3 +173,19 @@ BEGIN
 	PERFORM(SELECT scheduler_notify('Master Valve Off'));
 END;
 $$;
+
+-- Trigger on changes to action to notify the status.php script
+
+DROP FUNCTION IF EXISTS action_cmdon_notify;
+CREATE FUNCTION action_cmdon_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('action_on_update', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS action_cmdon_trigger ON action;
+CREATE TRIGGER action_cmdon_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE OF cmdOn ON action
+	EXECUTE FUNCTION action_cmdon_notify();
