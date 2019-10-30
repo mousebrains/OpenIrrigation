@@ -873,10 +873,13 @@ CREATE OR REPLACE FUNCTION currentInsert(
 	mAmps INTEGER, 
 	site TEXT, 
 	controller TEXT)
-  RETURNS VOID AS $$
+RETURNS VOID LANGUAGE plpgSQL AS $$
+BEGIN
     INSERT INTO currentLog(timestamp,volts,mAmps,controller) 
 		VALUES (t, volts, mAmps, ctlID(site, controller));
-  $$ LANGUAGE SQL;
+     PERFORM(pg_notify('currentlog_update', 'insert'));
+END;
+$$;
 
 -- Sensor message results
 DROP TABLE IF EXISTS sensorLog;
@@ -892,17 +895,22 @@ CREATE INDEX sensorTS ON sensorLog (timestamp);
 
 -- Insert a record looking up site and controller
 DROP FUNCTION IF EXISTS sensorInsert;
-CREATE OR REPLACE FUNCTION sensorInsert(t TIMESTAMP WITH TIME ZONE, address INTEGER, value INTEGER, 
-					site TEXT, controller TEXT)
-  RETURNS VOID AS $$
-    DECLARE flowID INTEGER;
-    BEGIN
-      SELECT * FROM pocFlowID(address, site, controller) INTO flowID;
-      INSERT INTO sensorLog(timestamp,pocFlow,value,flow) 
-		VALUES (t,flowID,value,
-	 (SELECT GREATEST(0,(value*toHertz*K) - flowOffset) FROM pocFlow WHERE id=flowID));
-    END;
-  $$ LANGUAGE plpgSQL;
+CREATE OR REPLACE FUNCTION sensorInsert(
+	t TIMESTAMP WITH TIME ZONE,
+	address INTEGER,
+	value INTEGER,
+	site TEXT,
+	controller TEXT)
+RETURNS VOID LANGUAGE plpgSQL AS $$
+DECLARE flowID INTEGER;
+BEGIN
+	SELECT * FROM pocFlowID(address, site, controller) INTO flowID;
+	INSERT INTO sensorLog(timestamp,pocFlow,value,flow) VALUES 
+		(t,flowID,value,
+		(SELECT GREATEST(0,(value*toHertz*K) - flowOffset) FROM pocFlow WHERE id=flowID));
+	PERFORM(pg_notify('sensorlog_update', 'insert'));
+END;
+$$;
 
 -- Tee message results
 DROP TABLE IF EXISTS teeLog;
