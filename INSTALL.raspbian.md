@@ -35,3 +35,4 @@
    9. Add index.php to index line in https
    9. in nginx.conf change user to irrigation
    9. change user/group in /etc/php/.../www.conf to irrigation from www-data, there are four spots
+   9. Change php-fpm from dynamic to ondemand, max workers->20
