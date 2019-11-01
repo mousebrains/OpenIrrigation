@@ -5,7 +5,7 @@
 
 include ../../Makefile.params
 
-SRC = irrigation.css
+SRC = irrigation.css table.css tooltip.css topnav.css
 DEST = $(SRC:%=$(CSSDIR)/%)
 
 .PHONY: all install clean

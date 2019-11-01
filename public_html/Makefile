@@ -5,8 +5,10 @@
 
 include ../Makefile.params
 
-SRC = index.php status.php site.php user.php email.php
-SRC += monitor.php smonitor.php running.php
+SRC = index.php indexProcess.php indexStatus.php
+SRC+= status.php 
+SRC+= site.php user.php email.php
+SRC+= monitor.php smonitor.php running.php
 SRC+= controller.php sensor.php
 SRC+= poc.php pocFlow.php pocMV.php pocPump.php
 SRC+= soil.php crop.php
