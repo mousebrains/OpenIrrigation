@@ -1,13 +1,6 @@
-<?php
-require_once 'php/DB.php';
-
-echo "<div id='topnav'><div>\n";
-
-if ($db->querySingle("SELECT qSimulate FROM simulate LIMIT 1;") == 't') {
-  echo "  <span>Simulating</span>";
-}
-
-echo "
+<div id='topnav'>
+<div>
+ <span id='statusSimulation'></span>
  <span id='statusCurrent'></span>
  <span id='statusFlow'></span>
  <span id='statusActive'></span>
@@ -47,5 +40,3 @@ echo "
 </div>
 
 <script src='js/status.js'></script>
-";
-?>

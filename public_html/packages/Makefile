@@ -7,7 +7,7 @@ include ../../Makefile.params
 
 SRC = Chart.min.js moment.min.js jquery.tablesorter.min.js
 
-JQVERSION = 3.2.1
+JQVERSION = 3.4.1
 
 .PHONY: all install clean
 
