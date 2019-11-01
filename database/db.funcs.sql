@@ -176,7 +176,7 @@ $$;
 
 -- Trigger on changes to action to notify the status.php script
 
-DROP FUNCTION IF EXISTS action_cmdon_notify;
+DROP FUNCTION IF EXISTS action_cmdon_notify CASCADE;
 CREATE FUNCTION action_cmdon_notify()
 RETURNS TRIGGER LANGUAGE plpgSQL AS $$
 BEGIN
@@ -187,5 +187,5 @@ $$;
 
 DROP TRIGGER IF EXISTS action_cmdon_trigger ON action;
 CREATE TRIGGER action_cmdon_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE OF cmdOn ON action
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON action
 	EXECUTE FUNCTION action_cmdon_notify();
