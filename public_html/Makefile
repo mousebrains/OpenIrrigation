@@ -5,7 +5,8 @@
 
 include ../Makefile.params
 
-SRC = index.php indexProcess.php indexStatus.php
+SRC = favicon.png
+SRC+= index.php indexProcess.php indexStatus.php
 SRC+= status.php 
 SRC+= site.php user.php email.php
 SRC+= monitor.php smonitor.php running.php
