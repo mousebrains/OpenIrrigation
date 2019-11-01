@@ -10,6 +10,7 @@
 </head>
 <body>
 <?php
+require_once 'php/DB.php';
 require_once 'php/navBar.php';
 
 $thead = "<tr><th>Prev<br>24 hrs</th>"
