@@ -5,7 +5,8 @@
 
 include ../../Makefile.params
 
-SRC = status.js index.js smonitor.js
+SRC = status.js index.js reportDaily.js 
+SRC+= smonitor.js
 DEST = $(SRC:%=$(JSDIR)/%)
 
 .PHONY: all install clean

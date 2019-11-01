@@ -8,6 +8,7 @@ include ../Makefile.params
 SRC = favicon.png
 SRC+= index.php indexProcess.php indexStatus.php
 SRC+= status.php 
+SRC+= reportDaily.php reportDailyStatus.php
 SRC+= site.php user.php email.php
 SRC+= monitor.php smonitor.php running.php
 SRC+= controller.php sensor.php
@@ -16,7 +17,6 @@ SRC+= soil.php crop.php
 SRC+= station.php program.php event.php programStation.php
 SRC+= params.php webList.php
 SRC+= ET.php ETannual.php ETStn.php
-SRC+= reportDaily.php
 
 DEST = $(SRC:%=$(WEBDIR)/%)
 
