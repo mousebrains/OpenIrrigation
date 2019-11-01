@@ -32,8 +32,7 @@ function buildTable(info, tblID, runLabel, stopLabel) {
 			inputs += "<input type='hidden' name='poc' value='" + x[2] + "'>";
 		}
 		msg += "<tr id='" + key + "'>";
-		// msg += "<td>" + name + "</td>";
-		msg += "<td class='tooltip'>";
+		msg += "<td class='tooltip' onclick=''>"; // onclick for ios/safari hover to work
 		msg += "<span class='tooltiptext tooltip-left' id='tt" + key + "'>Nada</span>";
 		msg += name + "</td>";
 		msg += "<td style='text-align:right;'>";
