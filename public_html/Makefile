@@ -12,7 +12,6 @@ SRC+= reportDaily.php reportDailyStatus.php
 SRC+= monitor.php monitorStatus.php
 SRC+= monitorActiveOff.php monitorPendingRemove.php monitorProcAction.php
 SRC+= site.php user.php email.php
-SRC+= running.php
 SRC+= controller.php sensor.php
 SRC+= poc.php pocFlow.php pocMV.php pocPump.php
 SRC+= soil.php crop.php
