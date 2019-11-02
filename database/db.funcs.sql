@@ -116,6 +116,19 @@ BEGIN
 END;
 $$;
 
+-- Turn all on valves off
+DROP FUNCTION IF EXISTS manual_all_off;
+CREATE OR REPLACE FUNCTION manual_all_off()
+RETURNS VOID LANGUAGE plpgSQL AS $$
+DECLARE sensorID action.sensor%TYPE; -- action.sensor and pocmv.sensor
+BEGIN
+	-- Walk through on rows and turn them off
+	FOR sensorID IN SELECT sensor FROM action WHERE cmdOn IS NULL LOOP
+		PERFORM(SELECT manual_off(sensorID));
+	END LOOP;
+END;
+$$;
+
 -- Turn on master valve (No program, nor pgmstn, nor station)
 -- N.B. See note on poc_on for normally open/closed
 
