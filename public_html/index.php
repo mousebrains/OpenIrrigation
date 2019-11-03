@@ -7,6 +7,7 @@
 <link rel='icon' href='/favicon.png' sizes="32x32">
 <link rel='stylesheet' type='text/css' href='css/irrigation.css'>
 <script src="js/jquery.min.js"></script>
+<script src="js/irrigation.js"></script>
 <title>Wild Iris Irrigation</title>
 </head>
 <body>

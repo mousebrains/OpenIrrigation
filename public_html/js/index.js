@@ -101,11 +101,7 @@ function adjustColors(data) {
 	var pending2Set = new Set([...info['pending']].filter(x => !indexInfo['pending'].has(x)));
 	var past2Set = new Set([...info['past']].filter(x => !indexInfo['past'].has(x)));
 
-	if ('timeouts' in indexInfo) { // Clear existing timeouts
-		for (var key in indexInfo['timeouts']) {
-			clearTimeout(indexInfo['timeouts'][key]);
-		}
-	}
+	OI_clearTimeouts(); // Shutdown any existing timeouts
 
 	all2Clear.forEach(function(x) {
 		$('#' + x).css('background-color', '#000000');
@@ -138,26 +134,12 @@ function adjustColors(data) {
 
 	if (indexInfo['active'].size) { // Something active
 		indexInfo['etime'] = {};
-		indexInfo['timeouts'] = {};
 		indexInfo['active'].forEach(function(key) {
 			indexInfo['etime'][key] = data['active'][key][0][1]; 
-			displayTimeRemaining(key);
+			OI_timeDown('#bc' + key, indexInfo['etime'][key]);
 		});
 	}
 
-}
-
-function displayTimeRemaining(key) {
-	var dt = indexInfo['etime'][key] - (Date.now() / 1000);
-	var hours = Math.floor(dt / 3600);
-	var mins = ("00" + Math.floor(dt / 60) % 60).slice(-2);
-	$('#bc' + key).html(hours + ':' + mins + " ");
-	var toNext = dt % 60; // Time to next wakeup
-	if (dt > 0) {
-		indexInfo['timeouts'][key] = setTimeout(displayTimeRemaining, toNext * 1000, key);
-	} else if (key in indexInfo['timeouts']) {
-		delete indexInfo['timeouts'][key];
-	}
 }
 
 function receivedStatus(event) {

@@ -7,6 +7,7 @@
 <link rel='icon' type='image/png' href='/favicon.png' sizes='32x32'>
 <link rel='stylesheet' type='text/css' href='css/irrigation.css'>
 <script src="js/jquery.min.js"></script>
+<script src="js/irrigation.js"></script>
 <title>Daily Monitor</title>
 </head>
 <body>

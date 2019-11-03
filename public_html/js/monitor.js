@@ -97,15 +97,18 @@ function buildActive(info) {
 	var tbl = $('#activeTable');
 	tbl.find('tbody tr').remove();
 	info.forEach(function (x) {
+		var id = x[0];
+		var key = 'A' + id;
+		var eTime = x[7];
 		var row = "<tr>";
 		row += "<td><form class='active'>"
-			+ "<input type='hidden' name='id', value='" + x[0] + "'>"
+			+ "<input type='hidden' name='id', value='" + id + "'>"
 			+ " <input type='submit' value='Off'>"
 			+ "</form></td>";
 		row += "<td>" + getStationName(x[0]) + "</td>";
 		row += "<td>" + formatTime(x[6]) + "</td>";
-		row += "<td>" + formatDeltaTime(x[7] - x[6]) + "</td>";
-		row += "<td>" + formatDeltaTime(x[7] - (Date.now() / 1000)) + "</td>";
+		row += "<td>" + formatDeltaTime(eTime - x[6]) + "</td>";
+		row += "<td id='" + key + "'></td>";
 		row += "<td>" + getProgramName(x[1]) + "</td>";
 		row += "<td>" + x[2] + "</td>";
 		row += "<td>" + x[3] + "</td>";
@@ -113,6 +116,7 @@ function buildActive(info) {
 		row += "<td>" + x[5] + "</td>";
 		row += "</tr>";
 		tbl.append(row);
+		OI_timeDown('#' + key, eTime);
 	});
 	$('#activeDiv').css('display', 'block');
 	$('.active').submit(procActive);

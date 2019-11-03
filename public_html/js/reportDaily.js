@@ -134,23 +134,8 @@ function displayTimes(data) {
 		var pre1 = (id in pending) && (d in pending[id]) ? pending[id][d] : 0;
 		var key0 = mkKey(id, d, 'past2col');
 		var key1 = mkKey(id, d, 'pending2col');
-		displayTimeRemaining(t0, t1, pre0, pre1, key0, key1);
+		OI_timeUpDown(key0, key1, t0, t1, pre0, pre1);
 	});
-}
-
-function displayTimeRemaining(t0, t1, pre0, pre1, key0, key1) {
-	var now = Date.now() / 1000;
-	var dt0 = pre0 + Math.max(0, now - t0);
-	var dt1 = pre1 + Math.max(0, t1 - now);
-	var toNext = dt1 % 60; // Time to next wakeup
-	$(key0).html(mkTime(dt0));
-	$(key1).html(mkTime(dt1));
-	if (dt1 > 0) {
-		myInfo['timeouts'][key0] = setTimeout(displayTimeRemaining, toNext * 1000,
-			t0, t1, pre0, pre1, key0, key1);
-	} else if (key0 in myInfo['timeouts']) {
-		delete myInfo['timeouts'][key0];
-	}
 }
 
 function receivedStatus(event) {
