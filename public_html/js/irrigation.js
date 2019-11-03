@@ -60,3 +60,23 @@ function OI_timeUpDown(key0, key1, sTime, eTime, offset0, offset1, prevNow) {
 		delete OI_timeouts[key];
 	}
 } // OI_timeDown
+
+function OI_processSubmit(event, url, formData) { // Submission of form data to url
+	// Form submission and alert on failure
+	$.ajax({
+		type: 'POST', // Post the form data
+		url: url, // Script to process this form
+		data: formData, // form data to be posted
+		dataType: 'json', // returned data format
+		encode: true
+	}).done(function(data){
+		if (('success' in data) && !data['success']) {
+			alert(data['message']);
+		}
+	});
+	event.preventDefault();
+}
+
+function OI_processForm(event) { // argument to .submit({'url':...}, OI_processForm)
+	OI_processSubmit(event, event.data['url'], $(this).serialize());
+}

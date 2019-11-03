@@ -3,21 +3,9 @@ var dtInfo = {'hoursFuture': 12, 'hoursPast': 12};
 
 function procForm(event) {
 	var id = $(this).attr('id').slice(-2); // Form's id
-	var formData = $(this).serialize();
-	$.ajax({
-		type: 'POST', // Post the form data
-		url: 'indexProcess.php', // URL to post the data to
-		data: formData, // Data to be posted
-		dataType: ' json', // What type of data coming back from server
-		encode: true
-	}).done(function(data) {
-		if (('success' in data) && !data['success']) {
-			alert(data['message']);
-		}
-	});
+	OI_processSubmit(event, 'indexProcess.php', $(this).serialize());
 	$('#rt' + id).val(''); // reset the value
-	$('#' + id).css('background-color', '#00A0DD');
-	event.preventDefault();
+	$('#' + id).css('background-color', '#00A0DD'); // Set row color
 }
 
 function buildTable(info, tblID, runLabel, stopLabel) {

@@ -1,47 +1,5 @@
 var myInfo = {};
 
-function procAction(event) {
-	var data = $(this).serialize();
-	$.ajax({
-		type: 'POST', // Post the form data
-		url: 'monitorProcAction.php', // Script to work on this form
-		data: data, // What is sent
-		dataType: 'json', // Format of data being returned
-		encode: true
-	}).done(function(data) {
-		if (('success' in data) && !data['success']) { alert(data['message']); }
-	});
-	event.preventDefault();
-}
-
-function procActive(event) {
-	var data = $(this).serialize();
-	$.ajax({
-		type: 'POST', // Post the form data
-		url: 'monitorActiveOff.php', // Script to work on this form
-		data: data, // What is sent
-		dataType: 'json', // Format of data being returned
-		encode: true
-	}).done(function(data) {
-		if (('success' in data) && !data['success']) { alert(data['message']); }
-	});
-	event.preventDefault();
-}
-
-function procPending(event) {
-	var data = $(this).serialize();
-	$.ajax({
-		type: 'POST', // Post the form data
-		url: 'monitorPendingRemove.php', // Script to work on this form
-		data: data, // What is sent
-		dataType: 'json', // Format of data being returned
-		encode: true
-	}).done(function(data) {
-		if (('success' in data) && !data['success']) { alert(data['message']); }
-	});
-	event.preventDefault();
-}
-
 function mkActionCell(val, name) {
 	return "<td><form class='actions'>"
 		+ "<input type='hidden' name='action' value='" + val + "'>"
@@ -64,7 +22,7 @@ function buildActions(pocs) {
 	msg+='</tr>';
 	tbl.find('tr').remove(); // Remove rows
 	tbl.append(msg);
-	$('.actions').submit(procAction);
+	$('.actions').submit({'url': 'monitorProcAction.php'}, OI_processForm);
 }
 
 function getStationName(id) {
@@ -120,7 +78,7 @@ function buildActive(info) {
 		OI_timeDown('#' + key, eTime, null);
 	});
 	$('#activeDiv').css('display', 'block');
-	$('.active').submit(procActive);
+	$('.active').submit({url: 'monitorActiveOff.php'}, OI_processForm);
 }
 
 function buildPending(info) {
@@ -144,7 +102,7 @@ function buildPending(info) {
 		tbl.append(row);
 	});
 	$('#pendingDiv').css('display', 'block');
-	$('.pending').submit(procPending);
+	$('.pending').submit({url: 'monitorPendingRemove.php'}, OI_processForm);
 }
 
 function buildPast(info) {
