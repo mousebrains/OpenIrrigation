@@ -5,7 +5,8 @@
 
 include ../../Makefile.params
 
-SRC = status.js
+SRC = irrigation.js # Utility functions
+SRC+= status.js
 SRC+= index.js
 SRC+= reportDaily.js 
 SRC+= monitor.js
