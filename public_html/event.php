@@ -11,6 +11,7 @@
 </head>
 <body>
 <?php
+require_once 'php/DB.php';
 require_once 'php/navBar.php';
 require_once 'php/mkPage.php';
 
