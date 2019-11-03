@@ -90,6 +90,7 @@ function formatDeltaTime(dt) {
 }
 
 function buildActive(info) {
+	OI_clearTimeouts(); // Shutdown any existing timeouts
 	if (info.length == 0) { // Empty, so hide it
 		$('#activeDiv').css('display', 'none');
 		return;
@@ -116,7 +117,7 @@ function buildActive(info) {
 		row += "<td>" + x[5] + "</td>";
 		row += "</tr>";
 		tbl.append(row);
-		OI_timeDown('#' + key, eTime);
+		OI_timeDown('#' + key, eTime, null);
 	});
 	$('#activeDiv').css('display', 'block');
 	$('.active').submit(procActive);

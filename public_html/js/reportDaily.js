@@ -124,6 +124,8 @@ function displayTimes(data) {
 		pending[id][d] = dt;
 	});
 
+	OI_clearTimeouts();
+
 	data['active'].forEach(function(x) {
 		var id = x[0];
 		var d = x[1];
@@ -134,7 +136,7 @@ function displayTimes(data) {
 		var pre1 = (id in pending) && (d in pending[id]) ? pending[id][d] : 0;
 		var key0 = mkKey(id, d, 'past2col');
 		var key1 = mkKey(id, d, 'pending2col');
-		OI_timeUpDown(key0, key1, t0, t1, pre0, pre1);
+		OI_timeUpDown(key0, key1, t0, t1, pre0, pre1, null);
 	});
 }
 

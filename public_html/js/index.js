@@ -136,7 +136,7 @@ function adjustColors(data) {
 		indexInfo['etime'] = {};
 		indexInfo['active'].forEach(function(key) {
 			indexInfo['etime'][key] = data['active'][key][0][1]; 
-			OI_timeDown('#bc' + key, indexInfo['etime'][key]);
+			OI_timeDown('#bc' + key, indexInfo['etime'][key], null);
 		});
 	}
 

@@ -1,15 +1,17 @@
 // Collection of utility functions for use in the OpenIrrigation system
 
-var OI_timeouts = {}; // map of pending timeouts
+var OI_timeouts = {}; // map of pending timeouts and when they were generated
 
 function OI_clearTimeouts() {
 	for(var key in OI_timeouts) {
-		clearTimeout(OI_timeouts[key]);
+		clearTimeout(OI_timeouts[key][0]);
 	}
+	OI_timeouts = {};
 } // OI_clearTImeouts()
 
-function OI_timeDown(key, eTime) { // Display H:MM from now to eTime in $(key)
-	var dt = eTime - (Date.now() / 1000);
+function OI_timeDown(key, eTime, prevNow) { // Display H:MM from now to eTime in $(key)
+	var now = Date.now() / 1000;
+	var dt = eTime - now;
 	var dt1 = dt + 0.5; // For display purposes
 	var hours = Math.floor(dt1 / 3600);
 	var mins = Math.floor(dt1 / 60) % 60;
@@ -19,18 +21,17 @@ function OI_timeDown(key, eTime) { // Display H:MM from now to eTime in $(key)
 		msg += ':' + ('00' + Math.floor(dt1 % 60)).slice(-2);
 		resid = 10; // Count down by 10 second intervals
 	}
-	if (dt > 0) {
-		$(key).html(msg);
-		var dtNext = Math.max(1, dt % resid);
-		// console.log('key=' + key + ' dt=' + dt + ' nxt=' + dtNext);
-		OI_timeouts[key] = setTimeout(OI_timeDown, dtNext * 1000, key, eTime);
-	} else if (key in OI_timeouts) {
-		$(key).html('');
+	$(key).html((dt > 0) ? msg : "");
+	if ((dt > 0) && (!(key in OI_timeouts) || (OI_timeouts[key][1] == prevNow))) {
+		var dtNext = Math.max(1, dt % resid) * 1000;
+		var id = setTimeout(OI_timeDown, dtNext, key, eTime, now);
+		OI_timeouts[key] = [id, now];
+	} else if ((key in OI_timeouts) && (OI_timeouts[key][1] == prevNow)) {
 		delete OI_timeouts[key];
 	}
 } // OI_timeDown
 
-function OI_timeUpDown(key0, key1, sTime, eTime, offset0, offset1) { 
+function OI_timeUpDown(key0, key1, sTime, eTime, offset0, offset1, prevNow) { 
 	// Count time up for key0/sTime and down for key1/eTime
 	var now = Date.now() / 1000;
 	var dt = now - sTime;
@@ -49,14 +50,13 @@ function OI_timeUpDown(key0, key1, sTime, eTime, offset0, offset1) {
 		msg += ':' + ('00' + Math.floor(dt1 % 60)).slice(-2);
 		resid = 10; // Count down by 10 second intervals
 	}
-	if (dt > 0) {
-		$(key1).html(msg);
-		var dtNext = Math.max(1, dt % resid);
-		// console.log('key=' + key1 + ' dt=' + dt + ' nxt=' + dtNext);
-		OI_timeouts[key1] = setTimeout(OI_timeUpDown, dtNext * 1000, 
-			key0, key1, sTime, eTime, offset0, offset1);
-	} else if (key1 in OI_timeouts) {
-		$(key1).html('');
-		delete OI_timeouts[key1];
+	$(key1).html((dt > 0) ? msg : '');
+	if ((dt > 0) && (!(key in OI_timeouts) || (OI_timeouts[key][1] == prevNow))) {
+		var dtNext = Math.max(1, dt % resid) * 1000;
+		var id = setTimeout(OI_timeUpDown, dtNext, 
+			key0, key1, sTime, eTime, offset0, offset1, now);
+		OI_timeouts[key] = [id, now];
+	} else if ((key in OI_timeouts) && (OI_timeouts[key][1] == prevNow)) {
+		delete OI_timeouts[key];
 	}
 } // OI_timeDown
