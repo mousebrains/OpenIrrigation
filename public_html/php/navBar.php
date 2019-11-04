@@ -29,7 +29,7 @@
       <a href='soil.php'>Soil Edit</a>
       <a href='crop.php'>Crop Edit</a>
       <a href='params.php'>Parameter Edit</a>
-      <a href='tableEditor.php?tbl=webList'>Web Parameter Edit</a>
+      <a href='tableEditor.php?tbl=webList&orderby=grp,sortOrder'>Web Parameter Edit</a>
       <a href='ET.php'>ET Daily</a>
       <a href='ETannual.php'>ET Annual</a>
     </div>

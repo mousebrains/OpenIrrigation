@@ -12,8 +12,8 @@ function tableInfo($db, $name) {
 	return $db->loadRows($sql, [$name]);
 }
 
-function tableRows($db, $name) {
-	$sql = "SELECT * FROM $name ORDER BY grp,sortOrder;";
+function tableRows($db, $name, $orderBy) {
+	$sql = "SELECT * FROM " . $name . $orderBy . ";";
 	return $db->loadRows($sql, []);
 }
 
@@ -24,11 +24,24 @@ require_once 'php/DB1.php';
 $tbl = $_GET['tbl'];
 if (!$db->tableExists($tbl)) {exit(mkMsg(false, "Table, $tbl, does not exist"));}
 
+if (empty($_GET['orderby'])) {
+	$orderBy = '';
+} else {
+	$cols = $db->tableColumns($tbl);
+	$a = explode(',', $_GET['orderby']);
+	foreach ($a as $key) {
+		if (!in_array(strtolower($key), $cols)) {
+			exit(mkMsg(false, "Column, $key, unknown"));
+		}
+	}
+	$orderBy = " ORDER BY " . implode(",", $a);
+}
+
 $db->listen(strtolower($tbl) . "_updated");
 
 $info = array();
 $info['info'] = tableInfo($db, $tbl);
-$info['data'] = tableRows($db, $tbl);
+$info['data'] = tableRows($db, $tbl, $orderBy);
 
 while (True) { # Wait forever
 	echo "data: " . json_encode($info) . "\n\n";
@@ -39,7 +52,7 @@ while (True) { # Wait forever
 	if ($notifications == false) { // no notifications
 		$info = ['burp' => 0];
 	} else { // notifications
-		$info = ['data' => tableRows($db, $tbl)];
+		$info = ['data' => tableRows($db, $tbl, $orderBy)];
 	}
 }
 ?>
