@@ -32,6 +32,6 @@ if (empty($vals)) exit(mkMsg(false, "No columns found to be updated"));
 $sql = "UPDATE $tbl SET " . implode(',', $keys) . " WHERE id=?;";
 
 array_push($vals, $id);
-if ($db->query($sql, $vals)) exit(mkMsg(true, 'Insertion okay'));
+if ($db->query($sql, $vals)) exit(mkMsg(true, 'Update okay'));
 echo mkMsg(false, 'Insertion failed ' . $db->getError());
 ?>
