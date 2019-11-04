@@ -90,7 +90,10 @@ function receivedStatus(event) {
 }
 
 if (typeof(EventSource) != "undefined") {
-	var statusSource = new EventSource("tableStatus.php?tbl=" + myTableName);
+	var base = 'tableStatus.php';
+	var parts = window.location.href.split('?'); // Get parameters
+	var url = parts.length > 1 ? (base + '?' + parts.slice(-1)) : base;
+	var statusSource = new EventSource(url);
 	statusSource.onmessage = receivedStatus;
 	$('title').html('Table Editor ' + myTableName);
 }
