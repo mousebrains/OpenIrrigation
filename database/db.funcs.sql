@@ -202,3 +202,19 @@ DROP TRIGGER IF EXISTS action_cmdon_trigger ON action;
 CREATE TRIGGER action_cmdon_trigger
 	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON action
 	EXECUTE FUNCTION action_cmdon_notify();
+
+-- Trigger on changes to webList to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS webList_notify CASCADE;
+CREATE FUNCTION webList_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('weblist_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS webList_updated_trigger ON webList;
+CREATE TRIGGER webList_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON webList
+	EXECUTE FUNCTION webList_notify();
