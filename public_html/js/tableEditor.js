@@ -19,6 +19,34 @@ function buildTable(info) {
 	$('tfoot').append().html(row);
 }
 
+function mkTextArea(a, x, form) {
+	var col = a['col'];
+	var msg = "<textarea rows='2' cols='20' name='" + col + "'" + form;
+	var val = (x != null) && (col in x) && (x[col] != null) ? x[col] : "";
+	msg += val;
+	msg += "</textarea>";
+	msg += "<input type='hidden' name='" + col + "Prev'";
+	msg += " value='" + val + "'" + form;
+	return msg;
+}
+
+function mkInputField(a, x, form) {
+	var col = a['col'];
+	var val = (x != null) && (col in x) && (x[col] != null) ? 
+		" value='" + x[col] + "'" 
+		: "";
+	var msg = "<input type='" + a['inputtype'] + "'";
+	if (a['valmin'] != null) {msg += " min='" + a['valmin'] + "'";}
+	if (a['valmax'] != null) {msg += " max='" + a['valmax'] + "'";}
+	if (a['valstep'] != null) {msg += " step='" + a['valstep'] + "'";}
+	msg += " name='" + col + "'" + val;
+	if (a['placeholder'] != '') {msg += " placeholder='" + a['placeholder'] + "'";}
+	if (a['qrequired'] == 't') {msg += ' required';}
+	msg += form;
+	if (x != null) {msg += "<input type='hidden' name='" + col + "Prev'" + val + form;}
+	return msg;
+}
+
 function buildRow(x, qInsert) {
 	var id = (x == null) ? 'Insert' : x['id'];
 	var form = " form='f" + id + "'>";
@@ -48,21 +76,11 @@ function buildRow(x, qInsert) {
 	}
 
 	myTableInfo.forEach(function(a) {
-		var col = a['col'];
-		var val = (x == null) ? "" : " value='" + x[col] + "'";
-		row += "<td><input";
-		row += " type='" + a['inputtype'] + "'";
-		if (a['valmin'] != null) {row += " min='" + a['valmin'] + "'";}
-		if (a['valmax'] != null) {row += " max='" + a['valmax'] + "'";}
-		if (a['valstep'] != null) {row += " step='" + a['valstep'] + "'";}
-		row += " name='" + col + "'" + val;
-		if (a['placeholder'] != '') {
-			row += " placeholder='" + a['placeholder'] + "'";
-		}
-		if (a['qrequired'] == 't') {row += ' required';}
-		row += form;
-		if (x != null) {
-			row += "<input type='hidden' name='" + col + "Prev'" + val + form;
+		row += "<td>";
+		if (a['inputtype'] == 'textarea') {
+			row += mkTextArea(a, x, form);
+		} else { // normal input
+			row += mkInputField(a, x, form);
 		}
 		row += "</td>";
 	});
