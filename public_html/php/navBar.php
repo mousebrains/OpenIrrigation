@@ -20,7 +20,7 @@
       <a href='tableEditor.php?tbl=site&orderby=name'>Site Edit</a>
       <a href='user.php'>User Edit</a>
       <a href='email.php'>EMail Edit</a>
-      <a href='controller.php'>Controller Edit</a>
+      <a href='tableEditor.php?tbl=controller&orderby=name'>Controller Edit</a>
       <a href='sensor.php'>Decoder/Sensor Edit</a>
       <a href='poc.php'>Point-of-connect Edit</a>
       <a href='pocFlow.php'>Flow Sensor Edit</a>

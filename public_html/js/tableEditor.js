@@ -1,4 +1,5 @@
 var myTableInfo = {};
+var myReferenceInfo = {};
 
 function buildTable(info) {
 	myTableInfo = info;
@@ -19,9 +20,29 @@ function buildTable(info) {
 	$('tfoot').append().html(row);
 }
 
+function mkRefTable(a, x, form) {
+	var col = a['col'];
+	var val = (x != null) ? x[col] : null;
+	var refKey = a['reftable'];
+	if (!(refKey in myReferenceInfo)) return mkInputfield(a, x, form);
+	var msg = "<select name='" + col + "'";
+	if (a['required'] == true) msg += ' required';
+	msg += form;
+	myReferenceInfo[refKey].forEach(function(y) {
+		var id = y['id'];
+		msg += "<option value='" + id + "'";
+		if (id == val) msg += " selected";
+		msg += ">" + y['name'] + "</option>";
+	});
+	msg += "</select>";
+	return msg;
+}
+
 function mkTextArea(a, x, form) {
 	var col = a['col'];
-	var msg = "<textarea rows='2' cols='20' name='" + col + "'" + form;
+	var msg = "<textarea rows='2' cols='20' name='" + col + "'";
+	if (a['required'] == true) msg += ' required';
+	msg += form;
 	var val = (x != null) && (col in x) && (x[col] != null) ? x[col] : "";
 	msg += val;
 	msg += "</textarea>";
@@ -79,6 +100,8 @@ function buildRow(x, qInsert) {
 		row += "<td>";
 		if (a['inputtype'] == 'textarea') {
 			row += mkTextArea(a, x, form);
+		} else if (a['reftable'] != null) {
+			row += mkRefTable(a, x, form);
 		} else { // normal input
 			row += mkInputField(a, x, form);
 		}
@@ -104,6 +127,7 @@ function receivedStatus(event) {
 	var data = JSON.parse(event.data);
 	if ('burp' in data) { return; } // Nothing to do on burp messages
 	if ('info' in data) {buildTable(data['info']);}
+	if ('ref' in data) {myReferenceInfo = data['ref'];}
 	if ('data' in data) {buildBody(data['data']);}
 }
 

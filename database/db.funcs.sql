@@ -266,3 +266,35 @@ DROP TRIGGER IF EXISTS soil_updated_trigger ON soil;
 CREATE TRIGGER soil_updated_trigger
 	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON soil
 	EXECUTE FUNCTION soil_notify();
+
+-- Trigger on changes to site to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS site_notify CASCADE;
+CREATE FUNCTION site_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('site_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS site_updated_trigger ON site;
+CREATE TRIGGER site_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON site
+	EXECUTE FUNCTION site_notify();
+
+-- Trigger on changes to controller to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS controller_notify CASCADE;
+CREATE FUNCTION controller_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('controller_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS controller_updated_trigger ON controller;
+CREATE TRIGGER controller_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON controller
+	EXECUTE FUNCTION controller_notify();
