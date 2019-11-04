@@ -26,8 +26,8 @@
       <a href='pocFlow.php'>Flow Sensor Edit</a>
       <a href='pocMV.php'>Master Valve Edit</a>
       <a href='pocPump.php'>Booster Pump Edit</a>
-      <a href='soil.php'>Soil Edit</a>
-      <a href='crop.php'>Crop Edit</a>
+      <a href='tableEditor.php?tbl=soil&orderby=name'>Soil Edit</a>
+      <a href='tableEditor.php?tbl=crop&orderby=name'>Crop Edit</a>
       <a href='tableEditor.php?tbl=params&orderby=grp,name'>Parameter Edit</a>
       <a href='tableEditor.php?tbl=webList&orderby=grp,sortOrder,key'>Web Parameter Edit</a>
       <a href='ET.php'>ET Daily</a>
