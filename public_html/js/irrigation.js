@@ -63,6 +63,8 @@ function OI_timeUpDown(key0, key1, sTime, eTime, offset0, offset1, prevNow) {
 
 function OI_processSubmit(event, url, formData) { // Submission of form data to url
 	// Form submission and alert on failure
+	console.log(url)
+	console.log(formData)
 	$.ajax({
 		type: 'POST', // Post the form data
 		url: url, // Script to process this form
@@ -70,6 +72,7 @@ function OI_processSubmit(event, url, formData) { // Submission of form data to 
 		dataType: 'json', // returned data format
 		encode: true
 	}).done(function(data){
+		console.log(data);
 		if (('success' in data) && !data['success']) {
 			alert(data['message']);
 		}

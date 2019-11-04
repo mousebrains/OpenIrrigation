@@ -11,6 +11,7 @@ SRC+= status.php
 SRC+= reportDaily.php reportDailyStatus.php
 SRC+= monitor.php monitorStatus.php
 SRC+= monitorActiveOff.php monitorPendingRemove.php monitorProcAction.php
+SRC+= tableEditor.php tableStatus.php tableRowInsert.php
 SRC+= site.php user.php email.php
 SRC+= controller.php sensor.php
 SRC+= poc.php pocFlow.php pocMV.php pocPump.php

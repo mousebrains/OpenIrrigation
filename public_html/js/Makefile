@@ -10,6 +10,7 @@ SRC+= status.js
 SRC+= index.js
 SRC+= reportDaily.js 
 SRC+= monitor.js
+SRC+= tableEditor.js
 
 DEST = $(SRC:%=$(JSDIR)/%)
 
