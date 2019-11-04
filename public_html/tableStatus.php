@@ -3,8 +3,6 @@ header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('X-Accel-Buffering: no');
 
-$_GET['tbl']='controller';
-
 function mkMsg(bool $q, string $msg) {
 	return "data: " .  json_encode(["success" => $q, "message" => $msg]) . "\n\n";
 }

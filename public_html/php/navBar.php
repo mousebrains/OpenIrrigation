@@ -18,7 +18,7 @@
       <a href='station.php'>Stations</a>
       <a href='ETStn.php'>ET Stations</a>
       <a href='tableEditor.php?tbl=site&orderby=name'>Site Edit</a>
-      <a href='user.php'>User Edit</a>
+      <a href='tableEditor.php?tbl=usr&orderby=name'>User Edit</a>
       <a href='email.php'>EMail Edit</a>
       <a href='tableEditor.php?tbl=controller&orderby=name'>Controller Edit</a>
       <a href='sensor.php'>Decoder/Sensor Edit</a>
