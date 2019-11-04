@@ -1,5 +1,5 @@
 <?php
-// insert a row into a table
+// update a row in a table
 require_once 'php/DB1.php';
 
 function mkMsg(bool $q, string $msg) {
@@ -7,26 +7,31 @@ function mkMsg(bool $q, string $msg) {
 }
 
 if (empty($_POST['tableName'])) exit(mkMsg(false, 'No table name supplied'));
+if (empty($_POST['id'])) exit(mkMsg(false, 'No table row id supplied'));
 
 $tbl = $_POST['tableName'];
+$id = $_POST['id'];
+
 if (!$db->tableExists($tbl)) exit(mkMsg(false, "Table, $tbl, does not exist"));
 
 $cols = $db->tableColumns($tbl);
 $keys = array();
-$markers = array();
 $vals = array();
 foreach ($cols as $key) {
-	if (array_key_exists($key, $_POST)) {
-		array_push($keys, $key);
-		array_push($markers, '?');
+	$prevKey = $key . "Prev";
+	if (array_key_exists($key, $_POST) 
+		&& array_key_exists($prevKey, $_POST)
+		&& ($_POST[$key] != $_POST[$prevKey])) {
+		array_push($keys, "$key=?");
 		array_push($vals, $_POST[$key]);
 	}
 }
 
-if (empty($vals)) exit(mkMsg(false, "No columns found"));
+if (empty($vals)) exit(mkMsg(false, "No columns found to be updated"));
 
-$sql = "INSERT INTO $tbl (" . implode(',', $keys) . ") VALUES (" . implode(',', $markers) . ");";
+$sql = "UPDATE $tbl SET " . implode(',', $keys) . " WHERE id=?;";
 
+array_push($vals, $id);
 if ($db->query($sql, $vals)) exit(mkMsg(true, 'Insertion okay'));
 echo mkMsg(false, 'Insertion failed ' . $db->getError());
 ?>

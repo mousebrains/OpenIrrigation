@@ -24,7 +24,7 @@ require_once 'php/DB1.php';
 $tbl = $_GET['tbl'];
 if (!$db->tableExists($tbl)) {exit(mkMsg(false, "Table, $tbl, does not exist"));}
 
-$db->listen($tbl . "_updated");
+$db->listen(strtolower($tbl) . "_updated");
 
 $info = array();
 $info['info'] = tableInfo($db, $tbl);

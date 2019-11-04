@@ -40,6 +40,7 @@ function buildRow(x, qInsert) {
 		row += "</form></td>";
 		row += "<td>";
 		row += "<form class='formUpdate' id='f" + id + "'>";
+		row += tbl;
 		row += idIn;
 		row += "<input type='submit' value='Update'>";
 		row += "</form>";
@@ -51,6 +52,9 @@ function buildRow(x, qInsert) {
 		var val = (x == null) ? "" : " value='" + x[col] + "'";
 		row += "<td><input";
 		row += " type='" + a['inputtype'] + "'";
+		if (a['valmin'] != null) {row += " min='" + a['valmin'] + "'";}
+		if (a['valmax'] != null) {row += " max='" + a['valmax'] + "'";}
+		if (a['valstep'] != null) {row += " step='" + a['valstep'] + "'";}
 		row += " name='" + col + "'" + val;
 		if (a['placeholder'] != '') {
 			row += " placeholder='" + a['placeholder'] + "'";
@@ -68,6 +72,7 @@ function buildRow(x, qInsert) {
 
 function buildBody(data) {
 	var tbl = $('tbody');
+	tbl.find('tr').remove(); // remove all rows in the body
 	data.forEach(function(x) {
 		tbl.append(buildRow(x, false));
 	});
