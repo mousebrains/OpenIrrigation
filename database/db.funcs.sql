@@ -234,3 +234,35 @@ DROP TRIGGER IF EXISTS params_updated_trigger ON params;
 CREATE TRIGGER params_updated_trigger
 	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON params
 	EXECUTE FUNCTION params_notify();
+
+-- Trigger on changes to crop to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS crop_notify CASCADE;
+CREATE FUNCTION crop_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('crop_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS crop_updated_trigger ON crop;
+CREATE TRIGGER crop_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON crop
+	EXECUTE FUNCTION crop_notify();
+
+-- Trigger on changes to soil to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS soil_notify CASCADE;
+CREATE FUNCTION soil_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('soil_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS soil_updated_trigger ON soil;
+CREATE TRIGGER soil_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON soil
+	EXECUTE FUNCTION soil_notify();
