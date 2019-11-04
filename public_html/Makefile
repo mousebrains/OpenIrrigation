@@ -18,7 +18,6 @@ SRC+= controller.php sensor.php
 SRC+= poc.php pocFlow.php pocMV.php pocPump.php
 SRC+= soil.php crop.php
 SRC+= station.php program.php event.php programStation.php
-SRC+= params.php webList.php
 SRC+= ET.php ETannual.php ETStn.php
 
 DEST = $(SRC:%=$(WEBDIR)/%)
