@@ -218,3 +218,19 @@ DROP TRIGGER IF EXISTS webList_updated_trigger ON webList;
 CREATE TRIGGER webList_updated_trigger
 	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON webList
 	EXECUTE FUNCTION webList_notify();
+
+-- Trigger on changes to params to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS params_notify CASCADE;
+CREATE FUNCTION params_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('params_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS params_updated_trigger ON params;
+CREATE TRIGGER params_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON params
+	EXECUTE FUNCTION params_notify();
