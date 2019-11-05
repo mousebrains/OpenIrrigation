@@ -20,15 +20,6 @@ class DB {
 
 	function close() { $this->db = null; }
 
-	function tableExists(string $tbl) {
-		$sql = "SELECT count(*) AS cnt FROM information_schema.tables"
-			. " WHERE table_name=LOWER(?);";
-		$a = $this->query($sql, [$tbl]);
-		if ($a == false) return $a;
-		$result = $a->fetch(PDO::FETCH_ASSOC); // Should only be one row
-		return array_key_exists('cnt', $result) && $result['cnt'];
-	}
-
 	function prepare(string $sql) {
 		$db = $this->getDB();
 		$a = $db->prepare($sql);
@@ -58,12 +49,22 @@ class DB {
 		return $db->pgsqlGetNotify(PDO::FETCH_ASSOC, $delay);
 	}
 
+	function tableExists(string $tbl) {
+		$sql = "SELECT count(*) AS cnt FROM information_schema.tables"
+			. " WHERE table_name=LOWER(?);";
+		$a = $this->query($sql, [$tbl]);
+		if ($a == false) return false;
+		$result = $a->fetch(PDO::FETCH_ASSOC); // Should only be one row
+		return array_key_exists('cnt', $result) && $result['cnt'];
+	}
+
 	function tableColumns(string $tbl) {
-		$sql = "SELECT col FROM tableInfo WHERE tbl=?;";
+		$sql = "SELECT column_name AS col FROM information_schema.columns"
+			. " WHERE table_name=?;";
 		$a = $this->query($sql, [$tbl]);
 		if ($a == false) return [];
 		$rows = [];
-		foreach ($a as $row) { array_push($rows, $row[0]); }
+		foreach ($a as $row) { array_push($rows, $row['col']); }
 		return $rows;
 	}
 } // DB

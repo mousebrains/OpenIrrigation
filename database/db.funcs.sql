@@ -298,3 +298,195 @@ DROP TRIGGER IF EXISTS controller_updated_trigger ON controller;
 CREATE TRIGGER controller_updated_trigger
 	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON controller
 	EXECUTE FUNCTION controller_notify();
+
+-- Trigger on changes to program to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS program_notify CASCADE;
+CREATE FUNCTION program_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('program_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS program_updated_trigger ON program;
+CREATE TRIGGER program_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON program
+	EXECUTE FUNCTION program_notify();
+
+-- Trigger on changes to pgmstn to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS pgmstn_notify CASCADE;
+CREATE FUNCTION pgmstn_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('pgmstn_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS pgmstn_updated_trigger ON pgmstn;
+CREATE TRIGGER pgmstn_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pgmstn
+	EXECUTE FUNCTION pgmstn_notify();
+
+-- Trigger on changes to event to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS event_notify CASCADE;
+CREATE FUNCTION event_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('event_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS event_updated_trigger ON event;
+CREATE TRIGGER event_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON event
+	EXECUTE FUNCTION event_notify();
+
+-- Trigger on changes to station to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS station_notify CASCADE;
+CREATE FUNCTION station_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('station_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS station_updated_trigger ON station;
+CREATE TRIGGER station_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON station
+	EXECUTE FUNCTION station_notify();
+
+-- Trigger on changes to etstation to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS etstation_notify CASCADE;
+CREATE FUNCTION etstation_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('etstation_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS etstation_updated_trigger ON etstation;
+CREATE TRIGGER etstation_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON etstation
+	EXECUTE FUNCTION etstation_notify();
+
+-- Trigger on changes to usr to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS usr_notify CASCADE;
+CREATE FUNCTION usr_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('usr_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS usr_updated_trigger ON usr;
+CREATE TRIGGER usr_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON usr
+	EXECUTE FUNCTION usr_notify();
+
+-- Trigger on changes to email to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS email_notify CASCADE;
+CREATE FUNCTION email_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('email_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS email_updated_trigger ON email;
+CREATE TRIGGER email_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON email
+	EXECUTE FUNCTION email_notify();
+
+-- Trigger on changes to sensor to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS sensor_notify CASCADE;
+CREATE FUNCTION sensor_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('sensor_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS sensor_updated_trigger ON sensor;
+CREATE TRIGGER sensor_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON sensor
+	EXECUTE FUNCTION sensor_notify();
+
+-- Trigger on changes to poc to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS poc_notify CASCADE;
+CREATE FUNCTION poc_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('poc_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS poc_updated_trigger ON poc;
+CREATE TRIGGER poc_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON poc
+	EXECUTE FUNCTION poc_notify();
+
+-- Trigger on changes to pocflow to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS pocflow_notify CASCADE;
+CREATE FUNCTION pocflow_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('pocflow_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS pocflow_updated_trigger ON pocflow;
+CREATE TRIGGER pocflow_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pocflow
+	EXECUTE FUNCTION pocflow_notify();
+
+-- Trigger on changes to pocmv to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS pocmv_notify CASCADE;
+CREATE FUNCTION pocmv_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('pocmv_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS pocmv_updated_trigger ON pocmv;
+CREATE TRIGGER pocmv_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pocmv
+	EXECUTE FUNCTION pocmv_notify();
+
+-- Trigger on changes to pocpump to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS pocpump_notify CASCADE;
+CREATE FUNCTION pocpump_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('pocpump_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS pocpump_updated_trigger ON pocpump;
+CREATE TRIGGER pocpump_updated_trigger
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pocpump
+	EXECUTE FUNCTION pocpump_notify();

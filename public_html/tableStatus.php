@@ -18,19 +18,53 @@ function tableRows($db, $name, $orderBy) {
 }
 
 function tableReference($db, $name) {
-	$sql = "SELECT refTable,refKey,refLabel,refCriteria,refOrderBy FROM tableInfo"
+	$sql = "SELECT col,refTable,refKey,refLabel,refCriteria,refOrderBy"
+		. " FROM tableInfo"
 		. " WHERE tbl=? AND refTable IS NOT NULL;";
 	$info = array();
-	foreach ( $db->loadRows($sql, [$name]) as $row) {
+	foreach ($db->loadRows($sql, [$name]) as $row) {
 		$tbl = $row['reftable'];
+		$col = $row['col'];
 		$sql = "SELECT " . $row['refkey'] . " AS id," 
 			. $row['reflabel'] . " AS name"
 			. " FROM " . $tbl;
 		if ($row['refcriteria'] != null) $sql .= " WHERE " . $row['refcriteria'];
 		if ($row['reforderby'] != null) $sql .= " ORDER BY " . $row['reforderby'];
 		$sql .= ";";
-		$info[$tbl] = $db->loadRows($sql, []);
+		$info[$col] = $db->loadRows($sql, []);
 	}
+	return $info;
+}
+
+function tableSecondary($db, $name) {
+	$sql = "SELECT col,secondaryKey AS key0,secondaryValue AS key1 FROM tableInfo"
+		. " WHERE tbl=? AND secondaryKey IS NOT NULL;";
+	$info = array();
+	$info['row'] = [];
+	foreach ($db->loadRows($sql, [$name]) as $row) {
+		array_push($info['row'], $row);
+		$col = $row['col'];
+		$key0 = $row['key0'];
+		$key1 = $row['key1'];
+		$sql = "SELECT $key0,$key1 FROM $col;";
+		$info[$col] = [];
+		foreach ($db->loadRows($sql, []) as $a) {
+			$id = $a[$key0];
+			if (!array_key_exists($id, $info[$col])) $info[$col][$id] = array();
+			array_push($info[$col][$id], $a[$key1]);
+		}
+	}
+	return $info;
+}
+
+function fetchInfo($db, $tbl, $orderBy) {
+	$info = array();
+	$a = tableRows($db, $tbl, $orderBy);
+	if (!empty($a)) $info['data'] = $a;
+	$a = tableReference($db, $tbl);
+	if (!empty($a)) $info['ref'] = $a;
+	$a = tableSecondary($db, $tbl);
+	if (!empty($a)) $info['secondary'] = $a;
 	return $info;
 }
 
@@ -56,10 +90,8 @@ if (empty($_GET['orderby'])) {
 
 $db->listen(strtolower($tbl) . "_updated");
 
-$info = array();
+$info = fetchInfo($db, $tbl, $orderBy);
 $info['info'] = tableInfo($db, $tbl);
-$info['data'] = tableRows($db, $tbl, $orderBy);
-$info['ref'] = tableReference($db, $tbl);
 
 while (True) { # Wait forever
 	echo "data: " . json_encode($info) . "\n\n";
@@ -70,8 +102,7 @@ while (True) { # Wait forever
 	if ($notifications == false) { // no notifications
 		$info = ['burp' => 0];
 	} else { // notifications
-		$info = ['data' => tableRows($db, $tbl, $orderBy),
-			'ref' => tableReference($db, $tbl)];
+		$info = $fetchInfo($db, $tbl, $orderBy);
 	}
 }
 ?>

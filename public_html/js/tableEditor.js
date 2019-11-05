@@ -1,5 +1,6 @@
 var myTableInfo = {};
 var myReferenceInfo = {};
+var mySecondaryInfo = {};
 
 function buildTable(info) {
 	myTableInfo = info;
@@ -23,31 +24,44 @@ function buildTable(info) {
 function mkRefTable(a, x, form) {
 	var col = a['col'];
 	var val = (x != null) ? x[col] : null;
-	var refKey = a['reftable'];
-	if (!(refKey in myReferenceInfo)) return mkInputfield(a, x, form);
-	var msg = "<select name='" + col + "'";
-	if (a['required'] == true) msg += ' required';
+	var id = (x != null) ? x['id'] : null;
+	var qMultiple = col in mySecondaryInfo;
+	var sec = qMultiple ? mySecondaryInfo[col] : null;
+	var msg = "<select name='" + col + (qMultiple ? "[]'" : "'");
+	if (a['qrequired'] == true) msg += ' required';
+	if (qMultiple) {
+		val = (id in sec) ? sec[id].join() : '';  // Redo val for multiples
+		msg += ' multiple';
+	}
 	msg += form;
-	myReferenceInfo[refKey].forEach(function(y) {
-		var id = y['id'];
-		msg += "<option value='" + id + "'";
-		if (id == val) msg += " selected";
+	myReferenceInfo[col].forEach(function(y) {
+		var yid = y['id'];
+		msg += "<option value='" + yid + "'";
+		if ((yid == val) || (qMultiple && (id in sec) && sec[id].includes(yid))) {
+			msg += " selected";
+		} 
 		msg += ">" + y['name'] + "</option>";
 	});
 	msg += "</select>";
+	if (x != null) {
+		msg += "<input type='hidden' name='" + col + "Prev'"
+			+ " value='" + val + "'" + form;
+	}
 	return msg;
 }
 
 function mkTextArea(a, x, form) {
 	var col = a['col'];
 	var msg = "<textarea rows='2' cols='20' name='" + col + "'";
-	if (a['required'] == true) msg += ' required';
+	if (a['qrequired'] == true) msg += ' required';
 	msg += form;
 	var val = (x != null) && (col in x) && (x[col] != null) ? x[col] : "";
 	msg += val;
 	msg += "</textarea>";
-	msg += "<input type='hidden' name='" + col + "Prev'";
-	msg += " value='" + val + "'" + form;
+	if (x != null) {
+		msg += "<input type='hidden' name='" + col + "Prev'"
+			+ " value='" + val + "'" + form;
+	}
 	return msg;
 }
 
@@ -62,9 +76,9 @@ function mkInputField(a, x, form) {
 	if (a['valstep'] != null) {msg += " step='" + a['valstep'] + "'";}
 	msg += " name='" + col + "'" + val;
 	if (a['placeholder'] != '') {msg += " placeholder='" + a['placeholder'] + "'";}
-	if (a['qrequired'] == 't') {msg += ' required';}
+	if (a['qrequired'] == true) {msg += ' required';}
 	msg += form;
-	if (x != null) {msg += "<input type='hidden' name='" + col + "Prev'" + val + form;}
+	if (x != null) msg += "<input type='hidden' name='" + col + "Prev'" + val + form;
 	return msg;
 }
 
@@ -97,10 +111,11 @@ function buildRow(x, qInsert) {
 	}
 
 	myTableInfo.forEach(function(a) {
+		var col = a['col'];
 		row += "<td>";
 		if (a['inputtype'] == 'textarea') {
 			row += mkTextArea(a, x, form);
-		} else if (a['reftable'] != null) {
+		} else if (col in myReferenceInfo) {
 			row += mkRefTable(a, x, form);
 		} else { // normal input
 			row += mkInputField(a, x, form);
@@ -126,8 +141,13 @@ function buildBody(data) {
 function receivedStatus(event) {
 	var data = JSON.parse(event.data);
 	if ('burp' in data) { return; } // Nothing to do on burp messages
+	if ('message' in data) {
+		alert(data['message']);
+		return;
+	}
 	if ('info' in data) {buildTable(data['info']);}
 	if ('ref' in data) {myReferenceInfo = data['ref'];}
+	if ('secondary' in data) {mySecondaryInfo = data['secondary'];}
 	if ('data' in data) {buildBody(data['data']);}
 }
 
