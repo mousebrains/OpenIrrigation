@@ -51,13 +51,13 @@ function OI_timeUpDown(key0, key1, sTime, eTime, offset0, offset1, prevNow) {
 		resid = 10; // Count down by 10 second intervals
 	}
 	$(key1).html((dt > 0) ? msg : '');
-	if ((dt > 0) && (!(key in OI_timeouts) || (OI_timeouts[key][1] == prevNow))) {
+	if ((dt > 0) && (!(key1 in OI_timeouts) || (OI_timeouts[key1][1] == prevNow))) {
 		var dtNext = Math.max(1, dt % resid) * 1000;
 		var id = setTimeout(OI_timeUpDown, dtNext, 
 			key0, key1, sTime, eTime, offset0, offset1, now);
-		OI_timeouts[key] = [id, now];
-	} else if ((key in OI_timeouts) && (OI_timeouts[key][1] == prevNow)) {
-		delete OI_timeouts[key];
+		OI_timeouts[key1] = [id, now];
+	} else if ((key1 in OI_timeouts) && (OI_timeouts[key1][1] == prevNow)) {
+		delete OI_timeouts[key1];
 	}
 } // OI_timeDown
 
