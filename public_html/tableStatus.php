@@ -40,7 +40,6 @@ function tableSecondary($db, $name) {
 	$sql = "SELECT col,secondaryKey AS key0,secondaryValue AS key1 FROM tableInfo"
 		. " WHERE tbl=? AND secondaryKey IS NOT NULL;";
 	$info = array();
-	$info['row'] = [];
 	foreach ($db->loadRows($sql, [$name]) as $row) {
 		array_push($info['row'], $row);
 		$col = $row['col'];
@@ -59,6 +58,8 @@ function tableSecondary($db, $name) {
 
 function fetchInfo($db, $tbl, $orderBy) {
 	$info = array();
+	$info['tbl'] = $tbl;
+	$info['orderBy'] = $orderBy;
 	$a = tableRows($db, $tbl, $orderBy);
 	if (!empty($a)) $info['data'] = $a;
 	$a = tableReference($db, $tbl);
@@ -81,7 +82,7 @@ if (empty($_GET['orderby'])) {
 	$cols = $db->tableColumns($tbl);
 	$a = explode(',', $_GET['orderby']);
 	foreach ($a as $key) {
-		if (!in_array(strtolower($key), $cols)) {
+		if (!in_array(trim(strtolower($key)), $cols)) {
 			exit(mkMsg(false, "Column, $key, unknown"));
 		}
 	}

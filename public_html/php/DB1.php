@@ -60,7 +60,7 @@ class DB {
 
 	function tableColumns(string $tbl) {
 		$sql = "SELECT column_name AS col FROM information_schema.columns"
-			. " WHERE table_name=?;";
+			. " WHERE table_name=LOWER(?);";
 		$a = $this->query($sql, [$tbl]);
 		if ($a == false) return [];
 		$rows = [];

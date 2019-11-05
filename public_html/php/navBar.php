@@ -14,19 +14,19 @@
       <a href='monitor.php'>Monitor Operations</a>
       <a href='tableEditor.php?tbl=program&orderby=name'>Program</a>
       <a href='tableEditor.php?tbl=site&orderby=name'>Site</a>
-      <a href='tableEditor.php?tbl=pgmstn&orderby=program,priority,station'>Program Station</a>
+      <a href='tableEditor.php?tbl=pgmStn&orderby=program,priority,station'>Program Station</a>
       <a href='tableEditor.php?tbl=event&orderby=name'>Event</a>
       <a href='tableEditor.php?tbl=station&orderby=name'>Station</a>
-      <a href='tableEditor.php?tbl=etstation&orderby=name'>ET Stations</a>
+      <a href='tableEditor.php?tbl=ETStation&orderby=station'>ET Stations</a>
       <a href='tableEditor.php?tbl=site&orderby=name'>Site</a>
       <a href='tableEditor.php?tbl=usr&orderby=name'>User</a>
       <a href='tableEditor.php?tbl=email&orderby=email'>email</a>
       <a href='tableEditor.php?tbl=controller&orderby=name'>Controller</a>
       <a href='tableEditor.php?tbl=sensor&orderby=name'>Sensor</a>
       <a href='tableEditor.php?tbl=poc&orderby=name'>Point-of-connect</a>
-      <a href='tableEditor.php?tbl=pocflow&orderby=name'>Point-of-connect Flow</a>
-      <a href='tableEditor.php?tbl=pocmv&orderby=name'>Point-of-connect Master Valve</a>
-      <a href='tableEditor.php?tbl=pocpump&orderby=name'>Point-of-connect Pump</a>
+      <a href='tableEditor.php?tbl=pocFlow&orderby=name'>Point-of-connect Flow</a>
+      <a href='tableEditor.php?tbl=pocMV&orderby=name'>Point-of-connect Master Valve</a>
+      <a href='tableEditor.php?tbl=pocPump&orderby=name'>Point-of-connect Pump</a>
       <a href='tableEditor.php?tbl=soil&orderby=name'>Soil Edit</a>
       <a href='tableEditor.php?tbl=crop&orderby=name'>Crop Edit</a>
       <a href='tableEditor.php?tbl=params&orderby=grp,name'>Parameter Edit</a>

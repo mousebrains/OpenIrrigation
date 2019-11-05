@@ -71,12 +71,13 @@ function mkInputField(a, x, form) {
 		" value='" + x[col] + "'" 
 		: "";
 	var msg = "<input type='" + a['inputtype'] + "'";
-	if (a['valmin'] != null) {msg += " min='" + a['valmin'] + "'";}
-	if (a['valmax'] != null) {msg += " max='" + a['valmax'] + "'";}
-	if (a['valstep'] != null) {msg += " step='" + a['valstep'] + "'";}
+	if (a['inputtype'] == 'password') msg += " autocomplete='on'";
+	if (a['valmin'] != null) msg += " min='" + a['valmin'] + "'";
+	if (a['valmax'] != null) msg += " max='" + a['valmax'] + "'";
+	if (a['valstep'] != null) msg += " step='" + a['valstep'] + "'";
 	msg += " name='" + col + "'" + val;
-	if (a['placeholder'] != '') {msg += " placeholder='" + a['placeholder'] + "'";}
-	if (a['qrequired'] == true) {msg += ' required';}
+	if (a['placeholder'] != '') msg += " placeholder='" + a['placeholder'] + "'";
+	if (a['qrequired'] == true) msg += ' required';
 	msg += form;
 	if (x != null) msg += "<input type='hidden' name='" + col + "Prev'" + val + form;
 	return msg;
@@ -140,9 +141,11 @@ function buildBody(data) {
 
 function receivedStatus(event) {
 	var data = JSON.parse(event.data);
+	console.log(data);
 	if ('burp' in data) { return; } // Nothing to do on burp messages
 	if ('message' in data) {
 		alert(data['message']);
+		statusSource.close();
 		return;
 	}
 	if ('info' in data) {buildTable(data['info']);}
