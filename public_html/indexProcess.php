@@ -3,7 +3,7 @@
 
 require_once 'php/DB1.php';
 
-function mkMsg(bool $flag, string $msg) {return json_encode(['success'=>$flag, 'message'=>$msg]);}
+function mkMsg(bool $flag, $msg) {return json_encode(['success'=>$flag, 'message'=>$msg]);}
 function dbMsg($db, string $msg) {return mkMsg(false, $msg . ", " . $db->getError());}
 
 if (empty($_POST['id'])) exit(mkMsg(false, "No ID supplied."));
@@ -26,7 +26,7 @@ if (array_key_exists('poc', $_POST)) { // work on a POC
 
 if (array_key_exists('time', $_POST)) { // Turn a valve on
 	$dt = $_POST['time'];
-	if ($db->query('SELECT manual_on(?,?);', [$id, $time])) {
+	if ($db->query('SELECT manual_on(?,?);', [$id, $dt])) {
 		exit(mkMsg(true, "Turned Valve $id on for $dt minutes"));
 	}
 	exit(dbMsg($db, "Failed to turn valve($id) on for $dt minutes"));
