@@ -41,7 +41,6 @@ function tableSecondary($db, $name) {
 		. " WHERE tbl=? AND secondaryKey IS NOT NULL;";
 	$info = array();
 	foreach ($db->loadRows($sql, [$name]) as $row) {
-		array_push($info['row'], $row);
 		$col = $row['col'];
 		$key0 = $row['key0'];
 		$key1 = $row['key1'];
@@ -103,7 +102,7 @@ while (True) { # Wait forever
 	if ($notifications == false) { // no notifications
 		$info = ['burp' => 0];
 	} else { // notifications
-		$info = $fetchInfo($db, $tbl, $orderBy);
+		$info = fetchInfo($db, $tbl, $orderBy);
 	}
 }
 ?>
