@@ -74,21 +74,13 @@ class DB {
 	function fetchControllers() {
 		$stmt = $this->getController;
 		if (!$this->exec($stmt)) return array();
-		$info = array();
-		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-			$info[$row['id']] = $row['name'];
-		}
-		return $info;
+		return $stmt->fetchAll(PDO::FETCH_NUM);
 	} // fetchControllers
 
 	function fetchPOCs() {
 		$stmt = $this->getPOC;
 		if (!$this->exec($stmt)) return array();
-		$info = array();
-		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-			$info[$row['sensor']] = $row['name'];
-		}
-		return $info;
+		return $stmt->fetchAll(PDO::FETCH_NUM);
 	} // fetchPOCs
 
 	function fetchSimulation() {

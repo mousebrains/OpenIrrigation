@@ -1,43 +1,38 @@
 <?php
-// Remove an pending record from action
+// Turn POCs on/off, clear all pending actions, or shut everything off
 
-$name= 'irrigation';
-$flag = true;
-$msg = '';
-$sql = '';
-$args = [];
+require_once 'php/DB1.php';
 
-if (empty($_POST['action'])) {
-	$flag = false;
-	$msg = 'No action supplied';
-} else if ($_POST['action'] == 'pocOff') {
-	if (empty($_POST['poc'])) {
-		$flag = false;
-		$msg = 'No poc supplied';
-	} else {
-		$sql = 'SELECT poc_off($1,$2);';
-		$args = [$_POST['poc'], 60];
-		$msg = 'Turned POC(' . $args[0] . ') Off for ' . $args[1] . ' mintues';
-	}
-} else if ($_POST['action'] == 'clearAll') {
-	$sql = 'DELETE FROM action WHERE cmdOn IS NOT NULL;';
-	$msg = 'Removed all pending actions';
-} else if ($_POST['action'] == 'allOff') {
-	$sql = 'SELECT manual_all_off();';
-	$msg = 'Turned off all valves';
-} else {
-	$flag = false;
-	$msg = 'Unrecognized action ' . $_POST['action'];
+function mkMsg(bool $flag, string $msg) {return json_encode(['success'=>$flag, 'message'=>$msg]);}
+function dbMsg($db, string $msg) {return mkMsg(false, $msg . ", " . $db->getError());}
+
+if (empty($_POST['action'])) exit(mkMsg(false, "No action supplied."));
+
+$action = $_POST['action'];
+
+if ($action == 'pocOff') {
+	if (empty($_POST['poc'])) exit(mkMsg(false, 'No POC supplied'));
+	$poc = $_POST['poc'];
+	$dt = 60;
+	if ($db->query("SELECT poc_off(?,?)", [$poc, $dt])) 
+		exit(mkMsg(true, "Turned POC($poc) off for $dt minutes"));
+	exit(dbMsg($db, "Failed to turn off POC($poc) for $dt minutes"));
 }
 
-if ($sql != '') {
-	$db = pg_connect("dbname=$name");
-	if (!pg_query_params($db, $sql, $args)) {
-		$msg = pg_last_error($db);
-		$flag = false;
-	}
-	pg_close($db);
+if ($action == 'clearAll') {
+	if ($db->query("DELETE FROM action WHERE cmdOn IS NOT NULL;")) 
+		exit(mkMsg(true, "Removed all pending actions"));
+	exit(dbMsg($db, "Failed to remove all pending actions"));
+} 
+
+if ($action == 'allOff') {
+	$sql = "SELECT manual_all_off();";
+	$args = [];
+	$msg = "Turned off all valves";
+	if ($db->query("SELECT manual_all_off();")) 
+		exit(mkMsg(true, "Turned all valves off"));
+	exit(dbMsg($db, "Failed to turn all valves off"));
 }
 
-echo json_encode(['success' => $flag, 'message' => $msg]);
+exit(mkMsg(false, "Unrecognized action $action"));
 ?>

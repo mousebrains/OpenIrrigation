@@ -28,7 +28,7 @@ class DB {
 		return false;
 	}
 
-	function query(string $sql, array $args) {
+	function query(string $sql, array $args = array()) {
 		$a = $this->prepare($sql);
 		if ($a == false) return false;
 		if ($a->execute($args) != false) return $a; // worked
@@ -48,7 +48,7 @@ class DB {
 		return $a->fetchAll(PDO::FETCH_NUM);
 	}
 
-	function listen(string $channel) {return $this->query("LISTEN $channel;", []);}
+	function listen(string $channel) {return $this->query("LISTEN $channel;");}
 
 	function notifications(int $delay) {
 		$db = $this->getDB();

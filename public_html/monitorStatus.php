@@ -4,21 +4,22 @@ header('Cache-Control: no-cache');
 header('X-Accel-Buffering: no');
 
 // Send to JSON formatted data representing
-// the previous 10 days and next 10 days
-// daily run times
+//   the controller's current,
+//   the flow sensor's flow,
+//   the number of stations turned on, and
+//   the number of stations pending within the next 50-60 minutes
 
-class Monitor { # Container to hold information for use by index.js
-	function __construct($dbName) { # constructor
-		$this->daysFwd = 3; # Days from current date to look forwards
+class DB {
+	private $errors = array(); // Error stack
+	private $daysFwd = 3; # Days from current date to look forwards
+	private $tPast = 0;
+
+	function __construct(string $dbName) {
 		$this->tPast = time() - 3 * 86400; # 3 days back
+		$db = new PDO("pgsql:dbname=$dbName;");
+		$this->db = $db;
 
-		try {
-			$this->db = pg_connect("dbname=$dbName");
-		} catch (Exception $e) {
-			throw($e);
-		}
-
-		$sql = "SELECT "
+		$this->getActive = $db->prepare("SELECT "
 			. "sensor,"
 			. "program,"
 			. "pre,peak,post,onCode,"
@@ -26,11 +27,9 @@ class Monitor { # Container to hold information for use by index.js
 			. "ROUND(EXTRACT(EPOCH FROM tOff)) AS tOff"
 			. " FROM action"
 			. " WHERE cmdOn IS NULL"
-			. " ORDER BY tOn,tOff;";
-		$result = pg_prepare($this->db, "get_active", $sql); 
-		pg_free_result($result);
+			. " ORDER BY tOn,tOff;");
 
-		$sql = "SELECT "
+		$this->getPending = $db->prepare("SELECT "
 			. "id,"
 			. "sensor,"
 			. "program,"
@@ -39,85 +38,47 @@ class Monitor { # Container to hold information for use by index.js
 			. " FROM action"
 			. " WHERE tOn<=(CURRENT_TIMESTAMP + INTERVAL '" . $this->daysFwd . " days')"
 			. " AND (cmdOn IS NOT NULL)"
-		       	. " ORDER BY tOn,tOff;";
-		$result = pg_prepare($this->db, "get_pending", $sql);
-		pg_free_result($result);
+		       	. " ORDER BY tOn,tOff;");
 
-		$sql = "SELECT "
+		$this->getPast = $db->prepare("SELECT "
 			. "sensor,"
 			. "program,"
 			. "pre,peak,post,onCode,offCode,"
 			. "EXTRACT(EPOCH FROM tOn) AS tOn,"
 			. "EXTRACT(EPOCH FROM tOff) AS tOff"
 			. " FROM historical"
-			. ' WHERE tOff>to_timestamp($1)'
-			. " ORDER BY tOff,tOn;";
-		$result = pg_prepare($this->db, "get_historical", $sql); 
-		pg_free_result($result);
+			. ' WHERE tOff>to_timestamp(?)'
+			. " ORDER BY tOff,tOn;");
 
-		$result = pg_query($this->db, "LISTEN action_on_update;");
-		pg_free_result($result);
+		$this->getStations = $db->prepare("SELECT "
+			. "sensor.id,sensor.name,station.name AS stn FROM sensor"
+			. " LEFT JOIN station ON station.sensor=sensor.id;");
+
+		$this->getPrograms = $db->prepare("SELECT id,name FROM program;");
+
+		$this->getPOCs = $db->prepare("SELECT "
+			. "poc.id,poc.name FROM poc INNER JOIN pocMV ON pocMV.poc=poc.id"
+			. " ORDER BY poc.name;");
+
+		$db->exec("LISTEN action_on_update;");
 	}
 
-	function __destruct() { # Destructor
-		if ($this->db != NULL) {
-			pg_close($this->db);
-		}
-	}
-
-	function fetchStations() { # Get sensor/name and program/label 
-		$a = array();
-		$sql = "SELECT sensor.id,sensor.name,station.name AS stn FROM sensor"
-			. " LEFT JOIN station ON station.sensor=sensor.id;";
-		$result = pg_query($this->db, $sql);
-		while ($row = pg_fetch_assoc($result)) {
-			$a[$row['id']] = $row['stn'] == '' ? $row['name'] : $row['stn'];
-		}
-		pg_free_result($result);
-		return $a;
-	}
-
-	function fetchPrograms() {
-		$a = array();
-		$sql = "SELECT id,name FROM program;";
-		$result = pg_query($this->db, $sql);
-		while ($row = pg_fetch_assoc($result)) { 
-			$a[$row['id']] = $row['name'];
-		}
-		pg_free_result($result);
-		return $a;
-	}
-
-	function fetchPOCs() {
-		$a = array();
-		$sql = "SELECT poc.id,poc.name FROM poc INNER JOIN pocMV ON pocMV.poc=poc.id ORDER BY poc.name;";
-		$result = pg_query($this->db, $sql);
-		while ($row = pg_fetch_assoc($result)) { 
-			$a[$row['id']] = $row['name'];
-		}
-		pg_free_result($result);
-		return $a;
-	}
-
-	function loadInfo($result, $toSave) {
-		$a = array();
-		while ($row = pg_fetch_assoc($result)) { // Walk through rows
-			$b = array();
-			foreach($toSave as $key) {array_push($b, $row[$key]);}
-			array_push($a, $b);
-		}
-		pg_free_result($result);
-		return $a;
+	function notifications(int $dt) {
+		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
+		if (!$a) return array();
+		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	}
 
 	function fetchInfo() { # Get all the historical, pending, and active actions
+		$this->errors = [];
 		$a = array();
-		$a['active'] = $this->loadInfo(pg_execute($this->db, "get_active", []),
+		$a['active'] = $this->loadInfo($this->getActive, [],
 			['sensor', 'program', 'pre', 'peak', 'post', 'oncode', 'ton', 'toff']);
-		$a['pending'] = $this->loadInfo(pg_execute($this->db, "get_pending", []),
+		$a['pending'] = $this->loadInfo($this->getPending, [],
 			['id', 'sensor', 'program', 'ton', 'toff']);
-		$a['past'] = $this->loadInfo(pg_execute($this->db, "get_historical", [$this->tPast]),
-			['sensor', 'program', 'pre', 'peak', 'post', 'oncode', 'offcode', 'ton', 'toff']);
+		$a['past'] = $this->loadInfo($this->getPast, [$this->tPast],
+			['sensor', 'program', 'pre', 'peak', 'post', 'oncode', 'offcode', 
+			'ton', 'toff']);
 
 		foreach($a['past'] as $item) {$this->tPast = max($this->tPast, $item[9]);}
 		return $a;
@@ -128,34 +89,78 @@ class Monitor { # Container to hold information for use by index.js
 		$a['stations'] = $this->fetchStations();
 		$a['programs'] = $this->fetchPrograms();
 		$a['pocs'] = $this->fetchPOCs();
+		if (!empty($this->errors)) {
+			$a['errors'] = $this->errors;
+			$this->errors = array();
+		}
+		return json_encode($a);
+	}
+
+	function exec($stmt, $args = []) {
+		if ($stmt->execute($args) == false) {
+			array_push($this->errors, $stmt->errorInfo());
+			return false;
+		}
+		return true;
+	} // exec
+
+	function loadInfo($stmt, $args, $toSave) {
+		if (!$this->exec($stmt, $args)) return array();
+		$a = array();
+		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { // Walk through rows
+			$b = array();
+			foreach($toSave as $key) {array_push($b, $row[$key]);}
+			array_push($a, $b);
+		}
 		return $a;
 	}
 
-	function notifications() {
-		return pg_get_notify($this->db);
+	function fetchStations() { # Get sensor/name and program/label 
+		$stmt = $this->getStations;
+		if (!$this->exec($stmt)) return array();
+		$a = array();
+		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+			$a[$row['id']] = $row['stn'] == '' ? $row['name'] : $row['stn'];
+		}
+		return $a;
 	}
-}
 
-$a = new Monitor("irrigation");
+	function fetchPrograms() {
+		$stmt = $this->getPrograms;
+		if (!$this->exec($stmt)) return array();
+		$a = array();
+		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+			$a[$row['id']] = $row['name'];
+		}
+		return $a;
+	}
 
-echo "data: " . json_encode($a->fetchInitial()) . "\n\n";
-$tPrev = time(); // Current time
+	function fetchPOCs() {
+		$stmt = $this->getPOCs;
+		if (!$this->exec($stmt)) return array();
+		$a = array();
+		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+			$a[$row['id']] = $row['name'];
+		}
+		return $a;
+	}
+} // DB
+
+$delay = 55 * 1000; // 55 seconds between burps
+$dbName = 'irrigation';
+
+$db = new DB($dbName);
+
+echo "data: " . $db->fetchInitial() . "\n\n";
 
 while (True) { # Wait forever
 	if (ob_get_length()) {ob_flush();} // Flush output buffer
 	flush();
-	$notify = $a->notifications();
-	if (!$notify) {
-		$now = time(); // Current time
-		if ($now >= ($tPrev + 50)) { // Avoid 1 minute timeout by burping
-			echo "data: " . json_encode(['burp' => 0]) . "\n\n";
-			$tPrev = $now;
-		} else {
-			sleep(5); # Wait a 5 seconds before checking on notifications again
-		}
+	$notifications = $db->notifications($delay);
+	if (empty($notifications)) {
+		echo "data: " . json_encode(['burp' => 0]) . "\n\n";
 	} else {
-		echo "data: " . json_encode($a->fetchInfo()) . "\n\n";
-		$tPrev = time();
+		echo "data: " . json_encode($db->fetchInfo()) . "\n\n";
 	}
 }
 ?>
