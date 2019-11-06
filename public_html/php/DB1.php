@@ -42,6 +42,12 @@ class DB {
 		return $a->fetchAll(PDO::FETCH_ASSOC);
 	}
 
+	function loadRowsNum(string $sql, array $args) {
+		$a = $this->query($sql, $args);
+		if ($a == false) return [];
+		return $a->fetchAll(PDO::FETCH_NUM);
+	}
+
 	function listen(string $channel) {return $this->query("LISTEN $channel;", []);}
 
 	function notifications(int $delay) {

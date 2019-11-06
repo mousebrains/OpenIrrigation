@@ -13,7 +13,7 @@ SRC+= monitor.php monitorStatus.php
 SRC+= monitorActiveOff.php monitorPendingRemove.php monitorProcAction.php
 SRC+= tableEditor.php tableStatus.php
 SRC+= tableRowInsert.php tableRowDelete.php tableRowUpdate.php
-SRC+= ET.php ETannual.php
+SRC+= ET.php etDaily.php etAnnual.php
 
 DEST = $(SRC:%=$(WEBDIR)/%)
 
