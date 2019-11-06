@@ -55,7 +55,7 @@ class ProgramStation:
         self.qOkay = False
 
         if self.runTime <= timedelta(minutes=0):
-            logger.error('pgmStn(%s0 has an invalid runTime, %s', self.runTime)
+            logger.error('pgmStn(%s has an invalid runTime, %s', self.runTime)
             return
 
         if stationID not in sensors.stations:
