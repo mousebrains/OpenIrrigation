@@ -15,7 +15,6 @@
       <a href='tableEditor.php?tbl=program&orderby=name'>Program</a>
       <a href='tableEditor.php?tbl=site&orderby=name'>Site</a>
       <a href='tableEditor.php?tbl=pgmStn&orderby=program,priority,station'>Program Station</a>
-      <a href='tableEditor.php?tbl=event&orderby=name'>Event</a>
       <a href='tableEditor.php?tbl=station&orderby=name'>Station</a>
       <a href='tableEditor.php?tbl=ETStation&orderby=station'>ET Stations</a>
       <a href='tableEditor.php?tbl=site&orderby=name'>Site</a>
