@@ -148,9 +148,12 @@ function receivedStatus(event) {
 		statusSource.close();
 		return;
 	}
-	if ('info' in data) {buildTable(data['info']);}
 	if ('ref' in data) {myReferenceInfo = data['ref'];}
 	if ('secondary' in data) {mySecondaryInfo = data['secondary'];}
+	if ('info' in data) {
+		buildTable(data['info']);
+		buildBody([]); // For insert row
+	}
 	if ('data' in data) {buildBody(data['data']);}
 }
 
