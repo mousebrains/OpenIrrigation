@@ -548,51 +548,6 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 	('pgmStn', 'runtime',  3,'Run Time (min)', '10', 0, 600, 0.1),
 	('pgmStn', 'priority', 4,'Priority', '10', 0, 1000, NULL);
 
--- non-watering event specifier
-DROP TABLE IF EXISTS event CASCADE;
-CREATE TABLE event( -- non-watering events
-	id SERIAL PRIMARY KEY, -- id
-	site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
-	name TEXT UNIQUE, -- descriptive name
-	onOff INTEGER REFERENCES webList(id) ON DELETE SET NULL,
-	action INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- action 
-	nDays POSINTEGER, -- # of days between watering when n-days mode
-	refDate DATE, -- reference date for action
-	startTime TIME, -- seconds into day to start
-	endTime TIME, -- seconds into day to stop, may be less than start, then wrap
-	startMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- starting
-	stopMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- stoping
-	nRepeat NONNEGINTEGER DEFAULT 0, -- How many times to repeat
-	notes TEXT -- Description
-	);
-INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
-	('event','site',   1, 'Point-of-connect', 'site');
-INSERT INTO tableInfo(tbl,col,displayOrder,label,
-			refTable,refLabel,refCriteria,refOrderBy) VALUES
-  ('event', 'onoff',     2, 'On/Off', 'webList', 'label', 'grp=''pgm''', 'sortOrder,label'),
-  ('event', 'action',    4, 'Mode', 'webList', 'label', 'grp=''evAct''', 'sortOrder,label'),
-  ('event', 'startmode', 8,'Start Mode','webList','label','grp=''evCel''','sortOrder,label'),
-  ('event', 'stopmode', 10,'Start Mode','webList','label','grp=''evCel''','sortOrder,label');
-INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
-	('event', 'name',         0,True, 'Sensor Name', 'text', 'Shack'),
-	('event', 'refdate',      7,False, 'Reference Date', 'date', '2018-08-30'),
-	('event', 'starttime',    9,False, 'Start Time', 'time', '04:05:32'),
-	('event', 'endtime',     11,False, 'End Time', 'time', '04:05:32');
-INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
-	('event', 'ndays',         6,'# Days in cycle', '10', 1, 100, NULL);
-INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,
-			refTable,refLabel,refCriteria,refOrderBy,secondaryKey,secondaryValue) VALUES
-	('event', 'eventDOW', 5, 'Day of week', 'multiple', 'webList', 'label', 'grp=''dow''', 
-		'sortOrder,label', 'event', 'dow');
-
---- Event days of week
-DROP TABLE IF EXISTS eventDOW;
-CREATE TABLE eventDOW( -- non-watering event day of week associations
-	event INTEGER REFERENCES event(id) ON DELETE CASCADE, -- which event
-	dow INTEGER REFERENCES webList(id) ON DELETE CASCADE,
-	PRIMARY KEY (event,dow)
-	);
-	
 -- ET information for each station
 DROP TABLE IF EXISTS EtStation;
 CREATE TABLE EtStation( -- ET information for each station
@@ -636,32 +591,6 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 	('ETStation', 'fracsun',             12, 'Fraction of daily sunshine (%)', 70, 0, 100, 5),
 	('ETStation', 'slope',               13, 'Slope (%)', 2, 0, 100, 5),
 	('ETStation', 'slopelocation',       14, 'Location along slope (%)', 2, 0, 100, 5);
-
--- Groups of stations
-DROP TABLE IF EXISTS groups CASCADE;
-CREATE TABLE groups( -- group information
-	id SERIAL PRIMARY KEY, -- id
-	site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site this group belongs to
-	name TEXT, -- name of the group
-	UNIQUE(site,name)
-	);
-INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
-	('groups', 'name',  0,True, 'Sensor Name', 'text', 'Shack');
-INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
-	('groups','site',   1, 'Site', 'site');
-
-DROP TABLE IF EXISTS groupStation;
-CREATE TABLE groupStation( -- Station/group associations
-	groups INTEGER REFERENCES groups(id), -- which group this entry is for
-	station INTEGER REFERENCES station(id), -- which station this entery is for
-	sortOrder INTEGER DEFAULT 0, -- sorting order
-	PRIMARY KEY(groups, station)
-	);
-INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
-	('groupsStation','groups', 0, 'Group', 'groups'),
-	('groupsStation','station', 1, 'Station', 'station');
-INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax) VALUES
-	('groupsStation', 'sortorder', 2,'Sort Order', '10', 0, 1000);
 
 -- daily ET information, set up for Agrimet
 DROP TABLE IF EXISTS ET;

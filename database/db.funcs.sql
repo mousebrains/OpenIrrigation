@@ -331,22 +331,6 @@ CREATE TRIGGER pgmstn_updated_trigger
 	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pgmstn
 	EXECUTE FUNCTION pgmstn_notify();
 
--- Trigger on changes to event to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS event_notify CASCADE;
-CREATE FUNCTION event_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('event_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS event_updated_trigger ON event;
-CREATE TRIGGER event_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON event
-	EXECUTE FUNCTION event_notify();
-
 -- Trigger on changes to station to notify the tableStatus.php script
 
 DROP FUNCTION IF EXISTS station_notify CASCADE;
