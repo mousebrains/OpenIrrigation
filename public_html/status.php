@@ -74,13 +74,17 @@ class DB {
 	function fetchControllers() {
 		$stmt = $this->getController;
 		if (!$this->exec($stmt)) return array();
-		return $stmt->fetchAll(PDO::FETCH_NUM);
+		$a = array();
+		while ($row = $stmt->fetch(PDO::FETCH_NUM)) $a[$row[0]] = $row[1];
+		return $a;
 	} // fetchControllers
 
 	function fetchPOCs() {
 		$stmt = $this->getPOC;
 		if (!$this->exec($stmt)) return array();
-		return $stmt->fetchAll(PDO::FETCH_NUM);
+		$a = array();
+		while ($row = $stmt->fetch(PDO::FETCH_NUM)) $a[$row[0]] = $row[1];
+		return $a;
 	} // fetchPOCs
 
 	function fetchSimulation() {
