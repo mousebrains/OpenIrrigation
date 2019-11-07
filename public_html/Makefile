@@ -15,6 +15,7 @@ SRC+= monitorClearAll.php monitorAllOff.php monitorPocOff.php
 SRC+= tableEditor.php tableStatus.php
 SRC+= tableRowInsert.php tableRowDelete.php tableRowUpdate.php
 SRC+= ET.php etDaily.php etAnnual.php
+SRC+= systemctl.php
 
 DEST = $(SRC:%=$(WEBDIR)/%)
 

@@ -26,7 +26,7 @@
       <a href='tableEditor.php?tbl=params&orderby=grp,name'>Parameter Edit</a>
       <a href='tableEditor.php?tbl=webList&orderby=grp,sortOrder,key'>Web Parameter Edit</a>
       <a href='ET.php'>ET Daily</a>
-      <a href='ETannual.php'>ET Annual</a>
+      <a href='systemctl.php'>Systemctl</a>
     </div>
   </li>
  </ul>
