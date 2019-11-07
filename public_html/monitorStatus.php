@@ -80,7 +80,7 @@ class DB {
 			['sensor', 'program', 'pre', 'peak', 'post', 'oncode', 'offcode', 
 			'ton', 'toff']);
 
-		foreach($a['past'] as $item) {$this->tPast = max($this->tPast, $item[9]);}
+		foreach($a['past'] as $item) {$this->tPast = max($this->tPast, $item[8]);}
 		return $a;
 	}
 
