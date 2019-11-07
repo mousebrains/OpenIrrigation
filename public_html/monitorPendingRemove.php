@@ -9,7 +9,7 @@ function dbMsg($db, string $msg) {return mkMsg(false, $msg . ", " . $db->getErro
 if (empty($_POST['id'])) exit(mkMsg(false, "No ID supplied."));
 $id = $_POST['id'];
 
-if ($db->query('DELETE FROM action WHERE id=($1) AND (cmdOn IS NOT NULL);', [$id])) 
+if ($db->query('DELETE FROM action WHERE id=(?) AND (cmdOn IS NOT NULL);', [$id])) 
 	exit(mkMsg(true, "Removed pending record, $id, from actions"));
 
 echo dbMsg($db, "Failed to remove pending record, $id");
