@@ -107,7 +107,6 @@ function buildPending(info) {
 
 function buildPast(info) {
 	var tbl = $('#pastTable');
-	tbl.find('tbody tr').remove();
 	info.forEach(function (x) {
 		var row = "<tr>";
 		row += "<td>" + getStationName(x[0]) + "</td>";
