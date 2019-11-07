@@ -1,10 +1,5 @@
 <div id='topnav'>
-<div>
- <span id='statusSimulation'></span>
- <span id='statusCurrent'></span>
- <span id='statusFlow'></span>
- <span id='statusActive'></span>
- <span id='statusPending'></span>
+<span  id='statusLeft'>
  <ul>
   <li id='topdropdown'>
     <a href='javascript:void(0)' id='topdropbtn'>&#9776;</a>
@@ -35,7 +30,16 @@
     </div>
   </li>
  </ul>
+ <span id='statusSimulation'></span>
+ <span id='statusCurrent'></span>
+ <span id='statusFlow'></span>
+ <span id='statusActive'></span>
+ <span id='statusPending'></span>
+</span>
+<span id='statusRight'>
+ <span id=statusOITDI></span>
+ <span id=statusOISched></span>
+ <span id=statusOIAgriMet></span>
+</span>
 </div>
-</div>
-
 <script src='js/status.js'></script>

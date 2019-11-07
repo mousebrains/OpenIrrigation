@@ -1,6 +1,22 @@
 var statusControllers;
 var statusPOCs;
 
+function updateSystemctlStatus(val, id) {
+	$(id).html(val);
+	$(id).css('color', val == "active" ? "#000000" : "#FF0000");
+}
+
+function updateSystemctl(info) {
+	if (info.length != 3) {
+		console.log('Invalid systemctl info block');
+		conso.log(info);
+		return;
+	}
+	updateSystemctlStatus(info[0], '#statusOITDI');
+	updateSystemctlStatus(info[1], '#statusOISched');
+	updateSystemctlStatus(info[2], '#statusOIAgriMet');
+}
+
 if (typeof(EventSource) != "undefined") {
 	var statusSource = new EventSource("status.php");
 	statusSource.onmessage = function(event) {
@@ -31,6 +47,9 @@ if (typeof(EventSource) != "undefined") {
 		if ('non' in data) { // Number on
 			$('#statusActive').html('#On=' + data['non']);
 			$('#statusPending').html('#Pend=' + data['npending']);
+		}
+		if ('system' in data) { // systemctl
+			updateSystemctl(data['system']);
 		}
 	};
 }

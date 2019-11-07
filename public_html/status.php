@@ -56,6 +56,9 @@ class DB {
 		$a['controllers'] = $this->fetchControllers();
 		$a['pocs'] = $this->fetchPOCs();
 		$a['simulation'] = $this->fetchSimulation();
+		$b = $this->fetchSystemctl();
+		if (!empty($b)) $a['system'] = $b;
+
 		if (!empty($this->errors)) {
 			$a['errors'] = $this->errors;
 			$this->errors = array();
@@ -132,6 +135,14 @@ class DB {
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) return $row;
 		return array();
 	} // fetchPending
+
+	function fetchSystemctl() {
+		$output = shell_exec("/bin/systemctl is-active OITDI OISched OIAgriMet");
+		if (empty($output)) return array();
+		$output = explode("\n", $output);
+		if (count($output) < 3) return array();
+		return array_slice($output, 0, 3);
+	}
 } // DB
 
 $delay = 55 * 1000; // 55 seconds between burps
@@ -140,6 +151,7 @@ $dbName = 'irrigation';
 $db = new DB($dbName);
 
 echo "data: " . $db->fetchInitial() . "\n\n";
+$tPrev = time();
 
 while (True) { # Wait forever
 	if (ob_get_length()) {ob_flush();} // Flush output buffer
@@ -148,6 +160,11 @@ while (True) { # Wait forever
 		$db->notifications($delay),
 		$db->fetchData()
 	);
+	if (($tPrev + 120) <= time()) { // Send system status
+		$b = $db->fetchSystemctl();
+		if (!empty($b)) $info['system'] = $b;
+		$tPrev = time();
+	}
 	echo "data: " . json_encode($info) . "\n\n";
 }
 ?>
