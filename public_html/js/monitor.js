@@ -1,20 +1,12 @@
 var myInfo = {};
 
-function mkActionCell(val, name) {
-	return "<td><form class='actions'>"
-		+ "<input type='hidden' name='action' value='" + val + "'>"
-		+ "<input type='submit' value='" + name + "'>"
-		+ "</form></td>";
-}
-
 function buildActions(pocs) {
 	var tbl = $('#topActions');
 	var msg ='<tr>';
-	msg+= mkActionCell('clearAll', 'Clear All');
-	msg+= mkActionCell('allOff', 'All Off');
+	msg += "<th><form id='clearAll'><input type='submit' value='Clear All'></form></th>";
+	msg += "<th><form id='allOff'><input type='submit' value='All Off'></form></th>";
 	for(var key in pocs) {
-		msg += "<td><form class='actions'>"
-			+ "<input type='hidden' name='action' value='pocOff'>"
+		msg += "<td><form class='pocOff'>"
 			+ "<input type='hidden' name='poc' value='" + key + "'>"
 			+ "<input type='submit' value='POC " + pocs[key] + " Off'>"
 			+ "</form></td>";
@@ -22,7 +14,9 @@ function buildActions(pocs) {
 	msg+='</tr>';
 	tbl.find('tr').remove(); // Remove rows
 	tbl.append(msg);
-	$('.actions').submit({'url': 'monitorProcAction.php'}, OI_processForm);
+	$('.pocOff').submit({'url': 'monitorPocOff.php'}, OI_processForm);
+	$('#clearAll').submit({'url': 'monitorClearAll.php'}, OI_processForm);
+	$('#allOff').submit({'url': 'monitorAllOff.php'}, OI_processForm);
 }
 
 function getStationName(id) {
@@ -138,4 +132,6 @@ function receivedStatus(event) {
 if (typeof(EventSource) != "undefined") {
 	var statusSource = new EventSource("monitorStatus.php");
 	statusSource.onmessage = receivedStatus;
+	$('#clearAll').submit({'url': 'monitorClearAll.php'}, OI_processForm);
+	$('#allOff').submit({'url': 'monitorAllOff.php'}, OI_processForm);
 }

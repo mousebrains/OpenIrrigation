@@ -15,7 +15,12 @@
 require_once 'php/navBar.php';
 ?>
 <div>
-<table><tbody id='topActions'></tbody></table>
+<table>
+<tbody id='topActions'>
+<th><form id='clearAll'><input type='submit' value='Clear All'></form></th>
+<th><form id='allOff'><input type='submit' value='All Off'></form></th>
+</tbody>
+</table>
 </div>
 <div id='activeDiv' style='display:none;'>
 <center>
