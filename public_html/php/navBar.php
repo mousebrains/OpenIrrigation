@@ -36,7 +36,7 @@
  <span id='statusActive'></span>
  <span id='statusPending'></span>
 </span>
-<span id='statusRight'>
+<span id='statusRight' onclick='javascript:location.href="systemctl.php"'>
  <span id=statusOITDI></span>
  <span id=statusOISched></span>
  <span id=statusOIAgriMet></span>
