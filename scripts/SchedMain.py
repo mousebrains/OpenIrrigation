@@ -74,11 +74,10 @@ def doit(cur:psycopg2.extensions.cursor,
     sql = 'SELECT action_onOff_insert(%s,%s,%s,%s,%s,%s);'
     for act in timeline.actions: # Save the new actions to the database
         logger.info('%s', act)
-        cur.execute('SELECT sensor,program,pgmstn,tOn,tOff FROM action WHERE sensor=%s ORDER BY tOn;', 
+        cur.execute('SELECT program,pgmstn,tOn,tOff FROM action WHERE sensor=%s ORDER BY tOn;', 
                 (act.sensor.id,))
         for row in cur: 
-            logger.info('sensor=%s pgm=%s stn=%s tOn=%s tOff=%s',
-                    row[0], row[1], row[2], row[3], row[4]);
+            logger.info('Action row pgm=%s stn=%s tOn=%s tOff=%s', row[0], row[1], row[2], row[3]);
         cur.execute(sql, (act.tOn, act.tOff, act.sensor.id, act.pgm, act.pgmStn, act.pgmDate))
 
     return True
