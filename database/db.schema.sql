@@ -110,12 +110,6 @@ BEGIN
 END;
 $$;
 
--- Times the scheduler should run
-DROP TABLE IF EXISTS scheduler;
-CREATE TABLE scheduler( -- When the scheduler should run
-	date TIMESTAMP WITH TIME ZONE PRIMARY KEY -- run the scheduler at
-	);
-
 -- Interface parameters
 DROP TABLE IF EXISTS params CASCADE;
 CREATE TABLE params( -- key/value pairs for parameters
