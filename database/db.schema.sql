@@ -481,7 +481,7 @@ CREATE TABLE program( -- program information
 	attractorFrac PERCENT DEFAULT 0, -- % of interval to gravitate towards [0,100]
 	maxStations POSINTEGER DEFAULT 1, -- max # simultaneous stations
 	maxFlow POSFLOAT DEFAULT 100, -- max flow target flow
-	etThreshold NONNEGFLOAT DEFAULT 100 -- Kicks on when ET is >= this value
+	etThreshold NONNEGFLOAT DEFAULT NULL -- Kicks on when ET is >= this value
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
 	('program','site',   1, 'Point-of-connect', 'site');
