@@ -2,7 +2,7 @@
 
 -- If the program or pgmStn tables are touched, then run the scheduler
 
-DROP FUNCTION IF EXISTS scheduler_notify;
+DROP FUNCTION IF EXISTS scheduler_notify CASCADE;
 CREATE OR REPLACE FUNCTION scheduler_notify(reason TEXT)
 RETURNS VOID LANGUAGE plpgSQL AS $$
 BEGIN
@@ -10,12 +10,11 @@ BEGIN
 END;
 $$;
 
-DROP FUNCTION IF EXISTS scheduler_program_updated;
+DROP FUNCTION IF EXISTS scheduler_program_updated CASCADE;
 CREATE OR REPLACE FUNCTION scheduler_program_updated()
 RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-DECLARE reason TEXT;
 BEGIN
-	PERFORM(SELECT pg_notify('run_scheduler', reason));
+	PERFORM(SELECT pg_notify('run_scheduler', CONCAT(TG_TABLE_NAME, '::', TG_OP)));
 	RETURN NEW;
 END;
 $$;
@@ -23,12 +22,12 @@ $$;
 DROP TRIGGER IF EXISTS scheduler_program_update ON program;
 CREATE TRIGGER scheduler_program_update
 	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON program
-	EXECUTE FUNCTION scheduler_program_updated('Program table update');
+	EXECUTE FUNCTION scheduler_program_updated();
 
 DROP TRIGGER IF EXISTS scheduler_pgmStn_update ON pgmStn;
 CREATE TRIGGER scheduler_pgmStn_update
 	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pgmStn
-	EXECUTE FUNCTION scheduler_program_updated('pgmStn table update');
+	EXECUTE FUNCTION scheduler_program_updated();
 
 
 -- Get the program id of the manual program, i.e. program named "Manual"
