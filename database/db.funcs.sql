@@ -1,6 +1,6 @@
 -- A set of helper functions for the PHP/Web interface
 
--- Turn on a station using the manaul program
+-- If the program or pgmStn tables are touched, then run the scheduler
 
 DROP FUNCTION IF EXISTS scheduler_notify;
 CREATE OR REPLACE FUNCTION scheduler_notify(reason TEXT)
@@ -10,12 +10,36 @@ BEGIN
 END;
 $$;
 
+DROP FUNCTION IF EXISTS scheduler_program_updated;
+CREATE OR REPLACE FUNCTION scheduler_program_updated()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+DECLARE reason TEXT;
+BEGIN
+	PERFORM(SELECT pg_notify('run_scheduler', reason));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS scheduler_program_update ON program;
+CREATE TRIGGER scheduler_program_update
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON program
+	EXECUTE FUNCTION scheduler_program_updated('Program table update');
+
+DROP TRIGGER IF EXISTS scheduler_pgmStn_update ON pgmStn;
+CREATE TRIGGER scheduler_pgmStn_update
+	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pgmStn
+	EXECUTE FUNCTION scheduler_program_updated('pgmStn table update');
+
+
+-- Get the program id of the manual program, i.e. program named "Manual"
+
 DROP FUNCTION IF EXISTS manual_program_id;
 CREATE OR REPLACE FUNCTION manual_program_id()
 RETURNS INTEGER LANGUAGE SQL AS $$
 	SELECT id FROM program WHERE name='Manual';
 $$;
 
+-- Turn on a station using the manaul program
 DROP FUNCTION IF EXISTS manual_on;
 CREATE OR REPLACE FUNCTION manual_on(
 	sensorID sensor.id%TYPE, -- Sensor ID to turn on
@@ -31,7 +55,7 @@ BEGIN
 	INSERT INTO pgmStn (program,station,mode,runTime,qSingle) VALUES
 		(pgmID, stnID, onID, dt, True)
 		ON CONFLICT (program,station) DO UPDATE SET runTime=dt, qSingle=True;
-	PERFORM(SELECT scheduler_notify('Manual insertion'));
+	-- running the scheduler happens from a trigger on pgmstn
 END;
 $$;
 
@@ -124,7 +148,7 @@ BEGIN
 	FOR sensorID IN SELECT sensor FROM pocMV WHERE poc=pocID LOOP
 		PERFORM(SELECT manual_off(sensorID));
 	END LOOP;
-	-- tell the scheduler to run
+	-- tell the scheduler to run, no updates to program/pgmstn, so manual forcing
 	PERFORM(SELECT scheduler_notify('Master Valve Off'));
 END;
 $$;
