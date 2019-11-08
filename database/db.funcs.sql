@@ -474,3 +474,19 @@ DROP TRIGGER IF EXISTS pocpump_updated_trigger ON pocpump;
 CREATE TRIGGER pocpump_updated_trigger
 	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pocpump
 	EXECUTE FUNCTION pocpump_notify();
+
+-- Trigger on changes to processstate to notify the tableStatus.php script
+
+DROP FUNCTION IF EXISTS processstate_notify CASCADE;
+CREATE FUNCTION processstate_notify()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	PERFORM(pg_notify('processstate_updated', 'Trigger'));
+	RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS processstate_updated_trigger ON processstate;
+CREATE TRIGGER processstate_updated_trigger
+	AFTER INSERT ON processstate
+	EXECUTE FUNCTION processstate_notify();
