@@ -3,7 +3,7 @@
 require_once 'php/DB1.php';
 
 function mkMsg(bool $q, string $msg) {return json_encode(["success" => $q, "message" => $msg]);}
-function dbMsg(string $msg) {return mkMsg(false, $msg . ", " . $db->getError());}
+function dbMsg($db, string $msg) {return mkMsg(false, $msg . ", " . $db->getError());}
 
 if (empty($_POST['tableName'])) exit(mkMsg(false, 'No table name supplied'));
 if (empty($_POST['id'])) exit(mkMsg(false, 'No table row id supplied'));
@@ -31,7 +31,7 @@ if (empty($vals)) exit(mkMsg(false, "No columns found to be updated"));
 $sql = "UPDATE $tbl SET " . implode(',', $keys) . " WHERE id=?;";
 array_push($vals, $id); // For WHERE id=?
 
-if (!$db->query($sql, $vals)) echo dbMsg('Insertion failed');
+if (!$db->query($sql, $vals)) echo dbMsg($db, 'Insertion failed');
 
 // Check if secondary tables exist for this table
 $sql = "SELECT col,secondaryKey,secondaryValue FROM tableInfo"
@@ -41,12 +41,12 @@ foreach ($db->loadRows($sql, [$tbl]) as $row) { // Walk through any secondary ta
 	$key0 = $row['secondarykey'];
 	$key1 = $row['secondaryvalue'];
 	$sql = "DELETE FROM $stbl WHERE $key0=?;"; // Remove current entries
-	if (!$db->query($sql, [$id])) exit(dbMsg('Delete secondary'));
+	if (!$db->query($sql, [$id])) exit(dbMsg($db, 'Delete secondary'));
 	if (!empty($_POST[$stbl])) { // Something to be stored
 		$sql = "INSERT INTO $stbl ($key0, $key1) VALUES(?,?);";
 		foreach ($_POST[$stbl] as $sid) {
 			if (!$db->query($sql, [$id, $sid])) {
-				exit(dbMsg("Failed to insert secondary"));
+				exit(dbMsg($db, "Failed to insert secondary"));
 			}
 		}
 	}

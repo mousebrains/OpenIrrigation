@@ -3,7 +3,7 @@
 require_once 'php/DB1.php';
 
 function mkMsg(bool $q, string $msg) {return json_encode(["success" => $q, "message" => $msg]);}
-function dbMsg(string $msg) {return mkMsg(false, $msg . ", " . $db->getError());}
+function dbMsg($db, string $msg) {return mkMsg(false, $msg . ", " . $db->getError());}
 
 
 if (empty($_POST['tableName'])) exit(mkMsg(false, 'No table name supplied'));
@@ -28,7 +28,7 @@ if (empty($vals)) exit(mkMsg(false, "No columns found"));
 $sql = "INSERT INTO $tbl (" . implode(',', $keys) . ") VALUES (" . implode(',', $markers) . ");";
 
 // Insert into primary table
-if (!$db->query($sql, $vals)) exit(dbMsg('Insertion failed'));
+if (!$db->query($sql, $vals)) exit(dbMsg($db, 'Insertion failed'));
 
 // Check if secondary tables exist for this table
 $sql = "SELECT col,secondaryKey,secondaryValue FROM tableInfo"
@@ -49,7 +49,7 @@ if (!empty($sec)) {
 			$sql = "INSERT INTO $stbl ($key0, $key1) VALUES(?,?);";
 			foreach ($_POST[$stbl] as $sid) {
 				if (!$db->query($sql, [$id, $sid])) {
-					exit(dbMsg("Failed to insert secondary"));
+					exit(dbMsg($db, "Failed to insert secondary"));
 				}
 			}
 		}
