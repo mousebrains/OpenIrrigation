@@ -50,16 +50,22 @@ class ProgramStation:
                 ) = row
         self.logger = logger
         self.qOn = onOff == 'on'
+        if runTime == None:
+            logger.error('pgmStn(%s) runTime is None, row=%s', stationID, row)
+            return
+
         self.runTime = timedelta(minutes=runTime)
 
         self.qOkay = False
 
         if self.runTime <= timedelta(minutes=0):
-            logger.error('pgmStn(%s has an invalid runTime, %s', self.runTime)
+            logger.error('pgmStn(%s) has an invalid runTime, %s, row=%s',
+                    stationID, self.runTime, row)
             return
 
         if stationID not in sensors.stations:
-            logger.error('Station(%s) for pgmstn(%s) not found', stationID, self.id)
+            logger.error('Station(%s) for pgmstn(%s) not found, row=%s',
+                    stationID, self.id, row)
             return
 
         self.qOkay = True

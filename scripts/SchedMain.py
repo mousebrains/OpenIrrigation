@@ -74,6 +74,11 @@ def doit(cur:psycopg2.extensions.cursor,
     sql = 'SELECT action_onOff_insert(%s,%s,%s,%s,%s,%s);'
     for act in timeline.actions: # Save the new actions to the database
         logger.info('%s', act)
+        cur.execute('SELECT sensor,program,pgmstn,tOn,tOff FROM action WHERE sensor=%s ORDER BY tOn;', 
+                (act.sensor.id,))
+        for row in cur: 
+            logger.info('sensor=%s pgm=%s stn=%s tOn=%s tOff=%s',
+                    row[0], row[1], row[2], row[3], row[4]);
         cur.execute(sql, (act.tOn, act.tOff, act.sensor.id, act.pgm, act.pgmStn, act.pgmDate))
 
     return True
@@ -96,11 +101,13 @@ def nearPending(cur:psycopg2.extensions.cursor, timeline:Timeline,
     sql+= " AND (tOn>%s);"
 
     cur.execute(sql, (minTime,)) # Remove future rows from action
-    logger.info('nearPending delete=%s', cur.statusmessage)
+    logger.info('nearPending deleted %s rows after %s', cur.statusmessage, minTime)
 
     # Everything left will be treated as pending
-    sql = "SELECT tOn,tOff,sensor,program,pgmStn,pgmdate FROM action"
+    sql = "SELECT tOn,tOff,sensor,program,pgmStn,pgmDate FROM action"
     sql+= " WHERE cmd=0;"
     cur.execute(sql) # The actions which are running or will before tThreshold
     for row in cur:
         timeline.existing(row[0], row[1], row[2], row[3], row[4], row[5])
+        logger.info("nearPending sensor=%s program=%s pgmStn=%s pgmDate=%s tOn=%s tOff=%s",
+                row[2], row[3], row[4], row[5], row[0], row[1]);
