@@ -25,10 +25,13 @@ foreach ($cols as $key) {
 
 if (empty($vals)) exit(mkMsg(false, "No columns found"));
 
-$sql = "INSERT INTO $tbl (" . implode(',', $keys) . ") VALUES (" . implode(',', $markers) . ");";
+$sql = "INSERT INTO $tbl (" . implode(',', $keys) . ") VALUES (" . implode(',', $markers) . ")"
+	. " RETURNING id;";
 
-// Insert into primary table
-if (!$db->query($sql, $vals)) exit(dbMsg($db, 'Insertion failed'));
+$stmt = $db->prepare($sql); // Prepare the statement
+if ($stmt == false) exit(dbMsg($db, 'Error preparing $sql'));
+if (!$stmt->execute($vals)) exit(mkMsg(false, "Error executing $sql, " . $stmt->errorInfo()));
+$id = $stmt->fetch(PDO::FETCH_NUM)[0];
 
 // Check if secondary tables exist for this table
 $sql = "SELECT col,secondaryKey,secondaryValue FROM tableInfo"
@@ -36,11 +39,6 @@ $sql = "SELECT col,secondaryKey,secondaryValue FROM tableInfo"
 $sec = $db->loadRows($sql, [$tbl]);
 
 if (!empty($sec)) {
-	$sql = "SELECT id FROM $tbl"
-		. " WHERE (" . implode(',', $keys) . ")=(" . implode(',', $markers) . ");";
-	$rows = $db->loadRows($sql, $vals);
-	if (empty($rows)) exit(mkMsg(false, "Unable to get table id for secondary entries, $tbl"));
-	$id = $rows[0]['id'];
 	foreach($sec as $row) {
 		$stbl = $row['col'];
 		$key0 = $row['secondarykey'];
@@ -56,5 +54,5 @@ if (!empty($sec)) {
 	}
 }
 
-echo mkMsg(true, "Inserted into $tbl");
+echo mkMsg(true, "Inserted into $tbl, " . json_encode($a));
 ?>
