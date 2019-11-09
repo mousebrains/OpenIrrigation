@@ -141,8 +141,8 @@ function buildBody(data) {
 
 function receivedStatus(event) {
 	var data = JSON.parse(event.data);
-	console.log(data);
 	if ('burp' in data) { return; } // Nothing to do on burp messages
+	console.log(data);
 	if ('message' in data) {
 		alert(data['message']);
 		statusSource.close();
