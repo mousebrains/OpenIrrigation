@@ -25,7 +25,7 @@ function buildTable(info, tblID, runLabel, stopLabel) {
 		msg += name + "</td>";
 		msg += "<td style='text-align:right;'>";
 		msg += "<span id='a" + key + "' style='display:inline;'>";
-		msg += "<form method='post' id='f" +key + "'>";
+		msg += "<form class='indexForm' id='f" +key + "'>";
 		msg += inputs;
 		msg += "<input type='number' name='time' id='rt" + key + "'";
 		msg += 		" title='Number of minutes'";
@@ -35,7 +35,7 @@ function buildTable(info, tblID, runLabel, stopLabel) {
 		msg += "</span>";
 		msg += "<span id='b" + key + "' style='display:none;'>";
 		msg += "<span id='bc" + key + "'></span>";
-		msg += "<form method='post' id='g" + key + "' style='display:inline;'>";
+		msg += "<form class='indexForm' id='g" + key + "' style='display:inline;'>";
 		msg += inputs;
 		msg += "<input type='submit' value='" + stopLabel + "'>";
 		msg += "</form>";
@@ -139,7 +139,7 @@ function receivedStatus(event) {
 			buildTable(data['pocs'], '#pocTable', 'Off', 'Open');
 			$('#pocBlock').css('display', 'inline');
 		}
-		$('form').submit(procForm); // Attach to all forms
+		$('.indexForm').submit(procForm); // Attach to all forms
 		if ('hoursPast' in data) {dtInfo['hoursPast'] = data['hoursPast'];}
 		if ('hoursFuture' in data) {dtInfo['hoursFuture'] = data['hoursFuture'];}
 	}

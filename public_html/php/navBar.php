@@ -37,15 +37,17 @@
  <span id='statusActive'></span>
  <span id='statusPending'></span>
 </span>
-<span id='statusRight' onclick='javascript:location.href="systemctl.php"'>
+<span id='statusRight'>
  <span>
    <form id='runScheduler' style='display: inline-block'>
    <input type='submit' value='Run Scheduler'>
    </form>
  </span>
- <span id=statusOITDI></span>
- <span id=statusOISched></span>
- <span id=statusOIAgriMet></span>
+ <span onclick='javascript:location.href="systemctl.php"'>
+  <span id=statusOITDI></span>
+  <span id=statusOISched></span>
+  <span id=statusOIAgriMet></span>
+ </span>
 </span>
 </div>
 <script src='js/status.js'></script>

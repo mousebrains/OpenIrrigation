@@ -5,7 +5,7 @@ function receivedStatus(event) {
 		var t = new Date(x[1] * 1000);
 		$('#messages').prepend('<tr>' 
 			+ '<th>' + x[0] + '</th>'
-			+ '<td>' + t.toISOString() + '</td>'
+			+ '<td>' + t.toLocaleString() + '</td>'
 			+ '<td>' + x[2] + '</td>'
 			+ '</tr>');
 	});
