@@ -16,6 +16,7 @@ SRC+= tableEditor.php tableStatus.php
 SRC+= tableRowInsert.php tableRowDelete.php tableRowUpdate.php
 SRC+= ET.php etDaily.php etAnnual.php
 SRC+= systemctl.php
+SRC+= processState.php processStatus.php
 
 DEST = $(SRC:%=$(WEBDIR)/%)
 
