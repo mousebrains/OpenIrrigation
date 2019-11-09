@@ -52,10 +52,10 @@ function mkRefTable(a, x, form) {
 
 function mkTextArea(a, x, form) {
 	var col = a['col'];
+	var val = (x != null) && (col in x) && (x[col] != null) ? x[col] : "";
 	var msg = "<textarea rows='2' cols='20' name='" + col + "'";
 	if (a['qrequired'] == true) msg += ' required';
 	msg += form;
-	var val = (x != null) && (col in x) && (x[col] != null) ? x[col] : "";
 	msg += val;
 	msg += "</textarea>";
 	if (x != null) {
@@ -67,9 +67,8 @@ function mkTextArea(a, x, form) {
 
 function mkInputField(a, x, form) {
 	var col = a['col'];
-	var val = (x != null) && (col in x) && (x[col] != null) ? 
-		" value='" + x[col] + "'" 
-		: "";
+	var rawVal = (x != null) && (col in x) && (x[col] != null) ? x[col] : null 
+	var val = rawVal == null ? "" : ("value='" + rawVal + "'");
 	var msg = "<input type='" + a['inputtype'] + "'";
 	if (a['inputtype'] == 'password') msg += " autocomplete='on'";
 	if (a['valmin'] != null) msg += " min='" + a['valmin'] + "'";
@@ -78,6 +77,7 @@ function mkInputField(a, x, form) {
 	msg += " name='" + col + "'" + val;
 	if (a['placeholder'] != '') msg += " placeholder='" + a['placeholder'] + "'";
 	if (a['qrequired'] == true) msg += ' required';
+	if ((a['inputtype'] == 'checkbox') && rawVal) msg += ' checked';
 	msg += form;
 	if (x != null) msg += "<input type='hidden' name='" + col + "Prev'" + val + form;
 	return msg;
