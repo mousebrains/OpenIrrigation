@@ -10,24 +10,24 @@ BEGIN
 END;
 $$;
 
-DROP FUNCTION IF EXISTS scheduler_program_updated CASCADE;
-CREATE OR REPLACE FUNCTION scheduler_program_updated()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(SELECT pg_notify('run_scheduler', CONCAT(TG_TABLE_NAME, '::', TG_OP)));
-	RETURN NEW;
-END;
-$$;
+-- DROP FUNCTION IF EXISTS scheduler_program_updated CASCADE;
+-- CREATE OR REPLACE FUNCTION scheduler_program_updated()
+-- RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+-- BEGIN
+	-- PERFORM(SELECT pg_notify('run_scheduler', CONCAT(TG_TABLE_NAME, '::', TG_OP)));
+	-- RETURN NEW;
+-- END;
+-- $$;
 
-DROP TRIGGER IF EXISTS scheduler_program_update ON program;
-CREATE TRIGGER scheduler_program_update
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON program
-	EXECUTE FUNCTION scheduler_program_updated();
+-- DROP TRIGGER IF EXISTS scheduler_program_update ON program;
+-- CREATE TRIGGER scheduler_program_update
+	-- AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON program
+	-- EXECUTE FUNCTION scheduler_program_updated();
 
-DROP TRIGGER IF EXISTS scheduler_pgmStn_update ON pgmStn;
-CREATE TRIGGER scheduler_pgmStn_update
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pgmStn
-	EXECUTE FUNCTION scheduler_program_updated();
+-- DROP TRIGGER IF EXISTS scheduler_pgmStn_update ON pgmStn;
+-- CREATE TRIGGER scheduler_pgmStn_update
+	-- AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pgmStn
+	-- EXECUTE FUNCTION scheduler_program_updated();
 
 
 -- Get the program id of the manual program, i.e. program named "Manual"
@@ -54,7 +54,7 @@ BEGIN
 	INSERT INTO pgmStn (program,station,mode,runTime,qSingle) VALUES
 		(pgmID, stnID, onID, dt, True)
 		ON CONFLICT (program,station) DO UPDATE SET runTime=dt, qSingle=True;
-	-- running the scheduler happens from a trigger on pgmstn
+	PERFORM(SELECT scheduler_notify(CONCAT("Manual insertion(", stnID::text)));
 END;
 $$;
 
