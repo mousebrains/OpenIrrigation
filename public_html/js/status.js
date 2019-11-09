@@ -17,6 +17,8 @@ function updateSystemctl(info) {
 	updateSystemctlStatus(info[2], '#statusOIAgriMet');
 }
 
+$('#runScheduler').submit({'url': 'runScheduler.php'}, OI_processForm);
+
 if (typeof(EventSource) != "undefined") {
 	var statusSource = new EventSource("status.php");
 	statusSource.onmessage = function(event) {

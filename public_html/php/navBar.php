@@ -38,6 +38,11 @@
  <span id='statusPending'></span>
 </span>
 <span id='statusRight' onclick='javascript:location.href="systemctl.php"'>
+ <span>
+   <form id='runScheduler' style='display: inline-block'>
+   <input type='submit' value='Run Scheduler'>
+   </form>
+ </span>
  <span id=statusOITDI></span>
  <span id=statusOISched></span>
  <span id=statusOIAgriMet></span>
