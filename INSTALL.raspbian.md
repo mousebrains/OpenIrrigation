@@ -106,6 +106,7 @@ Install the webserver
  9. Install the webserver:
    9. Install NGINX, "sudo apt-get install nginx"
    9. Install PHP-FPM, "sudo apt-get install php-fpm"
+   9. sudo apt-get install php-pgsql
    9. Obtain an SSL private key and certificate, ideally CA signed. If you want to use a self-signed certificate, instructions are available at: "https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-nginx-in-ubuntu-16-04"
    9. I install my private key and certificate in /etc/nginx/certs and set the directory and file permissions to no group nor world access.
    9. Please note the perfect forwarding key generating can take a long time on a Pi. I used a faster computer. I also changed all my key lengths to 4096.
