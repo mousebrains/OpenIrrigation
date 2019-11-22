@@ -6,8 +6,31 @@
 - Boot your Raspberry Pi with your SD card.
 - Log into your Raspberry Pi. The default username is pi and the default password is raspberry
 - Run "sudo raspi-config" 
-  - Change the password
-  - Via the "Advanced Options" expand the filesystem to use the entire SD card.
+  - Change the password.
+  - Under the "Advanced Options" expand the filesystem to use the entire SD card.
+  - Under the "Network Options" set the hostname.
+  - Under the "Localisation Options" set your locale information.
+  - Under the "Interfacing Options" enable ssh if you have not already and want it.
+ 
+- Reboot and login as user pi.
+- Update and upgrade:
+  - sudo apt-get update
+  - sudo apt-get upgrade
+
+## User configuration
+- I set up a different user account to login from pi and delete the pi account
+  - sudo adduser foo
+  - sudo usermod -aG sudo foo # Add to sudoers
+  - sudo usermod -aG dialout foo # Add to dialout so it can access serial ports
+  - logout and log back in as user foo
+  - check that sudo works via "sudo ls"
+  - sudo deluser --remove-home pi # Remove the pi login
+  - sudo delgroup pi
+
+- I set up a dedicated user account without login privledges to run the irrigaiton software:
+  - sudo adduser --disabled-login irrigation 
+  - sudo usermod -aG dialout irrigation # Add to dialout group so it can access the serial ports
+
 
 # Installation on a Raspberry Pi 3 with Raspbian Buster Lite
 
