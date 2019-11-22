@@ -1,6 +1,6 @@
 # OpenIrrigation
 ## Enterprise class irrigation control software with a well defined hardware interface layer.
---
+---
 * The feature set includes:
   - Multiple sites
   - Multiple controlers per site (Currently only a Tucor TDI 2 wire board is implemented.)
@@ -51,7 +51,7 @@
   - PostgresSQL 11 for the database, and
   - PHP 7.x, HTML, and Javascript for the HTML 5 interface.
 
---
+---
 * Backend software needed:
   - A webserver such as NGINX or Apache software supporting PHP 7.x
   - Python 3.x,
