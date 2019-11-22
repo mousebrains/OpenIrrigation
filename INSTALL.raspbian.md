@@ -1,9 +1,10 @@
 # Installation on a Raspberry Pi 3 with Raspbian Buster Lite
-
+---
 ## Install Raspbian: These instructions are tested on Raspbian Buster
 - Download and create an SD card image of [Raspbian Buster Lite](https://www.raspberrypi.org/downloads/raspbian/)
 - I run my Raspberry Pi computers headless. To enable sshd on the first boot, touch ssh in the root directory of your SD card.
 - Boot your Raspberry Pi with your SD card.
+- If logging into your Raspberry Pi via ssh you will need to obtain its IP address.
 - Log into your Raspberry Pi. The default username is pi and the default password is raspberry
 - Run "sudo raspi-config" 
   - Change the password.
@@ -16,7 +17,7 @@
 - Update and upgrade:
   - sudo apt-get update
   - sudo apt-get upgrade
-
+---
 ## User configuration
 - I set up a different user account to login from pi and delete the pi account
   - sudo adduser foo
@@ -30,157 +31,90 @@
 - I set up a dedicated user account without login privledges to run the irrigaiton software:
   - sudo adduser --disabled-login irrigation 
   - sudo usermod -aG dialout irrigation # Add to dialout group so it can access the serial ports
-
-
-# Installation on a Raspberry Pi 3 with Raspbian Buster Lite
-
- * Raspbian
- 1. Download and create SD card image of Raspbian Stretch Lite
- 2. On the SD card's boot partition "touch ssh" to enable ssh at boot time for a headless system
- 2. Install SD and boot up Raspberry Pi connected to the network
- 3. Get network address, xxx.xxx.xxx.xxx, of the Raspberry Pi
- 4. ssh pi@xxx.xxx.xxx.xxx
- 5. The default password is raspberry
- 6. Run "sudo raspi-config" and do the following:
-  ** raspi-config options
-  1. expand the filesystem 
-  2. change the password
-  3. got to "Internationalisation Options" and set the locale, time zone, ...
-  4. go to advanced options and change the hostname
-  5. finish and reboot the Raspberry Pi.
- 7. ssh pi@xxx.xxx.xxx.xxx
- 8. Update repository database, "sudo apt-get update"
- 9. Upgrade packages, "sudo apt-get upgrade"
- 1. Install VIM if you use it for syntax highlighting. "sudo apt-get install vim"
- 1. Install git. "sudo apt-get install git"
- 2. Insatall PostgreSQL, "sudo apt-get install postgresql"
- 3. Install pyserial, "sudo apt-get install python3-serial"
- # 2. Insatall NumPy, "sudo apt-get install python3-numpy"
- # 2. Insatall Nose if using NumPy benchmarking, "sudo apt-get install python3-nose"
- 8. sudo adduser irrigation and set appropriate options
- 9. Install the webserver:
-   9. Install NGINX, "sudo apt-get install nginx"
-   9. Install PHP7.x-FPM, "sudo apt-get install php-fpm"
-   9. Follow instructions at "https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-nginx-in-ubuntu-16-04" for setting up NGINX for SSL. Please note the perfect forwarding key generating can take a long time on a Pi. I used a faster computer. I also changed all my key lengths to 4096.
-   9. Uncomment lines in /etc/nginx/sites-enabled/default for php-fpm setup
-   9. setup of http to redirect to https
-   9. Add signed ssl certificates
-   10. change root to /home/irrigation/public_html
-   9. Add index.php to index line in https
-   9. in nginx.conf change user to irrigation
-   9. change user/group in /etc/php/.../www.conf to irrigation from www-data, there are four spots
-   9. Change php-fpm from dynamic to ondemand, max workers->20
-
-
-nginx:
-	1. enable http2 by adding to listen line in site config
-
-*******************
-
-Install latest raspbian operating system. I do everything headless over a wired connection, so I enable sshd on the SD card by creatingn an empty file, ssh, in the root directory of the SD card.
-
-Login as user pi, default password raspberry.
-
-Run raspi_config 
-sudo raspi_config
-	Update to the latest raspi-config tool under the "Update" entry,
-	change the default password,
-	under "Network Options" set the hostname,
-	under "Localisation Options" set your locale information,
-	under "Interfacing Options" enable ssh, and
-	under "Advanced Options" expand the file partition to fill the SD card.
-
-Reboot and login as user pi.
-
-Update and upgrade:
-sudo apt-get update
-sudo apt-get upgrade
-
-I set up a different user account to login from pi and delete the pi account
-sudo adduser foo
-sudo usermod -aG sudo foo # Add to sudoers
-sudo usermod -aG dialout foo # Add to dialout so it can access serial ports
-logout and log back in as user foo
-check that sudo works via "sudo ls"
-sudo deluser --remove-home pi # Remove the pi login
-sudo delgroup pi
-
-I set up a dedicated user account without login privledges to run the irrigaiton software:
-sudo adduser --disabled-login irrigation 
-sudo usermod -aG dialout irrigation # Add to dialout group so it can access the serial ports
-
+---
+## Optional VIM installation
 I use vim with syntax highlighting:
-sudo apt-get install vim
+- sudo apt-get install vim
+---
+## Mail server installation and setup
+I use a smarthost mail relay via a gmail account.
+- You will need a gmail app password for your gmail account.
+- sudo apt-get libsasl2-modules postfix
+  - "satellite system"
+  - FQDN
+  - \[smtp.gmail.com\]:587
+- To complete the installation follow these [instructions](https://www.linode.com/docs/email/postfix/configure-postfix-to-send-mail-using-gmail-and-google-apps-on-debian-or-ubuntu/)
+---
+## Optional zeroconf/bonjour installation
+I have Apple devices on my network so I install zeroconf/bonjour:
+- sudo apt-get install avahi-daemon
 
-Setup mail. I use a smarthost mail relay via a gmail account.
-You will need an gmail app password for your gmail account.
-See: https://www.linode.com/docs/email/postfix/configure-postfix-to-send-mail-using-gmail-and-google-apps-on-debian-or-ubuntu/
-sudo apt-get libsasl2-modules postfix
-	"satellite system"
-	FQDN
-	[smtp.gmail.com]:587
+---
+## Webserver installation
+- Install nginx and php-fpm
+  - sudo apt-get install nginx
+  - sudo apt-get install php-fpm
+- Optional: SSL certificates for nginx
+  - Obtain an SSL private key and certificate, ideally CA signed. If you want to use a self-signed certificate, DigitalOcean has a nice set of [instructions.](https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-nginx-in-ubuntu-16-04)
+  - I install my private key and signed certificate in /etc/nginx/certs.
+    - sudo mkdir /etc/nginx/certs
+    - cd /etc/nginx/certs
+    - sudo chmod 600 *
+    - sudo chmod 700 .
+- nginx configuration
+  - If using SSL create a file in /etc/nginx/snippets, I use [ssl.conf.](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/nginx/snippets/ssl.conf)
+  - Modify /etc/nginx/sites-enabled/default to suite your needs. Here is my [example.](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/nginx/sites-available/default). I redirect all http traffic to https, enable php-fpm, load the SSL key and certificate, enable http2, and point the root at /home/irrigation/public_html.
+  - Change the username and group that nginx runs as in /etc/nginx/nginx.conf. www-data will need to be changed to your user/group. I use username/group of irrigation. Here is my [example.](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/nginx/nginx.conf)
+  - Check for typos using the command
+    - sudo nginx -t
+- php-fpm configuration involves modifying the /etc/php/7.*/fpm/pool.d/www.conf file. Here is my [example](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/php-fpm/www.conf)
+    - Change user and group to the same user nginx is running as. There are four locations, (user|group) and listen.(owner|group). I use irrigation for both.
+    - Change "pm =" line to "pm = ondemand"
+    - Change the pm.max_children line to 20"
+---
+## PostgreSQL installation
+Install PostgreSQL
+- sudo apt-get install postgresql # PostgreSQL installation
+- sudo apt-get install php-pgsql # PDO module for php
+---
+## Python module installation
+- sudo apt-get install python3-serial
+- sudo apt-get install python3-psycopg2
+- sudo apt-get install python3-astral
 
-Then follow linnode's instructions
-
-I have Mac's on my network so I install zeroconf/bonjour:
-sudo apt-get install avahi-daemon
-
-Install the webserver
- 9. Install the webserver:
-   9. Install NGINX, "sudo apt-get install nginx"
-   9. Install PHP-FPM, "sudo apt-get install php-fpm"
-   9. sudo apt-get install php-pgsql
-   9. Obtain an SSL private key and certificate, ideally CA signed. If you want to use a self-signed certificate, instructions are available at: "https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-nginx-in-ubuntu-16-04"
-   9. I install my private key and certificate in /etc/nginx/certs and set the directory and file permissions to no group nor world access.
-   9. Please note the perfect forwarding key generating can take a long time on a Pi. I used a faster computer. I also changed all my key lengths to 4096.
-   9. Uncomment lines in /etc/nginx/sites-enabled/default for php-fpm setup
-   9. setup of http to redirect to https
-   9. Add signed ssl certificates
-   10. change root to /home/irrigation/public_html
-   9. Add index.php to index line in https
-   9. in nginx.conf change user to irrigation
-   9. Check nginx configuration syntax using "sudo nginx -t"
-   9. change user/group in /etc/php/.../www.conf to irrigation from www-data, there are four spots
-   9. Change php-fpm from dynamic to ondemand, max_childer->20
-
-
-nginx:
-	1. enable http2 by adding to listen line in site config
-Install PostgreSQL:
-sudo apt-get install postgresql
-
-Install python modules:
-sudo apt-get install python3-serial
-sudo apt-get install python3-psycopg2
-sudo apt-get install python3-astral
-
-Install git
-sudo apt-get install git
-
-Clone or download the OpenIrrigation package from github.com: https://github.com/mousebrains/OpenIrrigation
-git clone git@github.com:mousebrains/OpenIrrigation.git
-
-cd to the OpenIrrigation directory and run config. Use "./config --help" for a full list of options.
-Here is my config command, taking advantage of the defaults:
-# For a productions system, or
-./config --prefix=~irrigation --user=irrigation --roles=irrigation --roles=foo 
-# for a simulated system
-./config --prefix=~irrigation --user=irrigation --roles=irrigation --roles=foo  --simulate
-
-Examine Makefile.params to make sure the configuration is what you want
-
-Run make to build a fresh database:
-
-make all
-
-Install everything:
-
-sudo make install
-
-Enable and start the services:
-
-sudo make enable start
-
-To see the service status run
-
-make status
+## Git installation
+- sudo apt-get install git
+---
+## Get OpenIrrigation package
+I do this as my non-irrigation user, i.e. foo above or whatever you call it. It does need to be a sudoer user.
+- cd ~
+- git clone git@github.com:mousebrains/OpenIrrigation.git
+---
+## Configure the OpenIrrigation system
+- cd OpenIrrigation
+- ./config --help # To obtain config options.
+- For a production system this is the config command I use:
+  - . /config --prefix=~irrigation --user=irrigation --roles=irrigation --roles=foo --port=/tty/tty-USB0
+- For a simulation system this is the config command I use:
+  - ./config --prefix=~irrigation --user=irrigation --roles=irrigation --roles=foo  --simulate
+- After configuration examine Makefile.params to make sure the configuration is what you want!
+---
+## Build a fresh database
+- make all # Build a fresh database
+- sudo make install # install everything, including services
+- At this point you should be able to go to open a web page and start the configuration. The order I use is:
+  - site
+  - controller
+  - user
+  - email
+  - sensor
+  - point of connect
+  - point of connect flow
+  - point of connect mastervalve
+  - point of connect pump
+  - station
+  - program
+  - program station
+- sudo make enable start # Enable and start the services
+- make status # Will show you the status of the services.
+- If a service fails look in /var/log/syslog and ~irrigation/logs/*
