@@ -1,11 +1,11 @@
 .phony: all install clean start stop restart status enable disable reload cleanlogs
 
-all: Makefile.params install
+all:
 
 Makefile.params: config
-	./$<
+	@echo You should rebuilt $< since $@ is newer
 
-install clean: Makefile.params
+all install clean: Makefile.params
 	$(MAKE) -C database $@
 	$(MAKE) -C scripts $@
 	$(MAKE) -C public_html $@
