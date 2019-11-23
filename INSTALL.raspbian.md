@@ -2,6 +2,8 @@
 ---
 ## I use industrial SLC SD cards which have a TBW rating in excess of 250TBW. A retail grade SD card will last 1.5-2.5 years running this system.
 ---
+## My production system is on a Raspberry Pi 3 Model B.
+---
 ## Install Raspbian: These instructions are tested on Raspbian Buster
 - Download and create an SD card image of [Raspbian Buster Lite](https://www.raspberrypi.org/downloads/raspbian/)
 - I run my Raspberry Pi computers headless. To enable sshd on the first boot, touch ssh in the root directory of your SD card.
