@@ -59,7 +59,9 @@ I have Apple devices on my network so I install zeroconf/bonjour:
   - sudo apt-get install nginx
   - sudo apt-get install php-fpm
 - Optional: SSL certificates for nginx
-  - Obtain an SSL private key and certificate, ideally CA signed. If you want to use a self-signed certificate, DigitalOcean has a nice set of [instructions.](https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-nginx-in-ubuntu-16-04)
+  - Obtain an SSL private key and certificate, ideally CA signed. 
+    * If you want to use a self-signed certificate, DigitalOcean has a nice set of [instructions.](https://www.digitalocean.com/community/tutorials/how-to-create-a-self-signed-ssl-certificate-for-nginx-in-ubuntu-16-04)
+    * My scripts for generating self-signed certificates, a local CA, and local CA signed certificates, [mkCertificates](https://github.com/mousebrains/mkCertificates)
   - I install my private key and signed certificate in /etc/nginx/certs.
     - sudo mkdir /etc/nginx/certs
     - cd /etc/nginx/certs
