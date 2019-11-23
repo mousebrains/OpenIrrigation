@@ -112,7 +112,7 @@ class TDISimul(MyBaseThread):
 
     def readMessage(self):
         SYNC = b'\x16' # Sync which indicates the start of a message
-        NAK = b'\x15' # Not acknowledge
+        NAK = b'\x15\r' # Not acknowledge
         logger = self.logger
 
         c = os.read(self.fd, 1) # Read a byte which should be a SYNC character
@@ -188,11 +188,11 @@ class TDISimul(MyBaseThread):
         else:
             (dt0, dt1, reply) = self.cmdZ(codigo, body, 0)
         time.sleep(dt0) # Delay before sending ACK
-        os.write(self.fd, ACK) # Acknowledge a well formated message
+        os.write(self.fd, ACK + b'\r') # Acknowledge a well formated message
         if not reply: return True
         time.sleep(dt1) # Wait a specified amount of time
         self.logger.debug('Sending %s in response to %s', reply, msg)
-        os.write(self.fd, SYNC + self.mkMessage(reply)) # Send the message
+        os.write(self.fd, SYNC + self.mkMessage(reply) + b'\r') # Send the message, '\r' extra
 
         c = self.read(time.time() + 1, 1) # Wait for ACK/NAK
         qOkay = c == ACK # Did I get an ACK back? i.e. message was sent properly
