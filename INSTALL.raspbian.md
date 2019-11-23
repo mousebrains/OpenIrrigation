@@ -10,6 +10,7 @@
 - Log into your Raspberry Pi. The default username is pi and the default password is raspberry
 - Run "sudo raspi-config" 
   - Change the password.
+  - Update the tool.
   - Under the "Advanced Options" expand the filesystem to use the entire SD card.
   - Under the "Network Options" set the hostname.
   - Under the "Localisation Options" set your locale information.
