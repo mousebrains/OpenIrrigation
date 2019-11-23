@@ -4,7 +4,7 @@
 ---
 ## My production system is on a Raspberry Pi 3 Model B.
 ---
-## Install Raspbian: These instructions are tested on Raspbian Buster
+## Install Raspbian: These instructions are tested on Raspbian Buster Lite
 - Download and create an SD card image of [Raspbian Buster Lite](https://www.raspberrypi.org/downloads/raspbian/)
 - I run my Raspberry Pi computers headless. To enable sshd on the first boot, touch ssh in the root directory of your SD card.
 - Boot your Raspberry Pi with your SD card.
