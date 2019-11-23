@@ -93,4 +93,9 @@ Install PostgreSQL
 ## Git installation
 - sudo apt-get install git
 ---
+## I set the following shell environment variables:
+- LANGUAGE=$LANG
+- LC_ALL=$LANG
+- PGDATABASE=irrigation # So you don't have to specify a database on the psql command line
+---
 ## Here are the [OpenIrrigation Instructions](https://github.com/mousebrains/OpenIrrigation/blob/master/INSTALL.md)
