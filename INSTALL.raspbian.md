@@ -2,7 +2,7 @@
 ---
 ## I use industrial SLC SD cards which have a TBW rating in excess of 250TBW. A good retail grade SD card will last 1.5-2.5 years running this system.
 ---
-## My production system is on a Raspberry Pi 3 Model B.
+## My production system is on a Raspberry Pi 3 Model B with a real time clock. I use a RasClock device.
 ---
 ## Install Raspbian: These instructions are tested on Raspbian Buster Lite
 - Download and create an SD card image of [Raspbian Buster Lite](https://www.raspberrypi.org/downloads/raspbian/)
