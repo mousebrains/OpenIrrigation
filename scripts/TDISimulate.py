@@ -14,27 +14,33 @@ import select
 import random
 import math
 from MyBaseThread import MyBaseThread
+import sys
 
-def mkSerial(args, logger, qExcept):
+def mkSerial(args, params, logger, qExcept):
     if args.simulate:
         (master, slave) = pty.openpty() # Create a psuedo TTY pair
         thr = TDISimul(master, args, logger, qExcept)
         thr.start()
         return serial.Serial(os.ttyname(slave)) # Open the slave side as a serial device
     # A real serial port
+
+    port     = args.port if args.port is not None else params['port']
+    baudrate = args.baud if args.baud is not None else params['baudrate']
+
     parities = {'none': serial.PARITY_NONE, 'even': serial.PARITY_EVEN,
             'odd': serial.PARITY_ODD, 'mark': serial.PARITY_MARK, 'space': serial.PARITY_SPACE}
     stopbits = {'1': serial.STOPBITS_ONE, '1.5': serial.STOPBITS_ONE_POINT_FIVE,
             '2': serialSTOPBITS_TWO}
-    return serial.Serial(port=args.port, 
-            baudrate=args.baudrate,
+    return serial.Serial(port=port,
+            baudrate=baudrate,
             bytesize=args.bytesize,
             parity=parities[args.parity],
             stopbits=stopbits[args.stopbits])
 
 def mkArgs(parser): # Add simulation related options
     grp = parser.add_argument_group('Serial port related options')
-    grp.add_argument('--baud', type=int, default=9600, help='Serial port baud rate')
+    grp.add_argument('--port', type=str, help='Serial port device name')
+    grp.add_argument('--baud', type=int, help='Serial port baud rate')
     grp.add_argument('--bytesize', type=int, choices={5,6,7,8}, default=8, 
             help='Serial port number of bits per char')
     grp.add_argument('--parity', type=str, choices={'none', 'even', 'odd', 'mark', 'space'},

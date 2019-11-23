@@ -23,9 +23,7 @@ grp.add_argument('--site', type=str, required=True, help='Site name')
 grp.add_argument('--controller', type=str, required=True, help='Controller name')
 grp.add_argument('--group', type=str, default='TDI', help='Parameter group name to use')
 
-grp = parser.add_mutually_exclusive_group(required=True)
-grp.add_argument('--simulate', action='store_true', help='Simulate the TDI')
-grp.add_argument('--port', type=str, help='Serial Port')
+parser.add_argument('--simulate', action='store_true', help='Simulate the TDI')
 
 MyLogger.addArgs(parser) # Add logger related options
 TDISimulate.mkArgs(parser) # Add serial and simulation related options
@@ -41,7 +39,7 @@ try:
     params = Params.load(args.db, args.group, logger)
     logger.info('Params=%s', params)
     qExcept = queue.Queue() # Exceptions from threads
-    s = TDISimulate.mkSerial(args, logger, qExcept)
+    s = TDISimulate.mkSerial(args, params, logger, qExcept)
     thrSerial = TDIserial.Serial(s, logger, qExcept) # Interface to serial port
     thrValve = TDIvalve.ValveOps(args, params, logger, qExcept, thrSerial)
     thrDBout = DB.DBout(args, logger, qExcept) # Queue to send SQL commands to
