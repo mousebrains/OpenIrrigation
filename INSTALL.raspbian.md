@@ -77,6 +77,8 @@ I have Apple devices on my network so I install zeroconf/bonjour:
     - Change user and group to the same user nginx is running as. There are four locations, (user|group) and listen.(owner|group). I use irrigation for both.
     - Change "pm =" line to "pm = ondemand"
     - Change the pm.max_children line to 20"
+- Restart the webserver and php-fpm.
+  - sudo systemctl restart nginx php7.3-fpm
 ---
 ## PostgreSQL installation
 Install PostgreSQL
