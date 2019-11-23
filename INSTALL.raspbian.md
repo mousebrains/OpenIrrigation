@@ -1,6 +1,6 @@
 # Installation on a Raspberry Pi 3 with Raspbian Buster Lite
 ---
-## I use industrial SLC SD cards which have a TBW rating in excess of 250TBW. A good retail grade SD card will last 1.5-2.5 years running this system.
+## I use industrial SLC SD cards which have a TBW rating in excess of 250TBW. A good retail grade SD card will last 1.5-2.5 years running this system. I have not worn an industrial SLC SD card out yet.
 ---
 ## My production system is on a Raspberry Pi 3 Model B with a real time clock. I use a RasClock device.
 ---
