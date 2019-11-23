@@ -31,7 +31,6 @@
   - logout and log back in as user foo
   - check that sudo works via "sudo ls"
   - sudo deluser --remove-home pi # Remove the pi login
-  - sudo delgroup pi
 
 - I set up a dedicated user account without login privledges to run the irrigaiton software:
   - sudo adduser --disabled-login irrigation 
