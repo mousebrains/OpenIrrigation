@@ -70,7 +70,7 @@ I have Apple devices on my network so I install zeroconf/bonjour:
 - nginx configuration
   - If using SSL create a file in /etc/nginx/snippets, I use [ssl.conf.](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/nginx/snippets/ssl.conf)
   - Modify /etc/nginx/sites-enabled/default to suite your needs. Here is my [example.](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/nginx/sites-available/default). I redirect all http traffic to https, enable php-fpm, load the SSL key and certificate, enable http2, and point the root at /home/irrigation/public_html.
-  - Change the username and group that nginx runs as in /etc/nginx/nginx.conf. www-data will need to be changed to your user/group. I use username/group of irrigation. Here is my [example.](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/nginx/nginx.conf)
+  - Change the username that nginx runs as in /etc/nginx/nginx.conf. www-data will need to be changed to your user. I use a username of irrigation. Here is my [example.](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/nginx/nginx.conf)
   - Check for typos using the command
     - sudo nginx -t
 - php-fpm configuration involves modifying the /etc/php/7.*/fpm/pool.d/www.conf file. Here is my [example](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/php-fpm/www.conf)
