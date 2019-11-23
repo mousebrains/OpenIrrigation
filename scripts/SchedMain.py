@@ -77,7 +77,7 @@ def doit(cur:psycopg2.extensions.cursor,
         cur.execute('SELECT program,pgmstn,tOn,tOff FROM action WHERE sensor=%s ORDER BY tOn;', 
                 (act.sensor.id,))
         for row in cur: 
-            logger.info('Action row pgm=%s stn=%s tOn=%s tOff=%s', row[0], row[1], row[2], row[3]);
+            logger.info('Action row pgm=%s stn=%s tOn=%s tOff=%s', row[0], row[1], row[2], row[3])
         cur.execute(sql, (act.tOn, act.tOff, act.sensor.id, act.pgm, act.pgmStn, act.pgmDate))
 
     return True
@@ -109,4 +109,4 @@ def nearPending(cur:psycopg2.extensions.cursor, timeline:Timeline,
     for row in cur:
         timeline.existing(row[0], row[1], row[2], row[3], row[4], row[5])
         logger.info("nearPending sensor=%s program=%s pgmStn=%s pgmDate=%s tOn=%s tOff=%s",
-                row[2], row[3], row[4], row[5], row[0], row[1]);
+                row[2], row[3], row[4], row[5], row[0], row[1])

@@ -112,7 +112,7 @@ def getTableNames(cur, ktables, logger):
 
 def saveMonthly(cur, tbl, dirname, tname, logger):
   # Dump data through 21 days ago
-  now = datetime.datetime.utcnow();
+  now = datetime.datetime.utcnow()
   maxdate = now - \
             datetime.timedelta(days=21, 
                                microseconds=now.microsecond, 
