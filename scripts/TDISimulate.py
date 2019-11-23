@@ -29,8 +29,8 @@ def mkSerial(args, params, logger, qExcept):
 
     parities = {'none': serial.PARITY_NONE, 'even': serial.PARITY_EVEN,
             'odd': serial.PARITY_ODD, 'mark': serial.PARITY_MARK, 'space': serial.PARITY_SPACE}
-    stopbits = {'1': serial.STOPBITS_ONE, '1.5': serial.STOPBITS_ONE_POINT_FIVE,
-            '2': serialSTOPBITS_TWO}
+    stopbits = {1: serial.STOPBITS_ONE, 1.5: serial.STOPBITS_ONE_POINT_FIVE,
+            2: serial.STOPBITS_TWO}
     return serial.Serial(port=port,
             baudrate=baudrate,
             bytesize=args.bytesize,

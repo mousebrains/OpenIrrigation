@@ -32,7 +32,7 @@ args = parser.parse_args()
 logger = MyLogger.mkLogger(args, __name__)
 logger.info('Args=%s', args)
 
-# s = None
+s = None
 
 try:
     myName = 'TDI'
