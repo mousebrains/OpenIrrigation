@@ -43,7 +43,7 @@ I use vim with syntax highlighting:
 ## Mail server installation and setup
 I use a smarthost mail relay via a gmail account.
 - You will need a gmail app password for your gmail account.
-- sudo apt-get libsasl2-modules postfix
+- sudo apt-get install libsasl2-modules postfix
   - "satellite system"
   - FQDN
   - \[smtp.gmail.com\]:587
