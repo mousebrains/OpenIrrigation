@@ -33,9 +33,14 @@ $$;
 -- Get the program id of the manual program, i.e. program named 'Manual'
 
 DROP FUNCTION IF EXISTS manual_program_id;
-CREATE OR REPLACE FUNCTION manual_program_id()
-RETURNS INTEGER LANGUAGE SQL AS $$
-	SELECT id FROM program WHERE name='Manual';
+CREATE OR REPLACE FUNCTION manual_program_id(
+	sensorID sensor.id%TYPE) -- Sensor ID to get site from
+RETURNS INTEGER LANGUAGE plpgSQL AS $$
+DECLARE siteID site.id%TYPE; -- Site id to select program for
+BEGIN
+	SELECT site INTO siteID FROM sensor WHERE site=sensorID;
+	RETURN (SELECT id FROM program WHERE site=siteID and qManual);
+END;
 $$;
 
 -- Turn on a station using the manaul program
@@ -48,7 +53,7 @@ DECLARE stnID station.id%TYPE; -- station.id
 DECLARE pgmID program.id%TYPE; -- program.id
 DECLARE onID webList.id%TYPE; -- pgmStn.mode (on/off)
 BEGIN
-	SELECT manual_program_id() INTO pgmID; -- Program ID of manual program
+	SELECT manual_program_id(sensorID) INTO pgmID; -- Program ID of manual program
 	SELECT id INTO stnID FROM station WHERE sensor=sensorID; -- station ID for sensorID
 	SELECT id INTO onID FROM webList WHERE grp='pgm' AND key='on'; -- webList.id 
 	INSERT INTO pgmStn (program,station,mode,runTime,qSingle) VALUES
@@ -120,9 +125,9 @@ BEGIN
 	END LOOP;
 	DROP TABLE masterValveOps; -- Clean up after myself
 
-	SELECT manual_program_id() INTO pgmID; -- Program ID of manual program
 	-- For each master valve associated with POC, turn it on
 	FOR sensorID IN SELECT sensor FROM pocMV WHERE poc=pocID LOOP
+		SELECT manual_program_id(sensorID) INTO pgmID; -- Program ID of manual program
 		PERFORM(SELECT action_onOff_insert(
 				CURRENT_TIMESTAMP, 
 				CURRENT_TIMESTAMP+MAKE_INTERVAL(secs=>dt*60),
