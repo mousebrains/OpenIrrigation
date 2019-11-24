@@ -17,6 +17,17 @@ function tableRows($db, $name, $orderBy) {
 	return $db->loadRows($sql, []);
 }
 
+function tablePgmStn($db) {
+	$sql = "SELECT"
+		. " pgmstn.id,pgmstn.program,pgmstn.station,pgmstn.mode,"
+		. "pgmstn.runtime,pgmstn.priority"
+		. " FROM pgmStn"
+		. " INNER JOIN station ON pgmstn.station=station.id"
+		. " INNER JOIN program ON pgmstn.program=program.id"
+		. " ORDER BY station.name,program.name;";
+	return $db->loadRows($sql, []);
+}
+
 function tableReference($db, $name) {
 	$sql = "SELECT col,refTable,refKey,refLabel,refCriteria,refOrderBy"
 		. " FROM tableInfo"
@@ -25,7 +36,7 @@ function tableReference($db, $name) {
 	foreach ($db->loadRows($sql, [$name]) as $row) {
 		$tbl = $row['reftable'];
 		$col = $row['col'];
-		$sql = "SELECT " . $row['refkey'] . " AS id," 
+		$sql = "SELECT " . $row['refkey'] . " AS id,"
 			. $row['reflabel'] . " AS name"
 			. " FROM " . $tbl;
 		if ($row['refcriteria'] != null) $sql .= " WHERE " . $row['refcriteria'];
@@ -59,7 +70,9 @@ function fetchInfo($db, $tbl, $orderBy) {
 	$info = array();
 	$info['tbl'] = $tbl;
 	$info['orderBy'] = $orderBy;
-	$a = tableRows($db, $tbl, $orderBy);
+	$a = $info['tbl'] == 'pgmStn'
+		? tablePgmStn($db)
+		: tableRows($db, $tbl, $orderBy);
 	if (!empty($a)) $info['data'] = $a;
 	$a = tableReference($db, $tbl);
 	if (!empty($a)) $info['ref'] = $a;
@@ -98,7 +111,7 @@ while (True) { # Wait forever
 	if (ob_get_length()) {ob_flush();} // Flush output buffer
 	flush();
 	// Connections time out at ~60 seconds, so send a burp every ~55 seconds
-	$notifications = $db->notifications(55000); 
+	$notifications = $db->notifications(55000);
 	if ($notifications == false) { // no notifications
 		$info = ['burp' => 0];
 	} else { // notifications
