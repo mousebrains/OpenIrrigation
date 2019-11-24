@@ -155,7 +155,7 @@ class Event:
             return False
         for key in items:
             item = items[key]
-            if (item.stnMaxStatiosn is not None) and (cnt > item.stnMaxStations):
+            if (item.stnMaxStations is not None) and (cnt > item.stnMaxStations):
                 stn.logger.debug('qPOC cnt %s item max %s %s', cnt, item.stnMaxStations, item.name)
                 return False
             if (item.maxFlow is not None) and (flow > item.maxFlow):
