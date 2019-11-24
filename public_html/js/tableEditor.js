@@ -131,7 +131,9 @@ function buildBody(data) {
 	var tbl = $('tbody');
 	tbl.find('tr').remove(); // remove all rows in the body
 	data.forEach(function(x) {
-		tbl.append(buildRow(x, false));
+		if (!('qhide' in x) || !x['qhide']) {
+			tbl.append(buildRow(x, false));
+		}
 	});
 	tbl.append(buildRow(null, true));
 	$('.formDelete').submit({'url': 'tableRowDelete.php'}, OI_processForm);
@@ -142,7 +144,6 @@ function buildBody(data) {
 function receivedStatus(event) {
 	var data = JSON.parse(event.data);
 	if ('burp' in data) { return; } // Nothing to do on burp messages
-	console.log(data);
 	if ('message' in data) {
 		alert(data['message']);
 		statusSource.close();
