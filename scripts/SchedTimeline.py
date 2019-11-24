@@ -145,12 +145,12 @@ class Event:
         if poc not in self.poc: return True
         items = self.poc[poc]
         cnt = 1 + len(items)
-        if cnt > stn.pocMaxStations: 
+        if (stn.pocMaxStations is not None) and (cnt > stn.pocMaxStations): 
             stn.logger.debug('qPOC cnt %s max %s %s', cnt, stn.pocMaxStations, stn.name)
             return False
         flow = stn.flow
         for key in items: flow += items[key].flow
-        if flow > stn.pocMaxFlow: 
+        if (stn.pocMaxFlow is not None) and (flow > stn.pocMaxFlow): 
             stn.logger.debug('qPOC flow %s max %s %s', flow, stn.pocMaxFlow, stn.name)
             return False
         for key in items:
@@ -169,7 +169,7 @@ class Event:
         if pgm not in self.pgm: return True
         items = self.pgm[pgm]
         cnt = 1 + len(items)
-        if cnt > stn.pgmMaxStations: 
+        if (stn.pgmMaxStations is not None) and (cnt > stn.pgmMaxStations): 
             stn.logger.debug('qPGM cnt %s max %s %s', cnt, stn.pgmMaxStations, stn.name)
             return False
 
