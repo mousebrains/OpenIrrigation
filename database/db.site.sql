@@ -4,7 +4,7 @@ DROP FUNCTION IF EXISTS site_insert_manual_program CASCADE;
 CREATE FUNCTION site_insert_manual_program()
 RETURNS TRIGGER LANGUAGE plpgSQL AS $$
 BEGIN
-	INSERT INTO program (site,name,label,onOff,priority,qManual,qHide,action,
+	INSERT INTO public.program (site,name,label,onOff,priority,qManual,qHide,action,
 		nDays, refDate,
 		startMode,startTime,
 		stopMode,endTime) VALUES
@@ -12,16 +12,16 @@ BEGIN
 			NEW.id,  -- site id
 			'Manual ' || NEW.name, -- program name
 			'Manual', -- program label
-			(SELECT id FROM webList WHERE grp='onOff' AND key='on'), -- onOff
+			(SELECT id FROM public.webList WHERE grp='onOff' AND key='on'), -- onOff
 			-1, -- priority
 			true, -- qManual
 			true, -- qHide
-			(SELECT id FROM webList WHERE grp='evAct' AND key='nDays'), -- action
+			(SELECT id FROM public.webList WHERE grp='evAct' AND key='nDays'), -- action
 			1, -- nDays i.e. every day
 			CURRENT_DATE, -- refDate
-			(SELECT id FROM webList WHERE grp='evCel' AND key='dawn'), -- startMode
+			(SELECT id FROM public.webList WHERE grp='evCel' AND key='dawn'), -- mode
 			'13:00:00', -- startTime -> 11 hours before dawn
-			(SELECT id FROM webList WHERE grp='evCel' AND key='dusk'), -- stopMode
+			(SELECT id FROM public.webList WHERE grp='evCel' AND key='dusk'), -- mode
 			'11:00:00' -- endTIme -> 11 hours after dusk
 		);
 	RETURN NEW;
