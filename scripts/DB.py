@@ -77,7 +77,8 @@ class DB:
     def open(self) -> psycopg2.extensions.connection:
         """ Get an active database connection """
         if self.db: return self.db # Already setup, so return it
-        for i in range(2): # Try twice
+        nTries 2 # Try twice
+        for i in range(nTries): # Try multiple times
             try:
                 self.logger.info('Opening connection to %s', self.dbName)
                 self.db = psycopg2.connect(dbname=self.dbName)
@@ -92,6 +93,7 @@ class DB:
             except Exception as e:
                 self.logger.error('Unable to open connection to %s, %s', self.dbName, e.reason)
             self.close() # Drop the connection and try again
+            if (i+1) < nTries: time.sleep(5) # Wait 5 seconds between attempts
         return None # Failed
 
     def cursor(self, qDict:bool =False) -> psycopg2.extensions.cursor:
