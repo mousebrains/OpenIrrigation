@@ -470,7 +470,8 @@ CREATE TABLE program( -- program information
 	label TEXT UNIQUE NOT NULL, -- label in some tables
 	onOff INTEGER REFERENCES webList(id) ON DELETE SET NULL,
 	priority INTEGER DEFAULT 0, -- sort order for windows within a program
-	qHide BOOLEAN DEFAULT False, -- should entry be displayed?
+	qManual BOOLEAN DEFAULT False, -- Use this program as a manual program for site
+	qHide BOOLEAN DEFAULT False, -- do not display this row
 	action INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- action 
 	nDays NONNEGINTEGER, -- # of days between watering when n-days mode
 	refDate DATE, -- reference date for action
@@ -479,12 +480,13 @@ CREATE TABLE program( -- program information
 	startMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- starting
 	stopMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- stoping
 	attractorFrac PERCENT DEFAULT 0, -- % of interval to gravitate towards [0,100]
-	maxStations POSINTEGER DEFAULT 1, -- max # simultaneous stations
-	maxFlow POSFLOAT DEFAULT 100, -- max flow target flow
+	maxStations POSINTEGER DEFAULT NULL, -- max # simultaneous stations
+	maxFlow POSFLOAT DEFAULT NULL, -- max flow target flow
 	etThreshold NONNEGFLOAT DEFAULT NULL -- Kicks on when ET is >= this value
 	);
+
 INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
-	('program','site',   1, 'Point-of-connect', 'site');
+	('program','site',   1, 'Site', 'site');
 INSERT INTO tableInfo(tbl,col,displayOrder,label,
 			refTable,refLabel,refCriteria,refOrderBy) VALUES
   ('program', 'onoff',     2, 'On/Off', 'webList', 'label', 'grp=''onOff''', 'sortOrder,label'),
@@ -493,7 +495,6 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,
   ('program', 'stopmode', 10,'Start Mode','webList','label','grp=''evCel''','sortOrder,label');
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
 	('program', 'name',         0,True, 'Program Name', 'text', 'Shack'),
-	('program', 'qhide',       17,False, 'Hide in Display', 'checkbox', NULL),
 	('program', 'refdate',      7,False, 'Reference Date', 'date', '2018-08-30'),
 	('program', 'starttime',    9,False, 'Start Time', 'time', '04:05:32'),
 	('program', 'endtime',     11,False, 'End Time', 'time', '04:05:32'),
@@ -852,7 +853,6 @@ CREATE INDEX teeLog_index ON teeLog (timestamp,sensor,code);
 -- The following controls the actions the controller takes.
 --
 -- The scheduler inserts records into the "action" table
--- Triggers then make the appropriate entries into the "command" table
 -- When a row is inserted into the "command" table a notification is 
 --	generated for the controller software to know something new has been added
 -- The controller interface software reads the "command" table to determine its actions
@@ -865,9 +865,6 @@ CREATE INDEX teeLog_index ON teeLog (timestamp,sensor,code);
 -- For valve off command actions, when the corresponding command record is deleted,
 --	the action time and status are updated. The action record is then copied to the
 --	"historical" table and the action record deleted.
---
--- Triggers are used extensively here.
---
 --
 -- Actions to be done
 

@@ -6,6 +6,7 @@
 include ../Makefile.params
 
 SQL = db.schema.sql
+SQL+= db.site.sql # Trigger when inserting into site, insert a manual program
 SQL+= db.funcs.sql
 SQL+= db.list.sql
 SQL+= db.params.sql
