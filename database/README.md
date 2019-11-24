@@ -1,10 +1,10 @@
 # Scripts, schemas, and information to create/update the irrigation databases
 
-  * Files:
- 1. commands.schema.sql -- schema for the commands database, more dynamic stuff
- 1. params.web.sql -- schema for the parameter database for web page generation
- 1. params.schema.sql -- schema for the parameter database 
- 1. params.init.sql -- parameter table initialization for the parameter database 
- 1. params.site.sql -- site tables initialization for the parameter database 
- 1. params.crop.sql -- crop table initialization for the parameter database 
- 1. params.soil.sql -- soil table initialization for the parameter database 
+- db.schema.sql -- Main file defining the database schema
+- db.site.sql -- Defines a trigger on insertions into site to add a manual program for it
+- db.funcs.sql -- Collection of utility functions, mostly for the web
+- db.list.sql -- Populate the webList table
+- db.params.sql -- Populate the params table
+- db.ET.sql -- Populate the ET parameters into the params table
+- db.soil.sql -- Populate the soil table
+- db.crop.sql -- Populate the crop table
