@@ -38,7 +38,9 @@ CREATE OR REPLACE FUNCTION manual_program_id(
 RETURNS INTEGER LANGUAGE plpgSQL AS $$
 DECLARE siteID site.id%TYPE; -- Site id to select program for
 BEGIN
-	SELECT site INTO siteID FROM sensor WHERE site=sensorID;
+	SELECT controller.site INTO siteID 
+		FROM sensor
+		INNER JOIN controller ON sensor.id=sensorID AND sensor.controller=controller.id;
 	RETURN (SELECT id FROM program WHERE site=siteID and qManual);
 END;
 $$;
