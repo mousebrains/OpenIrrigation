@@ -430,11 +430,11 @@ CREATE TABLE station( -- irrigation station information
 	minCycleTime NONNEGFLOAT DEFAULT 0, -- minimum cycle time (min)
 	maxCycleTime POSFLOAT DEFAULT 1000, -- maximum cycle time (min)
 	soakTime NONNEGFLOAT DEFAULT 0, -- minimum soak time (min)
-	maxCoStations POSINTEGER DEFAULT 200, -- number of stn at same time
+	maxCoStations POSINTEGER DEFAULT NULL, -- number of stn at same time
 	measuredFlow NONNEGFLOAT, -- measured flow in GPM
 	userFlow NONNEGFLOAT, -- user input in GPM
-	lowFlowFrac PERCENT DEFAULT 0, -- % of meas/user flow for alert
-	highFlowFrac SMALLINT DEFAULT 400 CHECK (highFlowFrac BETWEEN 100 AND 1000), -- % of meas/user flow for alert
+	lowFlowFrac PERCENT DEFAULT NULL, -- % of meas/user flow for alert
+	highFlowFrac SMALLINT DEFAULT NULL CHECK (highFlowFrac BETWEEN 100 AND 1000), -- % of meas/user flow for alert
 	flowDelayOn NONNEGINTEGER DEFAULT 60, -- delay after on before flow alerts (s)
 	flowDelayOff NONNEGINTEGER DEFAULT 10, -- delay after off before flow alerts (s)
 	UNIQUE (poc, name),
