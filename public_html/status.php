@@ -95,7 +95,7 @@ class DB {
 		if (!$this->exec($stmt)) return array();
 		$info = array();
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-			return ['simulation' => $row['qsimulate']];
+			return $row['qsimulate'];
 		}
 		return $info;
 	} // fetchSimulation
