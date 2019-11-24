@@ -8,6 +8,9 @@
 
 [Unit]
 Description=OpenIrrigation Agrimet Harvester
+Requires=postgresql
+After=postgresql
+After=network.target
 
 [Service]
 # Type=simple # Default

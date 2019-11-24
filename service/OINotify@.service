@@ -8,7 +8,9 @@
 
 [Unit]
 Description=OpenIrrigation Notifier
-After=network.target
+Requires=postgresql
+After=postgresql
+After=postfix
 
 [Service]
 Type=simple

@@ -9,6 +9,8 @@
 [Unit]
 Description=OpenIrrigation Scheduler
 OnFailure=OINotify@%n.service
+Requires=postgresql
+After=postgresql
 
 [Service]
 # Type=simple # Default
