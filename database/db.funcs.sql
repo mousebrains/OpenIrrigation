@@ -30,7 +30,7 @@ $$;
 	-- EXECUTE FUNCTION scheduler_program_updated();
 
 
--- Get the program id of the manual program, i.e. program named "Manual"
+-- Get the program id of the manual program, i.e. program named 'Manual'
 
 DROP FUNCTION IF EXISTS manual_program_id;
 CREATE OR REPLACE FUNCTION manual_program_id()
@@ -54,7 +54,7 @@ BEGIN
 	INSERT INTO pgmStn (program,station,mode,runTime,qSingle) VALUES
 		(pgmID, stnID, onID, dt, True)
 		ON CONFLICT (program,station) DO UPDATE SET runTime=dt, qSingle=True;
-	PERFORM(SELECT scheduler_notify(CONCAT("Manual insertion(", stnID::text)));
+	PERFORM(SELECT scheduler_notify('Manual insertion(' || stnID::text || ')'));
 END;
 $$;
 
