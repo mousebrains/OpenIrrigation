@@ -74,11 +74,17 @@ def doit(cur:psycopg2.extensions.cursor,
     sql = 'SELECT action_onOff_insert(%s,%s,%s,%s,%s,%s);'
     for act in timeline.actions: # Save the new actions to the database
         logger.info('%s', act)
-        cur.execute('SELECT program,pgmstn,tOn,tOff FROM action WHERE sensor=%s ORDER BY tOn;', 
-                (act.sensor.id,))
-        for row in cur: 
-            logger.info('Action row pgm=%s stn=%s tOn=%s tOff=%s', row[0], row[1], row[2], row[3])
-        cur.execute(sql, (act.tOn, act.tOff, act.sensor.id, act.pgm, act.pgmStn, act.pgmDate))
+        try: # In case pgmstn was deleted for a manual station
+            cur.execute(sql, (act.tOn, act.tOff, act.sensor.id, act.pgm, act.pgmStn, act.pgmDate))
+        except:
+            logger.warning('Unable to insert %s', act);
+            cur.execute('SELECT program,pgmstn,tOn,tOff FROM action WHERE sensor=%s ORDER BY tOn;',
+                    (act.sensor.id,))
+            for row in cur:
+                logger.info('Action row pgm=%s stn=%s tOn=%s tOff=%s',
+                        row[0], row[1], row[2], row[3])
+
+
 
     return True
 
