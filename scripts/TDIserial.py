@@ -18,8 +18,8 @@ class Serial(MyBaseThread):
         """ Send a message """
         self.queue.put((msg, queue))
 
-    def read(self, dt:float, n:int) -> bytes:
-        """ Read serial port with a timeout via the select mechanism """
+    def readVariable(self, dt:float, n:int) -> bytes:
+        """ Read serial port with a timeout via the select mechanism up to n bytes """
         s = self.s
         if select.select([s], [], [], dt) == ([],[],[]): # Timed out
             return None
@@ -28,6 +28,23 @@ class Serial(MyBaseThread):
         raise(Exception('EOF while reading from serial port n={} in_waiting={}'.format(
             n, s.in_waiting)))
 
+    def readFixed(self, dt:float, n:int) -> bytes:
+        """ Read serial port with a timeout via the select mechanism a message of n bytes """
+        s = self.s
+        now = time.time()
+        tMax = now + dt # When to timeout
+        msg = bytearray()
+        while (len(msg) < n) and (now < tMax):
+            if select.select([s], [], [], tMax - now) == ([],[],[]): # Timed out
+                return bytes(msg) if len(msg) else None
+            a = s.read(max(1,min(n - len(msg), s.in_waiting)))
+            if not a: # EOF
+                raise(Exception('EOF while reading from serial port n={} in_waiting={}, msg={}'
+                    .format(n, nWaiting, msg)))
+            msg += a
+            now = time.time()
+        return bytes(msg) if len(msg) else None
+
     def runMain(self) -> None:
         """ Called on thread start """
         logger = self.logger
@@ -35,8 +52,8 @@ class Serial(MyBaseThread):
         logger.info('Starting %s', s)
         timeout = 1 # initially wait this time to clear the buffer
         while True:
-            msg = self.read(timeout, 4096)
-            if msg:
+            msg = self.readVariable(timeout, 4096)
+            if msg and (msg != b'\r'):
                 logger.warning('Read unexpected content %s', msg)
                 timeout = 1 # Wait a second for more garbage to be read
                 continue
@@ -49,7 +66,6 @@ class Serial(MyBaseThread):
                     continue
             except queue.Empty as e:
                 continue
-
             if not self.sendMessage(msg):
                 q.put(None, None)
                 continue
@@ -61,7 +77,7 @@ class Serial(MyBaseThread):
         ACK = b'\x06' # Acknowledge
         NAK = b'\x15' # Not acknowledge
 
-        c = self.read(1, 1) # Read ACK/NAK
+        c = self.readFixed(1, 1) # Read ACK/NAK
         if c == ACK: 
             self.logger.debug('Sent %s', msg)
             return True
@@ -91,7 +107,8 @@ class Serial(MyBaseThread):
         SYNC = b'\x16' # Start of a message
         ACK = b'\x06' # Acknowledge
         NAK = b'\x15' # Not acknowledge
-        c = self.read(1, 1) # Wait for reply sync
+        c = self.readFixed(1, 1) # Wait for reply sync
+        if c == b'\r':  c = self.readFixed(1,1) # Wait for sync again after a return
         if c != SYNC: # Not a sync character
             if not c:
                 self.logger.warning('src=%s, expecting SYNC but timed out', src)
@@ -99,11 +116,11 @@ class Serial(MyBaseThread):
                 self.logger.warning('src=%s, expecting SYNC but got %s', c, src)
             return (None, None) # No reply
         t0 = time.time() # Time of sync
-        msg = self.read(0.1, 2) # Get length of message
+        msg = self.readFixed(0.1, 2) # Get length of message
         if not msg or (len(msg) != 2): # didn't get 2 bytes for length
             self.s.write(NAK) # Failure for this message
             self.s.flush()
-            self.logger.warning('src=%s, expected 2 bytes for length, but got %s, %s', src, msg)
+            self.logger.warning('src=%s, expected 2 bytes for length, but got %s', src, msg)
             return (None, None) # No length
         try: # convert hex digits to length
             n = int(str(msg, 'utf-8'), 16)
@@ -115,14 +132,14 @@ class Serial(MyBaseThread):
             self.s.flush()
             self.logger.exception('src=%s Unable to convert %s to a number', src, msg)
             return (None, None) # bad length
-        body = self.read(0.1, n) # Read the message body
+        body = self.readFixed(1, n) # Read the message body
         if not body or (len(body) != n):
             self.s.write(NAK) # Failure for this message
             self.s.flush()
             self.logger.warning('src=%s, expecting %s bytes of response body, but got %s', 
                     src, n, body)
             return (None, None) # No body
-        chkSum = self.read(0.1, 2) # Get check sum of message
+        chkSum = self.readFixed(0.1, 2) # Get check sum of message
         if not chkSum or (len(chkSum) != 2): # didn't get 2 bytes
             self.s.write(NAK) # Failure for this message
             self.s.flush()
