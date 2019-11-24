@@ -537,8 +537,6 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
 INSERT INTO tableInfo(tbl,col,displayOrder,label,
 			refTable,refLabel,refCriteria,refOrderBy) VALUES
 	('pgmStn', 'mode',    2, 'On/Off', 'webList', 'label', 'grp=''pgm''', 'sortOrder,label');
-INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType) VALUES
-	('pgmStn', 'qsingle',10,False, 'Single Shot', 'checkbox');
 INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
 	('pgmStn', 'runtime',  3,'Run Time (min)', '10', 0, 600, 0.1),
 	('pgmStn', 'priority', 4,'Priority', '10', 0, 1000, NULL);
