@@ -77,7 +77,7 @@ class DB:
     def open(self) -> psycopg2.extensions.connection:
         """ Get an active database connection """
         if self.db: return self.db # Already setup, so return it
-        nTries 2 # Try twice
+        nTries = 2 # Try twice
         for i in range(nTries): # Try multiple times
             try:
                 self.logger.info('Opening connection to %s', self.dbName)
