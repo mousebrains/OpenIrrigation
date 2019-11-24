@@ -1,6 +1,6 @@
 #
 # This class is a timeline of irrigation events for constructing a schedule
-# 
+#
 # Oct-2019, Pat Welch
 #
 
@@ -12,7 +12,7 @@ from SchedProgramStation import ProgramStations, ProgramStation
 
 class Action:
     """ An action object which is used in the Timeline class """
-    def __init__(self, tOn:datetime.datetime, tOff:datetime.datetime, pgm:int, pgmStn:int, 
+    def __init__(self, tOn:datetime.datetime, tOff:datetime.datetime, pgm:int, pgmStn:int,
             pgmDate:datetime.date, sensor:Sensor, stn:ProgramStation) -> None:
         self.tOn = tOn
         self.tOff = tOff
@@ -106,7 +106,7 @@ class Event:
 
     def qOkay(self, stn:ProgramStation) -> bool:
         """ Check if it is okay to add this stn at this event """
-        if stn.sensor in self.sensors: 
+        if stn.sensor in self.sensors:
             stn.logger.debug('qOkay sensor already on %s', stn.name)
             return False # I'm already running
         if not self.qController(stn): return False # Not okay to add due to controller constraint
@@ -121,20 +121,20 @@ class Event:
         if ctl not in self.ctl: return True
         items = self.ctl[ctl] # A dictionary keyed on sensor.controller
         cnt = 1 + len(items) # Number of proposed active stations
-        if cnt > stn.ctlMaxStations: 
+        if cnt > stn.ctlMaxStations:
             stn.logger.debug('qCTL cnt %s max %s %s', cnt, stn.ctlMaxStations, stn.name)
             return False
         current = stn.baseCurrent + stn.current # Base + myself
         for key in items: current += items[key].current
-        if current > stn.maxCurrent: 
+        if current > stn.maxCurrent:
             stn.logger.debug('qCTL cur %s max %s %s', current, stn.maxCurrent, stn.name)
             return False
         for key in items:
             item = items[key]
-            if cnt > item.ctlMaxStations: 
+            if cnt > item.ctlMaxStations:
                 stn.logger.debug('qCTL cnt %s item max %s %s', cnt, item.ctlMaxStations, item.name)
                 return False
-            if current > item.maxCurrent: 
+            if current > item.maxCurrent:
                 stn.logger.debug('qCTL cur %s item max %s %s', current, item.maxCurrent, item.name)
                 return False
         return True # Passed all the controller checks
@@ -145,20 +145,20 @@ class Event:
         if poc not in self.poc: return True
         items = self.poc[poc]
         cnt = 1 + len(items)
-        if (stn.pocMaxStations is not None) and (cnt > stn.pocMaxStations): 
+        if (stn.pocMaxStations is not None) and (cnt > stn.pocMaxStations):
             stn.logger.debug('qPOC cnt %s max %s %s', cnt, stn.pocMaxStations, stn.name)
             return False
         flow = stn.flow
         for key in items: flow += items[key].flow
-        if (stn.pocMaxFlow is not None) and (flow > stn.pocMaxFlow): 
+        if (stn.pocMaxFlow is not None) and (flow > stn.pocMaxFlow):
             stn.logger.debug('qPOC flow %s max %s %s', flow, stn.pocMaxFlow, stn.name)
             return False
         for key in items:
             item = items[key]
-            if cnt > item.stnMaxStations: 
+            if (item.stnMaxStatiosn is not None) and (cnt > item.stnMaxStations):
                 stn.logger.debug('qPOC cnt %s item max %s %s', cnt, item.stnMaxStations, item.name)
                 return False
-            if flow > item.maxFlow: 
+            if (item.maxFlow is not None) and (flow > item.maxFlow):
                 stn.logger.debug('qPOC flow %s item max %s %s', flow, item.maxFlow, item.name)
                 return False
         return True # Passed all the POC checks
@@ -169,22 +169,22 @@ class Event:
         if pgm not in self.pgm: return True
         items = self.pgm[pgm]
         cnt = 1 + len(items)
-        if (stn.pgmMaxStations is not None) and (cnt > stn.pgmMaxStations): 
+        if (stn.pgmMaxStations is not None) and (cnt > stn.pgmMaxStations):
             stn.logger.debug('qPGM cnt %s max %s %s', cnt, stn.pgmMaxStations, stn.name)
             return False
 
         flow = stn.flow
         for key in items: flow += items[key].flow
-        if (stn.pgmMaxFlow is not None) and (flow > stn.pgmMaxFlow): 
+        if (stn.pgmMaxFlow is not None) and (flow > stn.pgmMaxFlow):
             stn.logger.debug('qPGM flow %s max %s %s', flow, stn.pgmMaxFlow, stn.name)
             return False
 
         for key in self.pgm[pgm]:
             item = items[key]
-            if cnt > item.pgmMaxStations: 
+            if (item.pgmMaxStations is not None) and (cnt > item.pgmMaxStations):
                 stn.logger.debug('qPGM cnt %s item max %s %s', cnt, item.pgmMaxStations, item.name)
                 return False
-            if (item.pgmMaxFlow is not None) and (flow > item.pgmMaxFlow): 
+            if (item.pgmMaxFlow is not None) and (flow > item.pgmMaxFlow):
                 stn.logger.debug('qPGM flow %s item max %s %s', flow, item.pgmMaxFlow, item.name)
                 return False
         return True # Passed all the program checks
@@ -232,7 +232,7 @@ class Timeline:
         act = Action(tOn, tOff, pgm, pgmStn, pgmDate, self.sensors[sensor],
                 self.stations[pgmStn] if pgmStn in self.stations else None)
 
-        # self.logger.info('Insert(%s) tOn=%s tOff=%s dt=%s', 
+        # self.logger.info('Insert(%s) tOn=%s tOff=%s dt=%s',
                 # act.sensor.id, act.tOn, act.tOff, act.tOff-act.tOn)
 
         self.__insertAction(act)
@@ -286,7 +286,7 @@ class Timeline:
             elif iStart == 0: # sTime is before any events
                 (timeLeft, sTime) = self.addBeforeEvents(timeLeft, stn, sTime, eTime, pgmDate)
             else:
-                (timeLeft, sTime) = self.insertIntoEvents(timeLeft, stn, 
+                (timeLeft, sTime) = self.insertIntoEvents(timeLeft, stn,
                         sTime, eTime, pgmDate, iStart)
             self.logger.debug('tl=%s st=%s', timeLeft, sTime)
         if timeLeft <= zeroTime: return True
@@ -294,7 +294,7 @@ class Timeline:
                 stn.name, sTimeOrig, eTime, stn.runTime, timeLeft)
         return False
 
-    def addEmptyEvents(self, timeLeft:datetime.timedelta, stn:ProgramStation, 
+    def addEmptyEvents(self, timeLeft:datetime.timedelta, stn:ProgramStation,
             sTime:datetime.datetime, eTime:datetime.datetime, pgmDate:datetime.date) -> tuple:
         """ Add an action when there are no events, i.e. no constraints """
         # self.logger.info('aee %s %s %s', stn.name, sTime, eTime)
@@ -302,7 +302,7 @@ class Timeline:
         self.insert(sTime, sTime+dt, stn, pgmDate)
         return(timeLeft - dt, sTime + dt + max(stn.delayOff, stn.delayOn, stn.soakTime))
 
-    def addPastEvents(self, timeLeft:datetime.timedelta, stn:ProgramStation, 
+    def addPastEvents(self, timeLeft:datetime.timedelta, stn:ProgramStation,
             sTime:datetime.datetime, eTime:datetime.datetime, pgmDate:datetime.date) -> tuple:
         """ Add an action past end of list, a time check at start """
         # self.logger.info('ape %s %s %s', stn.name, sTime, eTime)
@@ -313,11 +313,11 @@ class Timeline:
             sTime = t
         return self.addEmptyEvents(timeLeft, stn, sTime, eTime, pgmDate)
 
-    def addBeforeEvents(self, timeLeft:datetime.timedelta, stn:ProgramStation, 
+    def addBeforeEvents(self, timeLeft:datetime.timedelta, stn:ProgramStation,
             sTime:datetime.datetime, eTime:datetime.datetime, pgmDate:datetime.date) -> tuple:
-        """ 
+        """
         Add an action before start of list, search from start of list to get the longest
-        time up to maxCycleTime 
+        time up to maxCycleTime
         """
         # self.logger.info('abe %s %s %s', stn.name, sTime, eTime)
         index = 0
@@ -325,7 +325,7 @@ class Timeline:
             index = i
             ev = self.events[i]
             dt = (ev.t - ev.maxDelay(stn, False)) - sTime
-            if not ev.qOkay(stn) or (dt >= stn.maxCycleTime) or (dt >= timeLeft): 
+            if not ev.qOkay(stn) or (dt >= stn.maxCycleTime) or (dt >= timeLeft):
                 break # Found a long enough interval
 
         ev = self.events[index] # Last index that is not okay or exceeds maxCycleTime or timeLeft
@@ -335,7 +335,7 @@ class Timeline:
             return self.insertIntoEvents(timeLeft, stn, sTime, eTime, pgmDate, 1)
         return self.addEmptyEvents(timeLeft, stn, sTime, sTime+dt, pgmDate)
 
-    def insertIntoEvents(self, timeLeft:datetime.timedelta, stn:ProgramStation, 
+    def insertIntoEvents(self, timeLeft:datetime.timedelta, stn:ProgramStation,
             sTime:datetime.datetime, eTime:datetime.datetime, pgmDate:datetime.date,
             index:int) -> tuple:
         """ Add an into the middle of events  with lots of constraints """
@@ -345,7 +345,7 @@ class Timeline:
         self.logger.debug('evt[%s]=%s', index, self.events[index])
         while index < n:
             # Find a starting event and time
-            (iLeft, tLeft) = self.findLeftSide(index-1, stn, sTime, eTime) 
+            (iLeft, tLeft) = self.findLeftSide(index-1, stn, sTime, eTime)
             self.logger.debug('iLeft=%s tLeft=%s', iLeft, tLeft)
             if iLeft is None: return (timeLeft, eTime) # No where to put anything
             if iLeft >= n: # Insert after existing events
@@ -361,16 +361,16 @@ class Timeline:
         t = ev.t + ev.maxDelay(stn, True)
         return self.addPastEvents(timeLeft, stn, t, eTime, pgmDate)
 
-    def findLeftSide(self, i0:int, stn:ProgramStation, 
+    def findLeftSide(self, i0:int, stn:ProgramStation,
             sTime:datetime.datetime, eTime:datetime.datetime) -> tuple:
-        """ 
-        Find the first qOkay event that is far enough from the next neighboor to 
-        insert a new event between them 
+        """
+        Find the first qOkay event that is far enough from the next neighboor to
+        insert a new event between them
         """
         n = self.len() # How many events there are
         self.logger.debug('fls i0=%s et=%s n=%s', i0, eTime, n)
         for i in range(i0, n): # Look for the first qOkay
-            ev = self.events[i] 
+            ev = self.events[i]
             self.logger.debug('fls i=%s t=%s', i, ev.t)
             if ev.t >= eTime: return (None, None)
             if not ev.qOkay(stn): continue # Go to the next event
@@ -386,7 +386,7 @@ class Timeline:
         self.logger.debug('fls Fell through tLeft=%s n=%s', tLeft, n)
         return (n, tLeft) # Fell out the bottom of the loop so insert after existing events
 
-    def findRightSide(self, stn:ProgramStation, iLeft:int, tLeft:datetime.datetime, 
+    def findRightSide(self, stn:ProgramStation, iLeft:int, tLeft:datetime.datetime,
             eTime:datetime.datetime, timeLeft:datetime.timedelta) -> tuple:
         """ Find the event past iLeft that is sufficiently far in time """
         n = self.len() # How many events there are
@@ -409,7 +409,7 @@ class Timeline:
         # We fell out of the loop, so end past end of loop
         self.logger.debug('Fell out loop n=%s eTime=%s', n, eTime)
         return (n, eTime)
-    
+
     def searchBackwards(self, stn:ProgramStation, iLeft:int, iRight:int,
             tMin:datetime.datetime, tMax:datetime.datetime) -> tuple:
         """ Look backwards for a slot to insert turn stn off """
@@ -426,7 +426,7 @@ class Timeline:
             if t1 >= t0: return (i, min(max(tMax, t0), t1)) # Found a slot, maybe slightly longer
         self.logger.debug('sbck fell through')
         return (iRight, None) # Didn't find a slot
-    
+
     def searchForwards(self, stn:ProgramStation, iRight:int, tMax:datetime.datetime) -> tuple:
         """ Look forwards for a slot to insert turn stn off """
         n = self.len() # How many events are there
