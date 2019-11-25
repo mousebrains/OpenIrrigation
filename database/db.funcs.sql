@@ -1,7 +1,5 @@
 -- A set of helper functions for the PHP/Web interface
 
--- If the program or pgmStn tables are touched, then run the scheduler
-
 DROP FUNCTION IF EXISTS scheduler_notify CASCADE;
 CREATE OR REPLACE FUNCTION scheduler_notify(reason TEXT)
 RETURNS VOID LANGUAGE plpgSQL AS $$
@@ -10,33 +8,13 @@ BEGIN
 END;
 $$;
 
--- DROP FUNCTION IF EXISTS scheduler_program_updated CASCADE;
--- CREATE OR REPLACE FUNCTION scheduler_program_updated()
--- RETURNS TRIGGER LANGUAGE plpgSQL AS $$
--- BEGIN
-	-- PERFORM(SELECT pg_notify('run_scheduler', CONCAT(TG_TABLE_NAME, '::', TG_OP)));
-	-- RETURN NEW;
--- END;
--- $$;
-
--- DROP TRIGGER IF EXISTS scheduler_program_update ON program;
--- CREATE TRIGGER scheduler_program_update
-	-- AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON program
-	-- EXECUTE FUNCTION scheduler_program_updated();
-
--- DROP TRIGGER IF EXISTS scheduler_pgmStn_update ON pgmStn;
--- CREATE TRIGGER scheduler_pgmStn_update
-	-- AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pgmStn
-	-- EXECUTE FUNCTION scheduler_program_updated();
-
-
 -- Get the program id of the manual program, i.e. program named 'Manual'
 
 DROP FUNCTION IF EXISTS manual_program_id;
 CREATE OR REPLACE FUNCTION manual_program_id(
-	sensorID sensor.id%TYPE) -- Sensor ID to get site from
+	sensorID INTEGER) -- Sensor ID to get site from
 RETURNS INTEGER LANGUAGE plpgSQL AS $$
-DECLARE siteID site.id%TYPE; -- Site id to select program for
+DECLARE siteID INTEGER; -- Site id to select program for
 BEGIN
 	SELECT controller.site INTO siteID 
 		FROM sensor
@@ -48,7 +26,7 @@ $$;
 -- Turn on a station using the manaul program
 DROP FUNCTION IF EXISTS manual_on;
 CREATE OR REPLACE FUNCTION manual_on(
-	sensorID sensor.id%TYPE, -- Sensor ID to turn on
+	sensorID INTEGER, -- Sensor ID to turn on
 	dt float) -- Number of minutes to run for
 RETURNS VOID LANGUAGE plpgSQL AS $$
 DECLARE stnID station.id%TYPE; -- station.id
@@ -69,7 +47,7 @@ $$;
 
 DROP FUNCTION IF EXISTS manual_off;
 CREATE OR REPLACE FUNCTION manual_off(
-	sensorID sensor.id%TYPE) -- Sensor ID to turn on
+	sensorID INTEGER) -- Sensor ID to turn on
 RETURNS VOID LANGUAGE plpgSQL AS $$
 DECLARE actID action.id%TYPE; -- action.id
 DECLARE cmdID command.id%TYPE; -- action.cmdOff
@@ -106,7 +84,7 @@ $$;
 
 DROP FUNCTION IF EXISTS poc_off;
 CREATE OR REPLACE FUNCTION poc_off(
-	pocID poc.id%TYPE, -- POC id to work with
+	pocID INTEGER, -- POC id to work with
 	dt float)  -- Runtime in minutes
 RETURNS VOID LANGUAGE plpgSQL AS $$
 DECLARE sensorID action.sensor%TYPE; -- action.sensor and pocmv.sensor
@@ -146,7 +124,7 @@ $$;
 
 DROP FUNCTION IF EXISTS poc_on;
 CREATE OR REPLACE FUNCTION poc_on(
-	pocID poc.id%TYPE) -- POC id to work with
+	pocID INTEGER) -- POC id to work with
 RETURNS VOID LANGUAGE plpgSQL AS $$
 DECLARE sensorID sensor.id%TYPE; -- pocmv.sensor
 BEGIN
@@ -159,306 +137,54 @@ BEGIN
 END;
 $$;
 
--- Trigger on changes to action to notify the status.php script
+-- Trigger on changes to a table which send a notification
+-- This is mainly used by the tableStatus.php script
 
-DROP FUNCTION IF EXISTS action_cmdon_notify CASCADE;
-CREATE FUNCTION action_cmdon_notify()
+CREATE OR REPLACE FUNCTION generic_notify()
 RETURNS TRIGGER LANGUAGE plpgSQL AS $$
 BEGIN
-	PERFORM(pg_notify('action_on_update', 'Trigger'));
-	RETURN NEW;
+	PERFORM(pg_notify(TG_TABLE_NAME || '_update', 
+			TG_TABLE_NAME 
+			|| ' ' 
+			|| TG_OP
+			|| ' '
+			|| COALESCE(NEW.id, OLD.id)::text
+	));
+	RETURN NULL; -- Ignored for after triggers
 END;
 $$;
 
-DROP TRIGGER IF EXISTS action_cmdon_trigger ON action;
-CREATE TRIGGER action_cmdon_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON action
-	EXECUTE FUNCTION action_cmdon_notify();
-
--- Trigger on changes to webList to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS webList_notify CASCADE;
-CREATE FUNCTION webList_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+CREATE OR REPLACE FUNCTION generic_add_trigger(tbl TEXT)
+RETURNS VOID LANGUAGE plpgSQL AS $$
+DECLARE triggerName TEXT; -- Trigger's name
 BEGIN
-	PERFORM(pg_notify('weblist_updated', 'Trigger'));
-	RETURN NEW;
+	triggerName = tbl || '_updated_trigger';
+	IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgname=triggerName) THEN
+	    EXECUTE 'DROP TRIGGER IF EXISTS ' || triggerName || ' ON ' || tbl || ';';
+	END IF;
+	EXECUTE 'CREATE TRIGGER ' || triggerName
+		|| ' AFTER INSERT OR DELETE OR UPDATE ON ' || tbl
+		|| ' FOR EACH ROW EXECUTE FUNCTION generic_notify();';
 END;
 $$;
 
-DROP TRIGGER IF EXISTS webList_updated_trigger ON webList;
-CREATE TRIGGER webList_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON webList
-	EXECUTE FUNCTION webList_notify();
+-- notifications triggered on insert, delete, or update
 
--- Trigger on changes to params to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS params_notify CASCADE;
-CREATE FUNCTION params_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('params_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS params_updated_trigger ON params;
-CREATE TRIGGER params_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON params
-	EXECUTE FUNCTION params_notify();
-
--- Trigger on changes to crop to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS crop_notify CASCADE;
-CREATE FUNCTION crop_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('crop_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS crop_updated_trigger ON crop;
-CREATE TRIGGER crop_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON crop
-	EXECUTE FUNCTION crop_notify();
-
--- Trigger on changes to soil to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS soil_notify CASCADE;
-CREATE FUNCTION soil_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('soil_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS soil_updated_trigger ON soil;
-CREATE TRIGGER soil_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON soil
-	EXECUTE FUNCTION soil_notify();
-
--- Trigger on changes to site to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS site_notify CASCADE;
-CREATE FUNCTION site_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('site_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS site_updated_trigger ON site;
-CREATE TRIGGER site_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON site
-	EXECUTE FUNCTION site_notify();
-
--- Trigger on changes to controller to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS controller_notify CASCADE;
-CREATE FUNCTION controller_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('controller_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS controller_updated_trigger ON controller;
-CREATE TRIGGER controller_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON controller
-	EXECUTE FUNCTION controller_notify();
-
--- Trigger on changes to program to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS program_notify CASCADE;
-CREATE FUNCTION program_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('program_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS program_updated_trigger ON program;
-CREATE TRIGGER program_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON program
-	EXECUTE FUNCTION program_notify();
-
--- Trigger on changes to pgmstn to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS pgmstn_notify CASCADE;
-CREATE FUNCTION pgmstn_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('pgmstn_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS pgmstn_updated_trigger ON pgmstn;
-CREATE TRIGGER pgmstn_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pgmstn
-	EXECUTE FUNCTION pgmstn_notify();
-
--- Trigger on changes to station to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS station_notify CASCADE;
-CREATE FUNCTION station_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('station_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS station_updated_trigger ON station;
-CREATE TRIGGER station_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON station
-	EXECUTE FUNCTION station_notify();
-
--- Trigger on changes to etstation to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS etstation_notify CASCADE;
-CREATE FUNCTION etstation_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('etstation_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS etstation_updated_trigger ON etstation;
-CREATE TRIGGER etstation_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON etstation
-	EXECUTE FUNCTION etstation_notify();
-
--- Trigger on changes to usr to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS usr_notify CASCADE;
-CREATE FUNCTION usr_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('usr_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS usr_updated_trigger ON usr;
-CREATE TRIGGER usr_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON usr
-	EXECUTE FUNCTION usr_notify();
-
--- Trigger on changes to email to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS email_notify CASCADE;
-CREATE FUNCTION email_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('email_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS email_updated_trigger ON email;
-CREATE TRIGGER email_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON email
-	EXECUTE FUNCTION email_notify();
-
--- Trigger on changes to sensor to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS sensor_notify CASCADE;
-CREATE FUNCTION sensor_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('sensor_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS sensor_updated_trigger ON sensor;
-CREATE TRIGGER sensor_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON sensor
-	EXECUTE FUNCTION sensor_notify();
-
--- Trigger on changes to poc to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS poc_notify CASCADE;
-CREATE FUNCTION poc_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('poc_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS poc_updated_trigger ON poc;
-CREATE TRIGGER poc_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON poc
-	EXECUTE FUNCTION poc_notify();
-
--- Trigger on changes to pocflow to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS pocflow_notify CASCADE;
-CREATE FUNCTION pocflow_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('pocflow_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS pocflow_updated_trigger ON pocflow;
-CREATE TRIGGER pocflow_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pocflow
-	EXECUTE FUNCTION pocflow_notify();
-
--- Trigger on changes to pocmv to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS pocmv_notify CASCADE;
-CREATE FUNCTION pocmv_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('pocmv_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS pocmv_updated_trigger ON pocmv;
-CREATE TRIGGER pocmv_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pocmv
-	EXECUTE FUNCTION pocmv_notify();
-
--- Trigger on changes to pocpump to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS pocpump_notify CASCADE;
-CREATE FUNCTION pocpump_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('pocpump_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS pocpump_updated_trigger ON pocpump;
-CREATE TRIGGER pocpump_updated_trigger
-	AFTER INSERT OR DELETE OR TRUNCATE OR UPDATE ON pocpump
-	EXECUTE FUNCTION pocpump_notify();
-
--- Trigger on changes to processstate to notify the tableStatus.php script
-
-DROP FUNCTION IF EXISTS processstate_notify CASCADE;
-CREATE FUNCTION processstate_notify()
-RETURNS TRIGGER LANGUAGE plpgSQL AS $$
-BEGIN
-	PERFORM(pg_notify('processstate_updated', 'Trigger'));
-	RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS processstate_updated_trigger ON processstate;
-CREATE TRIGGER processstate_updated_trigger
-	AFTER INSERT ON processstate
-	EXECUTE FUNCTION processstate_notify();
+SELECT generic_add_trigger('action');
+SELECT generic_add_trigger('weblist');
+SELECT generic_add_trigger('params');
+SELECT generic_add_trigger('crop');
+SELECT generic_add_trigger('soil');
+SELECT generic_add_trigger('site');
+SELECT generic_add_trigger('controller');
+SELECT generic_add_trigger('program');
+SELECT generic_add_trigger('pgmstn');
+SELECT generic_add_trigger('station');
+SELECT generic_add_trigger('etstation');
+SELECT generic_add_trigger('usr');
+SELECT generic_add_trigger('email');
+SELECT generic_add_trigger('sensor');
+SELECT generic_add_trigger('poc');
+SELECT generic_add_trigger('pocflow');
+SELECT generic_add_trigger('pocmv');
+SELECT generic_add_trigger('pocpump');
