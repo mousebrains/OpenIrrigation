@@ -486,29 +486,29 @@ CREATE TABLE program( -- program information
 	);
 
 INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
-	('program','site',   1, 'Site', 'site');
+	('program','site',   11, 'Site', 'site');
 INSERT INTO tableInfo(tbl,col,displayOrder,label,
 			refTable,refLabel,refCriteria,refOrderBy) VALUES
-  ('program', 'onoff',     2, 'On/Off', 'webList', 'label', 'grp=''onOff''', 'sortOrder,label'),
-  ('program', 'action',    4, 'Mode', 'webList', 'label', 'grp=''evAct''', 'sortOrder,label'),
-  ('program', 'startmode', 8,'Start Mode','webList','label','grp=''evCel''','sortOrder,label'),
-  ('program', 'stopmode', 10,'Start Mode','webList','label','grp=''evCel''','sortOrder,label');
+  ('program', 'onoff',     1, 'On/Off', 'webList', 'label', 'grp=''onOff''', 'sortOrder,label'),
+  ('program', 'action',    3, 'Mode', 'webList', 'label', 'grp=''evAct''', 'sortOrder,label'),
+  ('program', 'startmode', 7,'Start Mode','webList','label','grp=''evCel''','sortOrder,label'),
+  ('program', 'stopmode',  9,'Start Mode','webList','label','grp=''evCel''','sortOrder,label');
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
 	('program', 'name',         0,True, 'Program Name', 'text', 'Shack'),
-	('program', 'refdate',      7,False, 'Reference Date', 'date', '2018-08-30'),
-	('program', 'starttime',    9,False, 'Start Time', 'time', '04:05:32'),
-	('program', 'endtime',     11,False, 'End Time', 'time', '04:05:32'),
+	('program', 'refdate',      5,False, 'Reference Date', 'date', '2018-08-30'),
+	('program', 'starttime',    8,False, 'Start Time', 'time', '04:05:32'),
+	('program', 'endtime',     10,False, 'End Time', 'time', '04:05:32'),
 	('program', 'label',       12,True, 'Label', 'text', 'Shack');
 INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
-	('program', 'priority',      3,'Priority', '10', 0, 1000, NULL),
-	('program', 'ndays',         6,'# Days in cycle', '10', 1, 100, NULL),
-	('program', 'attractorfrac',13,'Attractor (%)', '0', 0, 100, NULL),
-	('program', 'maxstations',  14,'Max # stations', '200', 0, 1000, NULL),
-	('program', 'maxflow',      15,'Maximum Flow (GPM)', '200', 0, 1000, 0.1),
+	('program', 'priority',      2,'Priority', '10', 0, 1000, NULL),
+	('program', 'ndays',         4,'# Days in cycle', '10', 1, 100, NULL),
+	('program', 'attractorfrac',15,'Attractor (%)', '0', 0, 100, NULL),
+	('program', 'maxstations',  13,'Max # stations', '200', 0, 1000, NULL),
+	('program', 'maxflow',      14,'Maximum Flow (GPM)', '200', 0, 1000, 0.1),
 	('program', 'etthreshold',  16,'High ET Threshold (in/day)', '0.5', 0, 5, 0.01);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,
 			refTable,refLabel,refCriteria,refOrderBy,secondaryKey,secondaryValue) VALUES
-	('program', 'pgmDOW', 5, 'Day of week', 'multiple', 'webList', 'label', 'grp=''dow''', 
+	('program', 'pgmDOW', 6, 'Day of week', 'multiple', 'webList', 'label', 'grp=''dow''', 
 		'sortOrder,label', 'program', 'dow');
 
 --- program days of week
