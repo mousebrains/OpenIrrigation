@@ -60,7 +60,7 @@ class DB {
 			. "poc.id,poc.name FROM poc INNER JOIN pocMV ON pocMV.poc=poc.id"
 			. " ORDER BY poc.name;");
 
-		$db->exec("LISTEN action_on_update;");
+		$db->exec("LISTEN action_update;");
 	}
 
 	function notifications(int $dt) {

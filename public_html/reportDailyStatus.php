@@ -54,7 +54,7 @@ class DB {
 		$this->getStations = $db->prepare("SELECT "
 			. "id,sensor,name FROM station ORDER BY name;");
 
-		$db->exec("LISTEN action_on_update;");
+		$db->exec("LISTEN action_update;");
 	} // __construct
 
 	function notifications(int $dt) {

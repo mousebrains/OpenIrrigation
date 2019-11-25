@@ -101,7 +101,7 @@ if (empty($_GET['orderby'])) {
 	$orderBy = " ORDER BY " . implode(",", $a);
 }
 
-$db->listen(strtolower($tbl) . "_updated");
+$db->listen(strtolower($tbl) . "_update");
 
 $info = fetchInfo($db, $tbl, $orderBy);
 $info['info'] = tableInfo($db, $tbl);

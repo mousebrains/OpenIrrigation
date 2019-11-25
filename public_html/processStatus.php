@@ -17,7 +17,7 @@ class DB {
 			. " FROM processState WHERE timestamp>=to_timestamp(?)"
 			. " ORDER BY name,timestamp DESC;");
 
-		$db->exec("LISTEN processstate_updated;");
+		$db->exec("LISTEN processstate_update;");
 	}
 
 	function notifications(int $dt) {

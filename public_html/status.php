@@ -32,7 +32,7 @@ class DB {
 			. " AND tOn<=(CURRENT_TIMESTAMP+INTERVAL '1 hour');");
 		$db->exec("LISTEN currentlog_update;");
 		$db->exec("LISTEN sensorlog_update;");
-		$db->exec("LISTEN action_on_update;");
+		$db->exec("LISTEN action_update;");
 	}
 
 	function notifications(int $dt) {
