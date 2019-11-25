@@ -1,3 +1,6 @@
+-- Drop output
+\o /dev/null
+
 -- A set of helper functions for the PHP/Web interface
 
 DROP FUNCTION IF EXISTS scheduler_notify CASCADE;
@@ -169,7 +172,6 @@ END;
 $$;
 
 -- notifications triggered on insert, delete, or update
-
 SELECT generic_add_trigger('action');
 SELECT generic_add_trigger('weblist');
 SELECT generic_add_trigger('params');
