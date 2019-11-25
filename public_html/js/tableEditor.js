@@ -139,6 +139,24 @@ function buildBody(data) {
 	$('.formDelete').submit({'url': 'tableRowDelete.php'}, OI_processForm);
 	$('.formUpdate').submit({'url': 'tableRowUpdate.php'}, OI_processForm);
 	$('.formInsert').submit({'url': 'tableRowInsert.php'}, OI_processForm);
+	$('input,select,textarea').change(inputChanged)
+}
+
+function inputChanged(ev) {
+	var val = $(this).val();
+	var name = $(this).attr('name');
+	var td = $(this).parent(); // TD element above me
+	var prev = td.children('input[type="hidden"]');
+	var prevVal = (prev === undefined) ? undefined : prev.val();
+
+	if (Array.isArray(val)) { // multiple select
+		val = val.sort().map(Number).join(',');
+	}
+
+	if (val != prevVal) { // Different so set row color
+		var tr = td.parent(); // TR element above me
+		tr.addClass('rowchanged');
+	}
 }
 
 function receivedStatus(event) {

@@ -7,3 +7,6 @@ tbody tr:nth-of-type(odd) {background-color:#cccccc;}
 tbody tr:nth-of-type(even) {background-color:#ffffff;}
 tbody tr:hover:nth-of-type(odd) {background-color:#cccc1c;}
 tbody tr:hover:nth-of-type(even) {background-color:#dd1ddd;}
+
+tbody tr.rowchanged:nth-of-type(odd) {background-color:#cc00cc;}
+tbody tr.rowchanged:nth-of-type(even) {background-color:#00ffff;}
