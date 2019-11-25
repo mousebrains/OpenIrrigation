@@ -161,7 +161,7 @@ CREATE OR REPLACE FUNCTION generic_add_trigger(tbl TEXT)
 RETURNS VOID LANGUAGE plpgSQL AS $$
 DECLARE triggerName TEXT; -- Trigger's name
 BEGIN
-	triggerName = tbl || '_updated_trigger';
+	triggerName = tbl || '_update_trigger';
 	IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgname=triggerName) THEN
 	    EXECUTE 'DROP TRIGGER IF EXISTS ' || triggerName || ' ON ' || tbl || ';';
 	END IF;
