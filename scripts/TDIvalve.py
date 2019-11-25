@@ -122,10 +122,11 @@ class ValveOps(MyBaseThread):
         elif nOn >= self.maxStations:  # Not on but over limit
             logger.warning('Maximum number of stations, %s, reached for %s(%s), nOn=%s', 
                     self.maxStations, name, addr, nOn)
+            self.onStations(cur);
             self.dbExec(cur, sqlFail, (cmdID,-1))
             return False
         else:
-            logger.info('Turning on %s(%s)', name, addr)
+            logger.info('Turning on %s(%s) -> n=%s of %s', name, addr, nOn+1, self.maxStations)
         msg = self.msgOn.buildMessage((addr, 0)) # 0AXXYY
         for i in range(2): # Try turning it on twice if need be
             self.serial.put(msg, self) # Send to controller
@@ -224,6 +225,7 @@ class ValveOps(MyBaseThread):
         return True
 
     def onInfo(self, cur:psycopg2.extensions.cursor, addr:int) -> tuple:
+        """ Get the earliest on time for an addr and the number of stations on for a controller """
         sql = 'SELECT action_time_on(%s, %s), action_number_on(%s);'
         a = (self.controller, addr, self.controller)
         try:
@@ -233,6 +235,21 @@ class ValveOps(MyBaseThread):
         except Exception as e:
             self.logger.exception('Error executing %s (%s,%s)', sql, a)
         return (None, None)
+
+    def onStations(self, cur:psycopg2.extensions.cursor) -> None:
+        """ Spit out all stations which are on for this controller """
+        sql = 'SELECT tOn,tOff,station.name,program.name' \
+                + ' FROM action' \
+                + ' INNER JOIN station ON action.sensor=station.sensor' \
+                + ' INNER JOIN program ON action.program=program.id' \
+                + ' WHERE cmdOn is NULL AND controller=%s' \
+                + ' ORDER BY tOn,tOff;'
+        try:
+            cur.execute(sql, (self.controller,));
+            for row in cur:
+                self.logger.info('ON: %s to %s %s,%s', row[0], row[1], row[2], row[3]);
+        except Exception as e:
+            self.logger.exception('Error executing %s (%s,%s)', sql, a)
 
     def dbExec(self, cur:psycopg2.extensions.cursor, sql:str, args:list) -> bool:
         try:
