@@ -368,7 +368,7 @@ class Timeline:
         insert a new event between them
         """
         n = self.len() # How many events there are
-        self.logger.debug('fls i0=%s et=%s n=%s', i0, eTime, n)
+        self.logger.debug('fls i0=%s st%s et=%s n=%s', i0, sTime, eTime, n)
         for i in range(i0, n): # Look for the first qOkay
             ev = self.events[i]
             self.logger.debug('fls i=%s t=%s', i, ev.t)
@@ -392,19 +392,24 @@ class Timeline:
         n = self.len() # How many events there are
         tMin = min(eTime, tLeft + min(timeLeft, stn.minCycleTime)) # Earliest right side time
         tMax = min(eTime, tLeft + min(timeLeft, stn.maxCycleTime)) # Latest right side time
-        self.logger.debug('frs tMin %s tMax %s n %s', tMin, tMax, n)
+        self.logger.debug('frs iLeft %s tLeft %s tMin %s tMax %s n %s', 
+                iLeft, tLeft, tMin, tMax, n)
         for i in range(iLeft+1,n): # Now look for not qOkay or past timeLeft or maxCycleTime
             ev = self.events[i]
             t = ev.t - ev.maxDelay(stn, False)
-            if (t >= tMax) or not ev.qOkay(stn):  # Hard right side boundary
-                self.logger.debug('frs Hard i=%s t=%s >= %s', i, t, t>=tMax)
-                (iRight, tRight) = self.searchBackwards(stn, iLeft, i, tMin, tMax)
-                self.logger.debug('frs right BCK %s %s', iRight, tRight)
-                if tRight is None: # Nothing backwards, so go forwards
-                    dt = stn.maxCycleTime * 0.25 # Add up to 25% of max cycle time
-                    (iRight, tRight) = self.searchForwards(stn, i, tMax+dt)
-                    self.logger.debug('frs right FWD %s %s', iRight, tRight)
-                return (iRight, tRight) # Found a slot
+            qOkay = ev.qOkay(stn) # Is it okay to insert stn at this point?
+            if qOkay and (t <= tMax): continue # Keep looking
+            if (t < tMin): # Interval too short, so skip
+                return (i, None);
+            # Hard right side boundary
+            self.logger.debug('frs Hard i=%s t=%s >= %s', i, t, t>=tMax)
+            (iRight, tRight) = self.searchBackwards(stn, iLeft, i, tMin, tMax)
+            self.logger.debug('frs right BCK %s %s', iRight, tRight)
+            if tRight is None: # Nothing backwards, so go forwards
+                dt = stn.maxCycleTime * 0.25 # Add up to 25% of max cycle time
+                (iRight, tRight) = self.searchForwards(stn, i, tMax+dt)
+                self.logger.debug('frs right FWD %s %s', iRight, tRight)
+            return (iRight, tRight) # Found a slot
 
         # We fell out of the loop, so end past end of loop
         self.logger.debug('Fell out loop n=%s eTime=%s', n, eTime)
