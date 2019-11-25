@@ -1,26 +1,32 @@
-var myInfo = [];
+var myInfo = {}
 
 function mkDate2Col(earliest, today, latest) {
-	var now = new Date(today + " 00:00:00"); // Deal with timezone by setting local midnight
-	var eTime = new Date(latest + " 00:00:00");
+	var now = new Date(today); // Today with UTC midnight
+	var eTime = new Date(latest); // Latest with UTC midnight
 	var cnt = 0;
 
 	myInfo['earliest'] = earliest;
 	myInfo['today'] = today;
 	myInfo['latest'] = latest;
-	myInfo['past2col'] = [];
-	myInfo['pending2col'] = [];
+	myInfo['past2col'] = {}
+	myInfo['pending2col'] = {}
 	myInfo['pastDates'] = [];
 	myInfo['pendingDates'] = [];
 
-	for (var t = new Date(earliest + " 00:00:00"); t <= now; t.setDate(t.getDate() + 1)) {
+	for (var t = new Date(earliest); t <= now; t.setDate(t.getDate() + 1)) {
+		var year = t.getYear(); // Local timezone year
+		var month = t.getMonth(); // Local timezone month
+		var day = t.getDate(); // Local timezone day of month
 		var a = t.toISOString().split('T')[0];
+		console.log(t);
 		myInfo['pastDates'].push(a);
 		myInfo['past2col'][a] = cnt;
 		++cnt;
 	}
+
 	for (var t = now; t <= eTime; t.setDate(t.getDate() + 1)) {
 		var a = t.toISOString().split('T')[0];
+		console.log('pending t=' + t + ' a=' + a);
 		myInfo['pendingDates'].push(a);
 		myInfo['pending2col'][a] = cnt;
 		++cnt;
@@ -142,6 +148,7 @@ function displayTimes(data) {
 
 function receivedStatus(event) {
 	var data = JSON.parse(event.data);
+	console.log(data);
 	if ('burp' in data) { return; } // Nothing to do on burp messages
 	if (('info' in data) 
 		|| (!('earliest' in myInfo) || (myInfo['earliest'] != data['earliest']))
