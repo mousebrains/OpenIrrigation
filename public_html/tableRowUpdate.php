@@ -57,13 +57,14 @@ foreach ($db->loadRows($sql, [$tbl]) as $row) { // Walk through any secondary ta
 	}
 }
 
-if (!$qPrimary && $qPrimary) {
+$db->commit();
+
+if (!$qPrimary && $qSecondary) {
 	// The secondary was updated the but primary was not,
 	// so send a notification for the primary
-	$db->query("NOTIFY $tbl" . "_update,'$tbl UPDATE $id';");
+	$sql = "NOTIFY $tbl" . "_update,'$tbl UPDATE $id';";
+	$db->query($sql);
 }
-
-$db->commit();
 
 if (!$qPrimary && !$qSecondary) exit(mkMsg(false, "No columns found to be updated"));
 
