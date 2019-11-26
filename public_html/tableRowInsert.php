@@ -25,6 +25,8 @@ foreach ($cols as $key) {
 
 if (empty($vals)) exit(mkMsg(false, "No columns found"));
 
+$db->beginTransaction();
+
 $sql = "INSERT INTO $tbl (" . implode(',', $keys) . ") VALUES (" . implode(',', $markers) . ")"
 	. " RETURNING id;";
 
@@ -53,6 +55,8 @@ if (!empty($sec)) {
 		}
 	}
 }
+
+$db->commit();
 
 echo mkMsg(true, "Inserted into $tbl, " . json_encode($a));
 ?>

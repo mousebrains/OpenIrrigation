@@ -28,6 +28,8 @@ foreach ($cols as $key) {
 
 if (empty($vals)) exit(mkMsg(false, "No columns found to be updated"));
 
+$db->beginTransaction();
+
 $sql = "UPDATE $tbl SET " . implode(',', $keys) . " WHERE id=?;";
 array_push($vals, $id); // For WHERE id=?
 
@@ -51,6 +53,8 @@ foreach ($db->loadRows($sql, [$tbl]) as $row) { // Walk through any secondary ta
 		}
 	}
 }
+
+$db->commit();
 
 echo mkMsg(true, "Updated $tbl");
 ?>
