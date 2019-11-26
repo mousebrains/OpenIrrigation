@@ -26,12 +26,12 @@ foreach ($cols as $key) {
 	}
 }
 
-$qChange = false;
+$qPrimary = !empty($vals);
+$qSecondary = false;
 
 $db->beginTransaction();
 
-if (!empty($vals)) {
-	$qChange = true;
+if ($qPrimary) {
 	$sql = "UPDATE $tbl SET " . implode(',', $keys) . " WHERE id=?;";
 	array_push($vals, $id); // For WHERE id=?
 	if (!$db->query($sql, $vals)) echo dbMsg($db, 'Insertion failed');
@@ -47,7 +47,7 @@ foreach ($db->loadRows($sql, [$tbl]) as $row) { // Walk through any secondary ta
 	$sql = "DELETE FROM $stbl WHERE $key0=?;"; // Remove current entries
 	if (!$db->query($sql, [$id])) exit(dbMsg($db, 'Delete secondary'));
 	if (!empty($_POST[$stbl])) { // Something to be stored
-		$qChange = true;
+		$qSecondary = true;
 		$sql = "INSERT INTO $stbl ($key0, $key1) VALUES(?,?);";
 		foreach ($_POST[$stbl] as $sid) {
 			if (!$db->query($sql, [$id, $sid])) {
@@ -57,9 +57,15 @@ foreach ($db->loadRows($sql, [$tbl]) as $row) { // Walk through any secondary ta
 	}
 }
 
+if (!$qPrimary && $qPrimary) {
+	// The secondary was updated the but primary was not,
+	// so send a notification for the primary
+	$db->query("NOTIFY $tbl" . "_update,'$tbl UPDATE $id';");
+}
+
 $db->commit();
 
-if (!$qChange) exit(mkMsg(false, "No columns found to be updated"));
+if (!$qPrimary && !$qSecondary) exit(mkMsg(false, "No columns found to be updated"));
 
 echo mkMsg(true, "Updated $tbl");
 ?>
