@@ -36,6 +36,10 @@ class DB {
 		return false;
 	}
 
+	function beginTransaction() : bool {return $this->db->beginTransaction();}
+	function commit() : bool {return $this->db->commit();}
+	function rollback() : bool {return $this->db->rollback();}
+
 	function loadRows(string $sql, array $args) {
 		$a = $this->query($sql, $args);
 		if ($a == false) return [];
