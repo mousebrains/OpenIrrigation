@@ -4,8 +4,6 @@ function mkDate2Col(earliest, today, latest) {
 	var now = new Date(today); // Today with UTC midnight
 	var eTime = new Date(latest); // Latest with UTC midnight
 	var cnt = 0;
-	// English!
-	var shortNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thur', 'Fri', 'Sat'];
 
 	myInfo['earliest'] = earliest;
 	myInfo['today'] = today;
