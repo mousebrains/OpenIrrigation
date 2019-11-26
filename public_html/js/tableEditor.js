@@ -87,7 +87,7 @@ function buildRow(x, qInsert) {
 	var id = (x == null) ? 'Insert' : x['id'];
 	var form = " form='f" + id + "'>";
 	var tbl = "<input type='hidden' name='tableName' value='" + myTableName + "'>";
-	var row = '<tr>'
+	var row = "<tr id='tr" + id + "'>";
 	if (qInsert) { // Insertion row
 		row += "<td colspan=2>";
 		row += "<form class='formInsert' id='f" + id + "'>";
@@ -136,10 +136,14 @@ function buildBody(data) {
 		}
 	});
 	tbl.append(buildRow(null, true));
-	$('.formDelete').submit({'url': 'tableRowDelete.php'}, OI_processForm);
-	$('.formUpdate').submit({'url': 'tableRowUpdate.php'}, OI_processForm);
-	$('.formInsert').submit({'url': 'tableRowInsert.php'}, OI_processForm);
-	$('input,select,textarea').change(inputChanged)
+	updateActions(tbl);
+}
+
+function updateActions(obj) {
+	obj.find('.formDelete').submit({'url': 'tableRowDelete.php'}, OI_processForm);
+	obj.find('.formUpdate').submit({'url': 'tableRowUpdate.php'}, OI_processForm);
+	obj.find('.formInsert').submit({'url': 'tableRowInsert.php'}, OI_processForm);
+	obj.find('input,select,textarea').change(inputChanged)
 }
 
 function inputChanged(ev) {
@@ -172,6 +176,27 @@ function receivedStatus(event) {
 	if ('info' in data) {
 		buildTable(data['info']);
 		buildBody([]); // For insert row
+	}
+	if ('action' in data) {
+		if (data['action'] == 'DELETE') {
+			$('#tr' + data['id']).remove();
+			return;
+		}
+		if (data['action'] == 'INSERT') {
+			$('#trInsert').before(buildRow(data['data'][0], false));
+			$('#trInsert').replaceWith(buildRow(null, true));
+			updateActions($('#tr' + data['id']));
+			updateActions($('#trInsert'));
+			return;
+		}
+		if (data['action'] == 'UPDATE') {
+			$('#tr' + data['id']).replaceWith(buildRow(data['data'][0], false));
+			updateActions($('#tr' + data['id']));
+			return;
+		}
+		console.log('Unrecognized action, "' + data['action'] + '"');
+		console.log(data);
+		return;
 	}
 	if ('data' in data) {buildBody(data['data']);}
 }

@@ -12,20 +12,26 @@ function tableInfo($db, $name) {
 	return $db->loadRows($sql, [$name]);
 }
 
-function tableRows($db, $name, $orderBy) {
-	$sql = "SELECT * FROM " . $name . $orderBy . ";";
-	return $db->loadRows($sql, []);
+function tableRows($db, $name, $orderBy, $where, $args) {
+	$sql = "SELECT * FROM " . $name;
+	if ($where != Null) $sql .= ' WHERE ' . $where;
+	if ($orderBy != NULL) $sql .= $orderBy;
+	$sql .= ";";
+	return $db->loadRows($sql, $args);
 }
 
-function tablePgmStn($db) {
+function tablePgmStn($db, $where, $args) {
 	$sql = "SELECT"
 		. " pgmstn.id,pgmstn.program,pgmstn.station,pgmstn.mode,"
 		. "pgmstn.runtime,pgmstn.priority"
 		. " FROM pgmStn"
 		. " INNER JOIN station ON pgmstn.station=station.id"
-		. " INNER JOIN program ON pgmstn.program=program.id"
-		. " ORDER BY station.name,program.name;";
-	return $db->loadRows($sql, []);
+		. " INNER JOIN program ON pgmstn.program=program.id";
+	if ($where != Null) $sql .= ' WHERE ' . $where;
+	if ($orderBy != Null) $sql .= " ORDER BY station.name,program.name";
+	$sql .= ";";
+
+	return $db->loadRows($sql, $args);
 }
 
 function tableReference($db, $name) {
@@ -66,18 +72,31 @@ function tableSecondary($db, $name) {
 	return $info;
 }
 
-function fetchInfo($db, $tbl, $orderBy) {
+function tableData($db, $tbl, $orderBy, $where, $args) {
+	return $tbl == 'pgmStn'
+		? tablePgmStn($db, $where, $args)
+		: tableRows($db, $tbl, $orderBy, $where, $args);
+}
+
+
+function fetchInfo($db, $tbl, $orderBy, $where, $args) {
 	$info = array();
 	$info['tbl'] = $tbl;
 	$info['orderBy'] = $orderBy;
-	$a = $info['tbl'] == 'pgmStn'
-		? tablePgmStn($db)
-		: tableRows($db, $tbl, $orderBy);
+	$a = tableData($db, $tbl, $orderBy, $where, $args);
 	if (!empty($a)) $info['data'] = $a;
 	$a = tableReference($db, $tbl);
 	if (!empty($a)) $info['ref'] = $a;
 	$a = tableSecondary($db, $tbl);
 	if (!empty($a)) $info['secondary'] = $a;
+	return $info;
+}
+
+function fetchRow($db, $tbl, $action, $id) { // Fetch a single row
+	if ($action == 'DELETE') return ['action' => $action, 'id' => $id];
+	$info = fetchInfo($db, $tbl, Null, "id=?", [$id]);
+	$info['action'] = $action;
+	$info['id'] = $id;
 	return $info;
 }
 
@@ -103,7 +122,7 @@ if (empty($_GET['orderby'])) {
 
 $db->listen(strtolower($tbl) . "_update");
 
-$info = fetchInfo($db, $tbl, $orderBy);
+$info = fetchInfo($db, $tbl, $orderBy, Null, []);
 $info['info'] = tableInfo($db, $tbl);
 
 while (True) { # Wait forever
@@ -114,8 +133,15 @@ while (True) { # Wait forever
 	$notifications = $db->notifications(55000);
 	if ($notifications == false) { // no notifications
 		$info = ['burp' => 0];
-	} else { // notifications
-		$info = fetchInfo($db, $tbl, $orderBy);
-	}
+		continue;
+	} // if notifications
+	$items = explode(' ', $notifications['payload']);
+	if (count($items) != 3) { // Invalid notification
+		$info = ['burp' => 0];
+		continue;
+	} // if
+	$action = $items[1];
+	$id = $items[2];
+	$info = fetchRow($db, $tbl, $action, $id);
 }
 ?>
