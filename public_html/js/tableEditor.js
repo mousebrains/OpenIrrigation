@@ -178,7 +178,6 @@ function receivedStatus(event) {
 		buildBody([]); // For insert row
 	}
 	if ('action' in data) {
-		console.log(data);
 		if (data['action'] == 'DELETE') {
 			$('#tr' + data['id']).remove();
 			return;
