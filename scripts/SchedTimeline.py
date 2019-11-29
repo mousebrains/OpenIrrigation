@@ -46,9 +46,9 @@ class Event:
     def __repr__(self) -> str:
         msg = 't={}'.format(self.t.isoformat())
         msg+= ' sensors={}'.format(self.sensors)
-        for ctl in sorted(self.ctl): msg+= ' ctl[{}]={}'.format(ctl, set(self.ctl[ctl].keys()))
-        for poc in sorted(self.poc): msg+= ' poc[{}]={}'.format(poc, set(self.poc[poc].keys()))
-        for pgm in sorted(self.pgm): msg+= ' pgm[{}]={}'.format(pgm, set(self.pgm[pgm].keys()))
+        for ctl in sorted(self.ctl): msg+= ' ctl[{}]={}'.format(ctl, sorted(set(self.ctl[ctl].keys())))
+        for poc in sorted(self.poc): msg+= ' poc[{}]={}'.format(poc, sorted(set(self.poc[poc].keys())))
+        for pgm in sorted(self.pgm): msg+= ' pgm[{}]={}'.format(pgm, sorted(set(self.pgm[pgm].keys())))
         return msg
 
     def __lt__(lhs, rhs) -> bool: return lhs.t < rhs.t
@@ -260,6 +260,8 @@ class Timeline:
         iStop = bisect.bisect_left(self.events, evOff)
         if iStop != (iStart+1): # Not continguous
             evOff.update(self.events[iStop-1])
+        elif iStart != 0: # Cotinguous events and  not firt
+            evOff.update(self.events[iStart - 1]);
         self.events.insert(iStop, evOff)
         for index in range(iStart+1, iStop):
             self.events[index] += act
