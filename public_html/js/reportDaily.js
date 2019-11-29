@@ -1,4 +1,15 @@
-var myInfo = {}
+var myInfo = {};
+
+function addToMyInfo(cnt, t, dateKey, colKey) {
+	var year = t.getUTCFullYear();
+	var mon = t.getUTCMonth() + 1;
+	var dom = ('0' + t.getUTCDate()).slice(-2);
+	var a = mon + '-' + dom;
+	var key = year + '-' + ('0' + mon).slice(-2) + '-' + dom;
+	myInfo[dateKey].push(a);
+	myInfo[colKey][key] = cnt;
+	return cnt + 1;
+}
 
 function mkDate2Col(earliest, today, latest) {
 	var now = new Date(today); // Today with UTC midnight
@@ -8,23 +19,17 @@ function mkDate2Col(earliest, today, latest) {
 	myInfo['earliest'] = earliest;
 	myInfo['today'] = today;
 	myInfo['latest'] = latest;
-	myInfo['past2col'] = {}
-	myInfo['pending2col'] = {}
+	myInfo['past2col'] = {};
+	myInfo['pending2col'] = {};
 	myInfo['pastDates'] = [];
 	myInfo['pendingDates'] = [];
 
 	for (var t = new Date(earliest); t <= now; t.setDate(t.getDate() + 1)) {
-		var a = (t.getUTCMonth() + 1) + '-' + ('0' + t.getUTCDate()).slice(-2);
-		myInfo['pastDates'].push(a);
-		myInfo['past2col'][a] = cnt;
-		++cnt;
+		cnt = addToMyInfo(cnt, t, 'pastDates', 'past2col');
 	}
 
 	for (var t = now; t <= eTime; t.setDate(t.getDate() + 1)) {
-		var a = (t.getUTCMonth() + 1) + '-' + ('0' + t.getUTCDate()).slice(-2);
-		myInfo['pendingDates'].push(a);
-		myInfo['pending2col'][a] = cnt;
-		++cnt;
+		cnt = addToMyInfo(cnt, t, 'pendingDates', 'pending2col');
 	}
 }
 
