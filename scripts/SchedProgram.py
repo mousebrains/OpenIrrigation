@@ -30,7 +30,7 @@ class Programs(list):
         sql+= ",program.nDays,program.refDate,program.startTime,program.endTime"
         sql+= ",(SELECT key FROM webList WHERE id=program.startMode)"
         sql+= ",(SELECT key FROM webList WHERE id=program.stopMode)"
-        sql+= ",program.attractorFrac,program.maxStations,program.maxFlow"
+        sql+= ",program.qBackward,program.maxStations,program.maxFlow"
         sql+= ",site.timezone,site.elevation,site.latitude,site.longitude"
         sql+= " FROM program"
         sql+= " INNER JOIN site ON site.id=program.site"
@@ -60,7 +60,7 @@ class Program:
                 , action
                 , nDays, refDate, startTime, stopTime
                 , startMode, stopMode
-                , self.attractorFrac, self.maxStations, self.maxFlow
+                , self.qBackward, self.maxStations, self.maxFlow
                 , site['tz'], site['elev'], site['lat'], site['lon']
                 ) = row
         self.start = PgmDateTime(action, nDays, refDate, dows, startTime, startMode, site)
@@ -69,7 +69,7 @@ class Program:
 
     def __repr__(self) -> str:
         msg = 'id={} name={}'.format(self.id, self.name)
-        msg+= ' attractor={}'.format(self.attractorFrac)
+        msg+= ' qBackward={}'.format(self.qBackward)
         msg+= ' maxStn={} maxFlow={}'.format(self.maxStations, self.maxFlow)
         msg+= ' start={} stop={}'.format(self.start, self.stop)
         msg+= '\nProgram Stations:'
