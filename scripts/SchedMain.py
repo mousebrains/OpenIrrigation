@@ -1,5 +1,5 @@
 #
-# A thread which when triggered will build a new schedule
+# runScheduler called when a new schedule is to be built
 #
 # Oct-2019, Pat Welch, pat@mousebrains.com
 #
@@ -18,8 +18,12 @@ from SchedTimeline import Timeline
 def runScheduler(args:argparse.ArgumentParser, logger:logging.Logger) -> bool:
     with DB.DB(args.db, logger) as db, db.cursor() as cur:
         if doit(cur, args, logger):
-            logger.info('Committing the changes')
-            db.commit() # Commit what was just built
+            if args.dryrun:
+                logger.info('Not committing the changes due to --dryrun')
+                db.rollback() # Roolback what was just built
+            else:
+                logger.info('Committing the changes')
+                db.commit() # Commit what was just built
             return True
         logger.info('Rolling back the changes')
         db.rollback() # Rollback what was just built
@@ -48,16 +52,18 @@ def doit(cur:psycopg2.extensions.cursor,
     stations = ProgramStations(cur, sensors, logger)
     programs = Programs(cur, stations, logger) # Active programs in priority order
     timeline = Timeline(logger, sensors, stations) # A time ordered list of events
-    historical(cur, sDate, timeline) # Add historical events to timeline
-    nearPending(cur, timeline, minTime, logger) # Add active and near pending to timeline
+    if not args.noLoadHistorical:
+        historical(cur, sDate, timeline) # Add historical events to timeline
+    if not args.noNearPending:
+        nearPending(cur, timeline, minTime, logger) # Add active and near pending to timeline
     while sDate <= eDate:
         for pgm in programs: # Walk through programs in priority order
             (sTime, eTime) = pgm.mkTime(sDate)
             if sTime is None: continue # Nothing to do for this program on this sDate
             logger.info('Program %s sTime=%s eTime=%s', pgm.name, sTime, eTime)
-            if minTime > sTime:
+            if (minTime > sTime) and not args.noAdjustStime:
                 logger.info('Raising sTime from %s to %s', sTime, minTime)
-            sTime = max(sTime, minTime)
+                sTime = minTime
             if sTime >= eTime:
                 logger.warning('sTime>=eTime, %s >= %s', sTime, eTime)
                 continue
