@@ -12,6 +12,34 @@ from SchedEvent import Event
 from SchedSensor import Sensors
 from SchedProgramStation import ProgramStations, ProgramStation
 
+class CumTime:
+    """ Cumulative runtime per programstation and program date """
+    def __init__(self) -> None:
+        self.cumTime = {}
+
+    def __repr__(self) -> str:
+        msg = ['Cumulative Time']
+        for stn in sorted(self.cumTime):
+            for d in sorted(self.cumTime[stn]):
+                msg.append("{}:{}={}".format(stn, d, self.cumTime[stn][d]))
+        return "\n".join(msg)
+
+    def get(self, pgmstn:int, pgmDate:datetime.date) -> datetime.timedelta:
+        if pgmstn is None: return datetime.timedelta(seconds = 0)
+        if pgmstn not in self.cumTime: return datetime.timedelta(seconds = 0)
+        if pgmDate not in self.cumTime[pgmstn]: return datetime.timedelta(seconds = 0)
+        return self.cumTime[pgmstn][pgmDate]
+
+    def add(self, pgmstn:int, pgmDate:datetime.date, dt:datetime.timedelta) -> None:
+        if pgmstn is None: return
+        if pgmstn not in self.cumTime: self.cumTime[pgmstn] = {}
+        dt = max(datetime.timedelta(seconds=0), dt)
+        if pgmDate not in self.cumTime[pgmstn]: 
+            self.cumTime[pgmstn][pgmDate] = dt
+        else:
+            self.cumTime[pgmstn][pgmDate] += dt
+
+
 class Timeline:
     """ Maintain a time ordered list of events """
     def __init__(self, logger:logging.Logger, sensors:Sensors, stations:ProgramStations) -> None:
@@ -20,7 +48,7 @@ class Timeline:
         self.stations = stations # All program stations in the system
         self.events = [] # time ordered list of event times
         self.actions = [] # List of new actions added to the timeline
-        self.cumTime = {} # cumulative time for a pgmstn/pgmDate
+        self.cumTime = CumTime() # Cumulative time for a pgmstn/pgmDate
 
     def __repr__(self) -> str:
         msg = 'Timeline Events'
@@ -30,21 +58,6 @@ class Timeline:
         return msg
 
     def len(self) -> int: return len(self.events)
-
-    def getCumtime(self, pgmstn:int, pgmDate:datetime.date) -> datetime.timedelta:
-        """ For a given pgmstn/pgmdate combination get the cumulative time it has been run """
-        if pgmstn is None: return datetime.timedelta(seconds = 0)
-        if pgmstn not in self.cumTime: self.cumTime[pgmstn] = {}
-        if pgmDate not in self.cumTime[pgmstn]:
-            self.cumTime[pgmstn][pgmDate] = datetime.timedelta(seconds=0)
-        return self.cumTime[pgmstn][pgmDate]
-
-    def addCumtime(self, pgmstn:int, pgmDate:datetime.date, dt:datetime.timedelta) -> None:
-        if pgmstn is None: return dt
-        if pgmstn not in self.cumTime: self.cumTime[pgmstn] = {}
-        if pgmDate not in self.cumTime[pgmstn]:
-            self.cumTime[pgmstn][pgmDate] = datetime.timedelta(seconds=0)
-        self.cumTime[pgmstn][pgmDate] += dt
 
     def existing(self, tOn:datetime.datetime, tOff:datetime.datetime,
             sensor:int, pgm:int, pgmStn:int, pgmDate:datetime.date) -> Action:
@@ -60,7 +73,7 @@ class Timeline:
 
         self.__insertAction(act)
         if pgmStn is not None:
-            self.addCumtime(pgmStn, pgmDate, max(datetime.timedelta(seconds=0),tOff - tOn))
+            self.cumTime.add(pgmStn, pgmDate, tOff - tOn)
         return act
 
     def insert(self, tOn:datetime.datetime, tOff:datetime.datetime,
@@ -84,7 +97,7 @@ class Timeline:
         if iStop != (iStart+1): # Not continguous
             evOff.update(self.events[iStop-1])
         elif iStart != 0: # Cotinguous events and  not firt
-            evOff.update(self.events[iStart - 1]);
+            evOff.update(self.events[iStart - 1])
         self.events.insert(iStop, evOff)
         for index in range(iStart+1, iStop):
             self.events[index] += act
@@ -93,7 +106,8 @@ class Timeline:
             sTime:datetime.datetime, eTime:datetime.datetime) -> bool:
         """ For a given date/program/station combination, add it to the timeline """
         sTimeOrig = sTime + datetime.timedelta(seconds=0) # Force a copy
-        timeLeft = stn.runTime - self.getCumtime(stn.id, pgmDate) # Time left to run this station
+        timeLeft = stn.runTime \
+                - self.cumTime.get(stn.id, pgmDate) # Time left to run this station
         self.logger.debug('addStn(%s) %s %s tl=%s', stn.name, sTime, eTime, timeLeft)
         self.logger.debug('stn=%s', stn)
         zeroTime = datetime.timedelta(seconds=0)
@@ -225,7 +239,7 @@ class Timeline:
             qOkay = ev.qOkay(stn) # Is it okay to insert stn at this point?
             if qOkay and (t <= tMax): continue # Keep looking
             if (t < tMin): # Interval too short, so skip
-                return (i, None);
+                return (i, None)
             # Hard right side boundary
             self.logger.debug('frs Hard i=%s t=%s >= %s', i, t, t>=tMax)
             (iRight, tRight) = self.searchBackwards(stn, iLeft, i, tMin, tMax)
