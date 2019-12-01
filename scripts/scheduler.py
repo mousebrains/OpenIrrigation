@@ -1,48 +1,55 @@
 #! /usr/bin/env python3
 #
 # Build a schedule of when to turn on/off valves
-# and save the results into the action table.
+# and save te results into the action table.
 #
 # Oct-2019, Pat Welch, pat@mousebrains.com
-#
 
-from SchedMain import runScheduler
 import MyLogger
 import Params
 import argparse
-from datetime import datetime,timedelta,time,date
+import datetime
 import DB
-import sys
+from SchedMain import runScheduler
 
 parser = argparse.ArgumentParser('OpenIrrigation scheduler')
-parser.add_argument('--single', action='store_true', help='Do a single shot run of the scheduler')
+grp = parser.add_argument_group('Testing related options')
+grp.add_argument('--single', action='store_true', help='Do a single shot run of the scheduler')
+grp.add_argument('--dryrun', action='store_true', help='Do not commit results')
+grp.add_argument('--noLoadHistorical', action='store_true', help='Do not load historical info')
+grp.add_argument('--noNearPending', action='store_true', help='Do not load/clean near pending')
+grp.add_argument('--noAdjustStime', action='store_true', help='Do not adjust start time')
+
 grp = parser.add_argument_group('Scheduler related options')
-grp.add_argument('--sDate', type=str, 
+grp.add_argument('--sDate', type=str,
         help='Starting date for a single run scheduler, isoformat, only in single mode')
-grp.add_argument('--nDays', type=int, 
+grp.add_argument('--nDays', type=int,
         help='Number of days from sDate to schedule for, overrides params')
 grp0 = grp.add_mutually_exclusive_group()
-grp0.add_argument('--minCleanTime', type=str, 
+grp0.add_argument('--minCleanTime', type=str,
         help='Clean out actions past this date/time, isoformat, only in single mode')
 grp0.add_argument('--minCleanSeconds', type=float, default=5,
         help='Clean out actions past this many seconds from current time')
-grp.add_argument('--initialDelay', type=float, default=60, 
+grp.add_argument('--initialDelay', type=float, default=60,
         help='How long to wait until the first scheduler run in seconds')
+
 grp = parser.add_argument_group('Database related options')
 grp.add_argument('--db', type=str, required=True, help='database name')
 grp.add_argument('--group', type=str, default='SCHED', help='Parameter group name to use')
 grp.add_argument('--channel', type=str, default='run_scheduler',
         help='DB channel to listen for notifications on')
+
 MyLogger.addArgs(parser) # Add logger related options
+
 args = parser.parse_args()
 
 logger = MyLogger.mkLogger(args, __name__, fmt='%(asctime)s: %(levelname)s - %(message)s')
 logger.info('Args=%s', args)
 
 if not args.single: # Check single only options are not specified
-    if args.minCleanTime is not None: 
+    if args.minCleanTime is not None:
         parser.error('You can only specifiy --minCleanTime with the --single option!')
-    if args.sDate is not None: 
+    if args.sDate is not None:
         parser.error('You can only specifiy --sDate with the --single option!')
 
 myName = 'Sched'
@@ -55,11 +62,11 @@ try:
 
     db = DB.DB(args.db, logger)
     listener = DB.Listen(args.db, args.channel, logger)
-    tNext = datetime.now() + timedelta(seconds=args.initialDelay)
+    tNext = datetime.datetime.now() + datetime.timedelta(seconds=args.initialDelay)
 
     while True: # Infinite loop
-        dt = tNext - datetime.now()
-        if dt > timedelta(seconds=0):
+        dt = tNext - datetime.datetime.now()
+        if dt > datetime.timedelta(seconds=0):
             msg = 'Sleeping till {}'.format(tNext)
             logger.info(msg)
             db.updateState(myName, msg)
@@ -75,7 +82,8 @@ try:
         db.updateState(myName, 'Done')
         if args.single: break # Break out of loop if only to be done once
         # Just after midnight
-        tNext = datetime.combine(date.today() + timedelta(days=1), time(0,0,1))
+        tNext = datetime.datetime.combine(datetime.date.today() + datetime.timedelta(days=1),
+                datetime.time(0,0,1))
     db.updateState(myName, 'Exiting')
 
 except Exception as e:
