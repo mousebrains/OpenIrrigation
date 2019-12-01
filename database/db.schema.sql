@@ -479,7 +479,7 @@ CREATE TABLE program( -- program information
 	endTime TIME, -- seconds into day to stop, may be less than start, then wrap
 	startMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- starting
 	stopMode INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- stoping
-	attractorFrac PERCENT DEFAULT 0, -- % of interval to gravitate towards [0,100]
+	qBackward BOOLEAN DEFAULT False, -- Fill start to stop if false else stop to start
 	maxStations POSINTEGER DEFAULT NULL, -- max # simultaneous stations
 	maxFlow POSFLOAT DEFAULT NULL, -- max flow target flow
 	etThreshold NONNEGFLOAT DEFAULT NULL -- Kicks on when ET is >= this value
@@ -498,11 +498,11 @@ INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder
 	('program', 'refdate',      5,False, 'Reference Date', 'date', '2018-08-30'),
 	('program', 'starttime',    8,False, 'Start Time', 'time', '04:05:32'),
 	('program', 'endtime',     10,False, 'End Time', 'time', '04:05:32'),
-	('program', 'label',       12,True, 'Label', 'text', 'Shack');
+	('program', 'label',       12,True,  'Label', 'text', 'Shack'),
+	('program', 'qBackward',   15,False, 'Stop2Start', 'checkbox', NULL);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
 	('program', 'priority',      2,'Priority', '10', 0, 1000, NULL),
 	('program', 'ndays',         4,'# Days in cycle', '10', 1, 100, NULL),
-	('program', 'attractorfrac',15,'Attractor (%)', '0', 0, 100, NULL),
 	('program', 'maxstations',  13,'Max # stations', '200', 0, 1000, NULL),
 	('program', 'maxflow',      14,'Maximum Flow (GPM)', '200', 0, 1000, 0.1),
 	('program', 'etthreshold',  16,'High ET Threshold (in/day)', '0.5', 0, 5, 0.01);
