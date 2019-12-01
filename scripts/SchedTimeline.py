@@ -173,10 +173,10 @@ class Timeline:
             index:int) -> tuple:
         """ Add an into the middle of events  with lots of constraints """
         n = self.len() # How many events there are currently
-        self.logger.debug('iie %s st=%s et=%s index=%s n=%s', stn.name, sTime, eTime, index, n)
+        self.logger.debug('iIE %s st=%s et=%s index=%s n=%s', stn.name, sTime, eTime, index, n)
         self.logger.debug('evt[%s]=%s', index-1, self.events[index-1])
         self.logger.debug('evt[%s]=%s', index, self.events[index])
-        while index < n:
+        while index < n: # Walk through events from index
             # Find a starting event and time
             (iLeft, tLeft) = self.findLeftSide(index-1, stn, sTime, eTime)
             self.logger.debug('iLeft=%s tLeft=%s', iLeft, tLeft)
@@ -201,22 +201,22 @@ class Timeline:
         insert a new event between them
         """
         n = self.len() # How many events there are
-        self.logger.debug('fls i0=%s st%s et=%s n=%s', i0, sTime, eTime, n)
+        self.logger.debug('fLS i0=%s st%s et=%s n=%s', i0, sTime, eTime, n)
         for i in range(i0, n): # Look for the first qOkay
             ev = self.events[i]
-            self.logger.debug('fls i=%s t=%s', i, ev.t)
+            self.logger.debug('fLS i=%s t=%s', i, ev.t)
             if ev.t >= eTime: return (None, None)
             if not ev.qOkay(stn): continue # Go to the next event
-            if (i+1) >= n: # Nothing past this event, so okay to insert
-                return (i, ev.t + ev.maxDelay(stn, True))
-            tLeft = max(sTime, ev.t + ev.maxDelay(stn, True)) # When we can turn on
+            tLeft = max(sTime, ev.t + ev.maxDelay(stn, True)) # When we might start
+            if (i+1) >= n: return (i, tLeft) # Nothing past this event, so okay to insert
             ev1 = self.events[i+1] # Next event
             t1 = ev1.t - ev1.maxDelay(stn, True) # When we can turn on before the next event
-            self.logger.debug('fls tLeft=%s t1=%s', tLeft, t1)
+            self.logger.debug('fLS tLeft=%s t1=%s', tLeft, t1)
             if tLeft <= t1: return (i, tLeft) # Enough time to insert an event
-        ev = self.events[-1]
-        tLeft = max(sTime, ev.t + ev.maxDelay(stn, True))
-        self.logger.debug('fls Fell through tLeft=%s n=%s', tLeft, n)
+        # Fell through loop, so insert after existing events
+        ev = self.events[-1] # Last event
+        tLeft = max(sTime, ev.t + ev.maxDelay(stn, True)) # When to turn on after last event
+        self.logger.debug('fLS Fell through tLeft=%s n=%s', tLeft, n)
         return (n, tLeft) # Fell out the bottom of the loop so insert after existing events
 
     def findRightSide(self, stn:ProgramStation, iLeft:int, tLeft:datetime.datetime,
@@ -225,27 +225,27 @@ class Timeline:
         n = self.len() # How many events there are
         tMin = min(eTime, tLeft + min(timeLeft, stn.minCycleTime)) # Earliest right side time
         tMax = min(eTime, tLeft + min(timeLeft, stn.maxCycleTime)) # Latest right side time
-        self.logger.debug('frs iLeft %s tLeft %s tMin %s tMax %s n %s',
+        self.logger.debug('fRS iLeft %s tLeft %s tMin %s tMax %s n %s',
                 iLeft, tLeft, tMin, tMax, n)
-        for i in range(iLeft+1,n): # Now look for not qOkay or past timeLeft or maxCycleTime
+        for i in range(iLeft+1,n): # Now look for not qOkay or past tMax
             ev = self.events[i]
             t = ev.t - ev.maxDelay(stn, False)
             qOkay = ev.qOkay(stn) # Is it okay to insert stn at this point?
-            if qOkay and (t <= tMax): continue # Keep looking
+            if qOkay and (t < tMax): continue # Keep looking
             if (t < tMin): # Interval too short, so skip
                 return (i, None)
             # Hard right side boundary
-            self.logger.debug('frs Hard i=%s t=%s >= %s', i, t, t>=tMax)
+            self.logger.debug('fRS Hard i=%s t=%s >= %s', i, t, t>=tMax)
             (iRight, tRight) = self.searchBackwards(stn, iLeft, i, tMin, tMax)
-            self.logger.debug('frs right BCK %s %s', iRight, tRight)
+            self.logger.debug('fRS right BCK %s %s', iRight, tRight)
             if tRight is None: # Nothing backwards, so go forwards
                 dt = stn.maxCycleTime * 0.25 # Add up to 25% of max cycle time
                 (iRight, tRight) = self.searchForwards(stn, i, tMax+dt)
-                self.logger.debug('frs right FWD %s %s', iRight, tRight)
+                self.logger.debug('fRS right FWD %s %s', iRight, tRight)
             return (iRight, tRight) # Found a slot
 
         # We fell out of the loop, so end past end of loop
-        self.logger.debug('Fell out loop n=%s eTime=%s', n, eTime)
+        self.logger.debug('fRS Fell out loop n=%s eTime=%s', n, eTime)
         return (n, eTime)
 
     def searchBackwards(self, stn:ProgramStation, iLeft:int, iRight:int,
@@ -261,7 +261,7 @@ class Timeline:
             t0 = ev0.t + ev0.maxDelay(stn, False)
             self.logger.debug('sbck t1=%s t0=%s', t1, t0)
             if tMax <= ev0.t: continue
-            if t1 >= t0: return (i, min(max(tMax, t0), t1)) # Found a slot, maybe slightly longer
+            if t1 >= t0: return (i, min(max(tMax, t0), t1)) # Found a slot
         self.logger.debug('sbck fell through')
         return (iRight, None) # Didn't find a slot
 
