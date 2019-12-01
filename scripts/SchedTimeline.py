@@ -34,7 +34,7 @@ class CumTime:
         if pgmstn is None: return
         if pgmstn not in self.cumTime: self.cumTime[pgmstn] = {}
         dt = max(datetime.timedelta(seconds=0), dt)
-        if pgmDate not in self.cumTime[pgmstn]: 
+        if pgmDate not in self.cumTime[pgmstn]:
             self.cumTime[pgmstn][pgmDate] = dt
         else:
             self.cumTime[pgmstn][pgmDate] += dt
@@ -68,17 +68,14 @@ class Timeline:
         act = Action(tOn, tOff, pgm, pgmStn, pgmDate, self.sensors[sensor],
                 self.stations[pgmStn] if pgmStn in self.stations else None)
 
-        # self.logger.info('Insert(%s) tOn=%s tOff=%s dt=%s',
-                # act.sensor.id, act.tOn, act.tOff, act.tOff-act.tOn)
-
         self.__insertAction(act)
-        if pgmStn is not None:
-            self.cumTime.add(pgmStn, pgmDate, tOff - tOn)
+        self.cumTime.add(pgmStn, pgmDate, tOff - tOn)
         return act
 
     def insert(self, tOn:datetime.datetime, tOff:datetime.datetime,
             stn:ProgramStation, pgmDate:datetime.date) -> bool:
         """ Insert an action into the timeline and push onto actions stack """
+        if tOff <= tOn: return False # Nothing to do
         act = self.existing(tOn, tOff, stn.sensor, stn.program, stn.id, pgmDate)
         if act is None: return False
         self.actions.append(act)
@@ -96,22 +93,22 @@ class Timeline:
         iStop = bisect.bisect_left(self.events, evOff)
         if iStop != (iStart+1): # Not continguous
             evOff.update(self.events[iStop-1])
-        elif iStart != 0: # Cotinguous events and  not firt
+        elif iStart != 0: # Continguous events but not first
             evOff.update(self.events[iStart - 1])
         self.events.insert(iStop, evOff)
-        for index in range(iStart+1, iStop):
+        for index in range(iStart+1, iStop): # Update intermediate events, if any
             self.events[index] += act
 
     def addStation(self, pgmDate:datetime.date, stn:ProgramStation,
             sTime:datetime.datetime, eTime:datetime.datetime) -> bool:
         """ For a given date/program/station combination, add it to the timeline """
-        sTimeOrig = sTime + datetime.timedelta(seconds=0) # Force a copy
+        zeroTime = datetime.timedelta(seconds=0)
+        sTimeOrig = sTime + zeroTime # Force a copy
         timeLeft = stn.runTime \
-                - self.cumTime.get(stn.id, pgmDate) # Time left to run this station
+                - self.cumTime.get(stn.id, pgmDate) # Time left to run for this station
         self.logger.debug('addStn(%s) %s %s tl=%s', stn.name, sTime, eTime, timeLeft)
         self.logger.debug('stn=%s', stn)
-        zeroTime = datetime.timedelta(seconds=0)
-        while (timeLeft > zeroTime) and (sTime < eTime):
+        while (timeLeft > zeroTime) and (sTime < eTime): # More runtime left to find a hole for
             n = self.len()
             self.logger.debug('tl=%s st=%s et=%s n=%s', timeLeft, sTime, eTime, n)
             if n == 0: # No events, so no constraints
@@ -136,15 +133,15 @@ class Timeline:
     def addEmptyEvents(self, timeLeft:datetime.timedelta, stn:ProgramStation,
             sTime:datetime.datetime, eTime:datetime.datetime, pgmDate:datetime.date) -> tuple:
         """ Add an action when there are no events, i.e. no constraints """
-        # self.logger.info('aee %s %s %s', stn.name, sTime, eTime)
-        dt = max(min(timeLeft, stn.maxCycleTime, eTime - sTime), stn.delayOn, stn.delayOff)
+        dt = min(timeLeft, stn.maxCycleTime, eTime - sTime)
+        self.logger.debug('aEE %s %s %s dt=%s', stn.name, sTime, eTime, dt)
         self.insert(sTime, sTime+dt, stn, pgmDate)
         return(timeLeft - dt, sTime + dt + max(stn.delayOff, stn.delayOn, stn.soakTime))
 
     def addPastEvents(self, timeLeft:datetime.timedelta, stn:ProgramStation,
             sTime:datetime.datetime, eTime:datetime.datetime, pgmDate:datetime.date) -> tuple:
         """ Add an action past end of list, a time check at start """
-        # self.logger.info('ape %s %s %s', stn.name, sTime, eTime)
+        self.logger.debug('aPE %s %s %s', stn.name, sTime, eTime)
         ev = self.events[-1]
         t = ev.t + ev.maxDelay(stn, True) # Earliest this event can start
         if t > sTime: # Adjust sTime since too early
@@ -158,18 +155,15 @@ class Timeline:
         Add an action before start of list, search from start of list to get the longest
         time up to maxCycleTime
         """
-        # self.logger.info('abe %s %s %s', stn.name, sTime, eTime)
-        index = 0
-        for i in range(self.len()):
-            index = i
+        self.logger.debug('aBE %s %s %s', stn.name, sTime, eTime)
+        dt = min(timeLeft, stn.maxCycleTime) # How long I want to run for
+        for i in range(self.len()): # Look for an event we can't get past
             ev = self.events[i]
-            dt = (ev.t - ev.maxDelay(stn, False)) - sTime
-            if not ev.qOkay(stn) or (dt >= stn.maxCycleTime) or (dt >= timeLeft):
+            t1 = ev.t - ev.maxDelay(stn, False) # When I can turn something off
+            if not ev.qOkay(stn) or ((t1 - sTime) >= dt):
+                dt = min(dt, t1 - sTime)
                 break # Found a long enough interval
 
-        ev = self.events[index] # Last index that is not okay or exceeds maxCycleTime or timeLeft
-        dt = (ev.t - ev.maxDelay(stn, False)) - sTime
-        dt = min(dt, timeLeft, stn.maxCycleTime)
         if (dt < stn.minCycleTime) and (timeLeft > stn.minCycleTime): # Too short
             return self.insertIntoEvents(timeLeft, stn, sTime, eTime, pgmDate, 1)
         return self.addEmptyEvents(timeLeft, stn, sTime, sTime+dt, pgmDate)
@@ -231,7 +225,7 @@ class Timeline:
         n = self.len() # How many events there are
         tMin = min(eTime, tLeft + min(timeLeft, stn.minCycleTime)) # Earliest right side time
         tMax = min(eTime, tLeft + min(timeLeft, stn.maxCycleTime)) # Latest right side time
-        self.logger.debug('frs iLeft %s tLeft %s tMin %s tMax %s n %s', 
+        self.logger.debug('frs iLeft %s tLeft %s tMin %s tMax %s n %s',
                 iLeft, tLeft, tMin, tMax, n)
         for i in range(iLeft+1,n): # Now look for not qOkay or past timeLeft or maxCycleTime
             ev = self.events[i]
