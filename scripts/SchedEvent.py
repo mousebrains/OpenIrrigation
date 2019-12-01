@@ -37,7 +37,7 @@ class Event:
 
     def __lt__(lhs, rhs) -> bool: return lhs.t < rhs.t
 
-    def __insertMySelf(self) -> None:
+    def __insertMySelf(self): # Returns self
         self.__addSensor(self.sensor)
         return self.__addStation(self.stn)
 
