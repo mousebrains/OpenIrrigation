@@ -7,6 +7,7 @@ include ../Makefile.params
 
 LIB = DB.py MyBaseThread.py MyLogger.py Params.py 
 LIB+= SchedMain.py SchedProgram.py SchedProgramStation.py SchedSensor.py
+LIB+= SchedAction.py SchedEvent.py
 LIB+= SchedTimeline.py
 LIB+= TDI.py TDIbase.py TDIserial.py TDISimulate.py TDIvalve.py
 BIN = AgriMet.py dumpDatabase.py notifier.py scheduler.py TDIserver.py 
