@@ -1,0 +1,25 @@
+# This file is part of OpenIrrigation
+#
+# this service runs the script which builds daily reports and mails them out
+#
+# man systemd.unit for parameters
+# man systemd.service for parameters
+# man systemd.exec for parameters
+
+[Unit]
+Description=OpenIrrigation Daily Report Generator
+Requires=postgresql
+After=postgresql
+After=network.target
+
+[Service]
+# Type=simple # Default
+User=__USER__
+Group=__GROUP__
+WorkingDirectory=__LOGDIR__
+ExecStart=__BINDIR__/dailyReport.py --db=__DBNAME__ --log=__LOGDIR__/DailyReport.log
+RestartSec=86400 # Once a day is fine 
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

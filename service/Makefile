@@ -9,6 +9,7 @@ include ../Makefile.params
 SRC = OITDI.service
 SRC+= OIAgriMet.service
 SRC+= OISched.service
+SRC+= OIDailyReport.service
 
 OSRC= OINotify@.service
 
