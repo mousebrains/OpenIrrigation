@@ -233,7 +233,7 @@ class Stats(MyBaseThread):
 
 
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description='AgriMET data fetcher')
 grp = parser.add_argument_group('Database related options')
 grp.add_argument('--db', required=True, type=str, help='ET database name')
 grp.add_argument('--group', type=str, default='AGRIMET', help='parameter group name to use')

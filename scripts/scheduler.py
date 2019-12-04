@@ -12,7 +12,7 @@ import datetime
 import DB
 from SchedMain import runScheduler
 
-parser = argparse.ArgumentParser('OpenIrrigation scheduler')
+parser = argparse.ArgumentParser(description='OpenIrrigation scheduler')
 grp = parser.add_argument_group('Testing related options')
 grp.add_argument('--single', action='store_true', help='Do a single shot run of the scheduler')
 grp.add_argument('--dryrun', action='store_true', help='Do not commit results')

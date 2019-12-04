@@ -12,7 +12,7 @@ import socket
 import smtplib
 from email.mime.text import MIMEText
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description='Service Notifier')
 MyLogger.addArgs(parser)
 parser.add_argument('--db', type=str, help='database name', required=True)
 parser.add_argument( '--instance', required=True, action='append', help='service instance name')

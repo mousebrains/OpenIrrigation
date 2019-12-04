@@ -15,7 +15,7 @@ import TDIvalve
 import argparse
 import queue
 
-parser = argparse.ArgumentParser('TDI serial interface')
+parser = argparse.ArgumentParser(description='TDI serial interface')
 parser.add_argument('--noPeriodic', action='store_true', help='Do not start periodic threads to test valve ops')
 grp = parser.add_argument_group('Database related options')
 grp.add_argument('--db', type=str, required=True, help='database name')
