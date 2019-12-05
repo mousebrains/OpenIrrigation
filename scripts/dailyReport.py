@@ -180,7 +180,7 @@ try:
         now = datetime.datetime.now()
         while t <= now:
             t += datetime.timedelta(days=1)
-        dt = max(t - now, datetime.timedelta(seconds=60))
+        dt = t - now + datetime.timedelta(seconds=60) # 1 minute after cutoff time
         logger.info('Sleeping until %s', now + dt)
         time.sleep(dt.total_seconds())
 
