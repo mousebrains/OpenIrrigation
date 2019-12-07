@@ -11,6 +11,7 @@ import TDISimulate
 import TDI
 import TDIserial
 import DB
+import Notify
 import TDIvalve
 import argparse
 import queue
@@ -66,3 +67,4 @@ except Exception as e:
     db.updateState(myName, repr(e))
 finally:
     if s: s.close() # Close the serial port
+    Notify.onException(args, logger)

@@ -8,10 +8,12 @@
 
 import MyLogger
 import Params
+import Notify
 import DB
 import argparse
 import datetime
 import time
+import sys
 import getpass
 import socket
 from smtplib import SMTP
@@ -182,7 +184,10 @@ try:
             t += datetime.timedelta(days=1)
         dt = t - now + datetime.timedelta(seconds=60) # 1 minute after cutoff time
         logger.info('Sleeping until %s', now + dt)
+        time.sleep(10)
+        raise Exception('GotMe')
         time.sleep(dt.total_seconds())
 
 except Exception as e:
     logger.exception('Unexpected exception')
+    Notify.onException(args, logger)

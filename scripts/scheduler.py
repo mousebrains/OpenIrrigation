@@ -10,6 +10,7 @@ import Params
 import argparse
 import datetime
 import DB
+import Notify
 from SchedMain import runScheduler
 
 parser = argparse.ArgumentParser(description='OpenIrrigation scheduler')
@@ -90,3 +91,4 @@ except Exception as e:
     logger.exception('Unexpected exception')
     db = DB.DB(args.db, logger)
     db.updateState(myName, repr(e))
+    Notify.onException(args, logger)

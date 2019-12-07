@@ -7,6 +7,7 @@
 import MyLogger
 import logging # For typing
 import DB 
+import Notify
 import psycopg2.extras 
 import Params
 import argparse
@@ -268,3 +269,4 @@ except Exception as e:
     logger.exception('Thread Exception')
     db = DB.DB(args.db, logger)
     db.updateState(myName, repr(e))
+    Notify.onException(args, logger)
