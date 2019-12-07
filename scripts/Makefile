@@ -10,7 +10,8 @@ LIB+= SchedMain.py SchedProgram.py SchedProgramStation.py SchedSensor.py
 LIB+= SchedAction.py SchedEvent.py
 LIB+= SchedTimeline.py
 LIB+= TDI.py TDIbase.py TDIserial.py TDISimulate.py TDIvalve.py
-BIN = AgriMet.py dumpDatabase.py notifier.py scheduler.py TDIserver.py 
+LIB+= Notify.py
+BIN = AgriMet.py dumpDatabase.py scheduler.py TDIserver.py 
 BIN+= dailyReport.py
 
 DEST = $(LIB:%=$(BINDIR)/%) $(BIN:%=$(BINDIR)/%)
