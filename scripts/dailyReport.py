@@ -184,8 +184,6 @@ try:
             t += datetime.timedelta(days=1)
         dt = t - now + datetime.timedelta(seconds=60) # 1 minute after cutoff time
         logger.info('Sleeping until %s', now + dt)
-        time.sleep(10)
-        raise Exception('GotMe')
         time.sleep(dt.total_seconds())
 
 except Exception as e:
