@@ -12,8 +12,8 @@
 
 [Unit]
 Description=OpenIrrigation TDI Serial Interface
-Requires=postgresql
-After=postgresql
+Requires=postgresql.service
+After=postgresql.service
 
 [Service]
 # Type=simple # Default

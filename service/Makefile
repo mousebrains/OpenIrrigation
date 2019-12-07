@@ -11,9 +11,7 @@ SRC+= OIAgriMet.service
 SRC+= OISched.service
 SRC+= OIDailyReport.service
 
-OSRC= OINotify@.service
-
-DEST = $(SRC:%=$(SERVICEDIR)/%) $(OSRC:%=$(SERVICEDIR)/%)
+DEST = $(SRC:%=$(SERVICEDIR)/%)
 
 .PHONY: all install install-services install-logs clean start stop retart status reload enable disable
 
