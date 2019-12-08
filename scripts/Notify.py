@@ -2,6 +2,7 @@
 # Called with an exception and send an email if needed
 #
 import sys
+import os.path
 import logging
 import argparse
 import DB
@@ -22,12 +23,13 @@ def onException(args:argparse.ArgumentParser, logger:logging.Logger) -> None:
             cur.execute(sql)
             for row in cur: email.append(row[0])
         db.close()
-        print(traceback.format_exc())
-        return
         if email: 
             fqdn = socket.getfqdn()
-            msg = MIMEText(traceback.format_exc())
-            msg['Subject'] = '{} failed on {}'.format(sys.argv[0], fqdn)
+            item = os.path.basename(sys.argv[0])
+            cnt = "command line:\n" + ' '.join(sys.argv)
+            cnt+= traceback.format_exc()
+            msg = MIMEText(cnt)
+            msg['Subject'] = '{} failed on {}'.format(item, fqdn)
             msg['From'] = email[0]
             msg['To'] = ','.join(email)
             s = smtplib.SMTP('localhost')
