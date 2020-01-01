@@ -148,7 +148,6 @@ def doit(t0:datetime.datetime, args:argparse.ArgumentParser, logger:logging.Logg
 
     if args.mailTo is None:
         args.mailTo = getEmailTo(db)
-        logger.info('Fetch mailTo=%s', args.mailTo)
         if args.mailTo is None: return
 
     historical = getHistorical(db, t0, args)
