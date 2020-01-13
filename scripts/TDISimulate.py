@@ -27,25 +27,22 @@ def mkSerial(args, params, logger, qExcept):
     port     = args.port if args.port is not None else params['port']
     baudrate = args.baud if args.baud is not None else params['baudrate']
 
-    parities = {'none': serial.PARITY_NONE, 'even': serial.PARITY_EVEN,
-            'odd': serial.PARITY_ODD, 'mark': serial.PARITY_MARK, 'space': serial.PARITY_SPACE}
-    stopbits = {1: serial.STOPBITS_ONE, 1.5: serial.STOPBITS_ONE_POINT_FIVE,
-            2: serial.STOPBITS_TWO}
     return serial.Serial(port=port,
             baudrate=baudrate,
             bytesize=args.bytesize,
-            parity=parities[args.parity],
-            stopbits=stopbits[args.stopbits])
+            parity=args.parity,
+            stopbits=args.stopbits)
 
 def mkArgs(parser): # Add simulation related options
     grp = parser.add_argument_group('Serial port related options')
     grp.add_argument('--port', type=str, help='Serial port device name')
-    grp.add_argument('--baud', type=int, help='Serial port baud rate')
-    grp.add_argument('--bytesize', type=int, choices={5,6,7,8}, default=8, 
-            help='Serial port number of bits per char')
-    grp.add_argument('--parity', type=str, choices={'none', 'even', 'odd', 'mark', 'space'},
-            default='none', help='Serial port parity')
-    grp.add_argument('--stopbits', type=str, choices={'1', '1.5', '2'},
+    grp.add_argument('--baud', type=int, choices=serial.Serial.BAUDRATES,
+            default=9600, help='Serial port baud rate')
+    grp.add_argument('--bytesize', type=int, choices=serial.Serial.BYTESIZES,
+            default=8, help='Serial port number of bits per char')
+    grp.add_argument('--parity', type=str, choices=serial.Serial.PARITIES,
+            default='N', help='Serial port parity')
+    grp.add_argument('--stopbits', type=str, choices=serial.Serial.STOPBITS,
             default=1, help='Serial port stop bits')
 
     grp = parser.add_argument_group('Simulation related options')
