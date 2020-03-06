@@ -10,10 +10,12 @@ import argparse
 def addArgs(parser: argparse.ArgumentParser):
     """ Add my options to an argparse object """
     grp = parser.add_argument_group('Log related options')
-    grp.add_argument('--logfile', type=str, help='Log filename')
+    grp.add_argument('--logfile', type=str, metavar='filename', help='Log filename')
     grp.add_argument('--verbose', action='store_true', help='Enable debug messages')
-    grp.add_argument('--maxlogsize', type=int, default=10000000, help='Maximum logfile size')
-    grp.add_argument('--backupcount', type=int, default=7, help='Number of logfiles to keep')
+    grp.add_argument('--maxlogsize', type=int, default=10000000, metavar='bytes',
+            help='Maximum logfile size')
+    grp.add_argument('--backupcount', type=int, default=7, metavar='count',
+            help='Number of logfiles to keep')
 
 def mkLogger(args:argparse.ArgumentParser, name:str, 
         fmt:str=None) -> logging.Logger:
