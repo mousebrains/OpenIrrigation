@@ -281,15 +281,15 @@ class Listen:
                 notifications.append(notify.payload)
             return notifications
         except psycopg2.Warning as e:
-            self.logger.exception('Unable to listen to channel %s in %s', self.channel self.dbName)
+            self.logger.exception('Unable to listen to channel %s in %s', self.channel, self.dbName)
             # self.logger.warning('Unable to rollback to %s, %s',
                     # self.dbName, e.diag.message_primary)
         except psycopg2.Error as e:
-            self.logger.exception('Unable to listen to channel %s in %s', self.channel self.dbName)
+            self.logger.exception('Unable to listen to channel %s in %s', self.channel, self.dbName)
             # self.logger.error('Unable to rollback to %s, %s',
                     # self.dbName, e.diag.message_primary)
         except Exception as e:
-            self.logger.exception('Unable to listen to channel %s in %s', self.channel self.dbName)
+            self.logger.exception('Unable to listen to channel %s in %s', self.channel, self.dbName)
             # self.logger.error('Unable to gt notifications on %s for %s, %s', 
                     # self.dbName, self.channel, e.reason)
         return None
