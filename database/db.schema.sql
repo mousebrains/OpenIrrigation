@@ -1070,34 +1070,38 @@ $$;
 -- When an on command completes
 DROP FUNCTION IF EXISTS command_on_done;
 CREATE OR REPLACE FUNCTION command_on_done(
-	cmdID  command.id%TYPE, -- Command record to operate on
-	t TIMESTAMP WITH TIME ZONE, -- actual time off operation
-	codigo INTEGER, -- on command code
-	preCur INTEGER,
-	peakCur INTEGER,
-	postCur INTEGER)
+        cmdID  command.id%TYPE, -- Command record to operate on
+        t TIMESTAMP WITH TIME ZONE, -- actual time off operation
+        codigo INTEGER, -- on command code
+        preCur INTEGER,
+        peakCur INTEGER,
+        postCur INTEGER)
 RETURNS VOID LANGUAGE plpgSQL AS $$
 DECLARE actID action.id%TYPE; -- id field in action table
 DECLARE sensorID sensor.id%TYPE; -- id field in sensor table
 DECLARE offID action.cmdOff%TYPE; -- id field in command table of off command
 DECLARE offTime action.tOff%TYPE; -- adjusted timestamp
 DECLARE pgmStnID pgmStn.id%TYPE; -- program station id
+DECLARE nPgmStn BIGINT; -- Number of instances of this pgmStn in action table
 BEGIN
 	DELETE FROM command WHERE id=cmdID RETURNING action INTO actID;
 	-- Update tOn, adjust tOff, and set onCode,pre,peak,post
-	UPDATE action SET 
+	UPDATE action SET
 		tOn=t,
 		tOff=GREATEST(tOff,t+(tOff-tOn)),
-		onCode=codigo,pre=preCur,peak=peakCur,post=postCur 
+		onCode=codigo,pre=preCur,peak=peakCur,post=postCur
 		WHERE id=actID;
 	-- I tried using RETURNING but with PostgreSQL 11 it didn't work
-		-- RETURNING tOff,cmdOff AS offTime,offID;
+	-- RETURNING tOff,cmdOff AS offTime,offID;
 	-- Adjust the command off time
 	SELECT tOff,cmdOff,pgmStn INTO offTime,offID,pgmStnID FROM action WHERE id=actID;
 	UPDATE command SET timestamp=offTime WHERE id=offID;
 	-- No need to send notification since TDIvalve will query next time to wakeup
-	-- Drop corresponding pgmStn record for single shot actions
-	DELETE FROM pgmStn WHERE id=pgmStnID AND qSingle; 
+	SELECT COUNT(*) INTO nPgmstn FROM action WHERE pgmStn=pgmStnID; -- How many other instances of this pgmStn are in action
+	IF nPgmStn < 2 THEN -- If I'm the only one
+		-- Drop corresponding pgmStn record for single shot actions
+		DELETE FROM pgmStn WHERE id=pgmStnID AND qSingle; 
+	END IF;
 END;
 $$;
 
