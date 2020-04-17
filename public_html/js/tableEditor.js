@@ -147,20 +147,47 @@ function updateActions(obj) {
 }
 
 function inputChanged(ev) {
-	var val = $(this).val();
 	var name = $(this).attr('name');
 	var td = $(this).parent(); // TD element above me
-	var prev = td.children('input[type="hidden"]');
+	var prev = td.children('input:hidden');
 	var prevVal = (prev === undefined) ? undefined : prev.val();
 
+	var tr = td.parent(); // TR element above me
+
+	var qChanged = checkCellChanged($(this).val(), prevVal) ||
+		checkRowChanged(tr.children('td'));
+	if (qChanged) {
+		tr.addClass('rowchanged');
+	} else {
+		tr.removeClass('rowchanged');
+	}
+} // inputChanged
+
+function checkCellChanged(val, prevVal) {
 	if (Array.isArray(val)) { // multiple select
 		val = val.sort().map(Number).join(',');
 	}
+	return val != prevVal;
+} // checkCellChanged
 
-	if (val != prevVal) { // Different so set row color
-		var tr = td.parent(); // TR element above me
-		tr.addClass('rowchanged');
-	}
+function checkRowChanged(tds) {
+	for (var i = 0; i < tds.length; ++i) {
+		var td = tds[i];
+		var prev = $(td).children('input:hidden');
+		if (prev.length != 1) continue;
+		var prevVal = (prev === undefined) ? undefined : prev.val();
+		var item = $(td).children('select');
+		if (item.length == 1) {
+			console.log('select');
+			console.log(item.val());
+			if (checkCellChanged(item.val(), prevVal)) return true;
+			continue;
+		}
+		item = $(td).children('input:not(:hidden)');
+		if (item.length != 1) continue
+		if (checkCellChanged(item.val(), prevVal)) return true;
+	} // for i
+	return false;
 }
 
 function receivedStatus(event) {
