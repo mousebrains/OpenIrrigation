@@ -27,6 +27,10 @@ require_once 'php/navBar.php';
 <tbody></tbody>
 <tfoot></tfoot>
 </table>
+<form action='javascript:void(0);'>
+<input type='button' value='Batch Update' id='batchUpdate'>
+<input type='button' value='Cancel' id='batchCancel'>
+</form>
 </center>
 <script src=js/tableEditor.js>
 </script>

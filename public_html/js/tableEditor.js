@@ -178,8 +178,6 @@ function checkRowChanged(tds) {
 		var prevVal = (prev === undefined) ? undefined : prev.val();
 		var item = $(td).children('select');
 		if (item.length == 1) {
-			console.log('select');
-			console.log(item.val());
 			if (checkCellChanged(item.val(), prevVal)) return true;
 			continue;
 		}
@@ -188,7 +186,28 @@ function checkRowChanged(tds) {
 		if (checkCellChanged(item.val(), prevVal)) return true;
 	} // for i
 	return false;
-}
+} // checkRowChanged
+
+function batchUpdate() { // batch update button pressed
+	var trs = $('tbody').children('tr');
+	for (var i = 0; i < trs.length; ++i) {
+		var tr = trs[i];
+		if (!$(tr).hasClass('rowchanged')) continue;
+		var frm = $(tr).find('.formUpdate');
+		$(frm).submit(); // Update this row
+	} // for i
+} // batchUpdate
+
+function batchCancel() { // cancel button pressed
+	var trs = $('tbody').children('tr');
+	for (var i = 0; i < trs.length; ++i) {
+		var tr = trs[i];
+		if (!$(tr).hasClass('rowchanged')) continue; // Nothing to reset to
+		var frm = $(tr).find('.formUpdate');
+		$(frm)[0].reset(); // Reset to default values
+		$(tr).removeClass('rowchanged'); // No longer changed
+	} // for i
+} // batchCancel
 
 function receivedStatus(event) {
 	var data = JSON.parse(event.data);
@@ -235,4 +254,7 @@ if (typeof(EventSource) != "undefined") {
 	var statusSource = new EventSource(url);
 	statusSource.onmessage = receivedStatus;
 	$('title').html('Table Editor ' + myTableName);
+
+	$('#batchUpdate').click(batchUpdate);
+	$('#batchCancel').click(batchCancel);
 }
