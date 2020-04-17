@@ -93,7 +93,7 @@ function fetchInfo($db, $tbl, $orderBy, $where, $args) {
 
 function fetchRow($db, $tbl, $action, $id) { // Fetch a single row
 	if ($action == 'DELETE') return ['action' => $action, 'id' => $id];
-	$info = fetchInfo($db, $tbl, Null, "id=?", [$id]);
+	$info = fetchInfo($db, $tbl, Null, "$tbl.id=?", [$id]);
 	$info['action'] = $action;
 	$info['id'] = $id;
 	return $info;
