@@ -28,8 +28,7 @@ function tablePgmStn($db, $where, $args) {
 		. " INNER JOIN station ON pgmstn.station=station.id"
 		. " INNER JOIN program ON pgmstn.program=program.id";
 	if ($where != Null) $sql .= ' WHERE ' . $where;
-	if ($orderBy != Null) $sql .= " ORDER BY station.name,program.name";
-	$sql .= ";";
+	$sql .= " ORDER BY station.name,program.name;";
 
 	return $db->loadRows($sql, $args);
 }
