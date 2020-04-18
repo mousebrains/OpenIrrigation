@@ -8,5 +8,8 @@ tbody tr:nth-of-type(even) {background-color:#ffffff;}
 tbody tr:hover:nth-of-type(odd) {background-color:#3366ff;}
 tbody tr:hover:nth-of-type(even) {background-color:#33cc33;}
 
+tbody tr.haschanged:nth-of-type(odd) {background-color:#ccff99;}
+tbody tr.haschanged:nth-of-type(even) {background-color:#cc99ff;}
+
 tbody tr.rowchanged:nth-of-type(odd) {background-color:#cc00cc;}
 tbody tr.rowchanged:nth-of-type(even) {background-color:#ff9900;}

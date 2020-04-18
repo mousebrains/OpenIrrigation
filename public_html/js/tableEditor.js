@@ -224,20 +224,22 @@ function receivedStatus(event) {
 		buildBody([]); // For insert row
 	}
 	if ('action' in data) {
+		var trID = '#tr' + data['id'];
 		if (data['action'] == 'DELETE') {
-			$('#tr' + data['id']).remove();
+			$(trID).remove();
 			return;
 		}
 		if (data['action'] == 'INSERT') {
 			$('#trInsert').before(buildRow(data['data'][0], false));
 			$('#trInsert').replaceWith(buildRow(null, true));
-			updateActions($('#tr' + data['id']));
+			updateActions($(trID));
 			updateActions($('#trInsert'));
 			return;
 		}
 		if (data['action'] == 'UPDATE') {
-			$('#tr' + data['id']).replaceWith(buildRow(data['data'][0], false));
-			updateActions($('#tr' + data['id']));
+			$(trID).replaceWith(buildRow(data['data'][0], false));
+			$(trID).addClass('haschanged');
+			updateActions($(trID));
 			return;
 		}
 		console.log('Unrecognized action, "' + data['action'] + '"');
