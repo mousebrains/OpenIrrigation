@@ -15,11 +15,13 @@ $cols = $db->tableColumns($tbl);
 $keys = array();
 $markers = array();
 $vals = array();
+
 foreach ($cols as $key) {
 	if (array_key_exists($key, $_POST)) {
+		$val = $_POST[$key] == '' ? NULL : $_POST[$key];
 		array_push($keys, $key);
 		array_push($markers, '?');
-		array_push($vals, $_POST[$key] == '' ? null : $_POST[$key]);
+		array_push($vals, $val);
 	}
 }
 
@@ -34,6 +36,8 @@ $stmt = $db->prepare($sql); // Prepare the statement
 if ($stmt == false) exit(dbMsg($db, 'Error preparing $sql'));
 if (!$stmt->execute($vals)) exit(mkMsg(false, "Error executing $sql, " . $stmt->errorInfo()));
 $id = $stmt->fetch(PDO::FETCH_NUM)[0];
+
+$comment = ["Inserted into $tbl (" . implode(',', $keys) . ')->(' . implode(',', $vals) . ')'];
 
 // Check if secondary tables exist for this table
 $sql = "SELECT col,secondaryKey,secondaryValue FROM tableInfo"
@@ -51,6 +55,7 @@ if (!empty($sec)) {
 				if (!$db->query($sql, [$id, $sid])) {
 					exit(dbMsg($db, "Failed to insert secondary"));
 				}
+				array_push($comment, "Inserted into $stbl $key0=$id $key1=$sid");
 			}
 		}
 	}
@@ -58,5 +63,17 @@ if (!empty($sec)) {
 
 $db->commit();
 
-echo mkMsg(true, "Inserted into $tbl, " . json_encode($a));
+echo mkMsg(true, "Inserted into $tbl");
+
+// Insert changeLog records
+$db->beginTransaction();
+$sql = 'INSERT INTO changeLog (ipAddr,description) VALUES (?,?);';
+$stmt = $db->prepare($sql);
+
+foreach ($comment as $row) {
+	if (!$stmt->execute([$_SERVER['REMOTE_ADDR'], $row])) {
+		exit(mkMsg(false, "Error executing $sql, " . $stmt->errorInfo()));
+	}
+}
+$db->commit();
 ?>

@@ -15,6 +15,15 @@ $id = $_POST['id'];
 if (!$db->tableExists($tbl)) exit(mkMsg(false, "Table, $tbl, does not exist"));
 
 $sql = "DELETE FROM $tbl WHERE id=?;";
-if ($db->query($sql, [$id])) exit(mkMsg(true, "Deletion of id=$id okay"));
-echo mkMsg(false, "Deletion of id=$id failed " . $db->getError());
+if (!$db->query($sql, [$id])) exit(mkMsg(false, "Deletion of id=$id failed " . $db->getError()));
+echo mkMsg(true, "Deletion of id=$id okay");
+
+// Insert changeLog records
+$db->beginTransaction();
+$sql = 'INSERT INTO changeLog (ipAddr,description) VALUES (?,?);';
+$stmt = $db->prepare($sql);
+if (!$stmt->execute([$_SERVER['REMOTE_ADDR'], "Deleted from $tbl where id=$id"])) {
+	exit(mkMsg(false, "Error executing $sql, " . $stmt->errorInfo()));
+}
+$db->commit();
 ?>

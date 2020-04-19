@@ -13,6 +13,7 @@ SQL+= db.params.sql
 SQL+= db.ET.sql
 SQL+= db.soil.sql
 SQL+= db.crop.sql
+SQL+= db.changelog.sql
 
 .PHONY: all install clean freshdb mkRoles dropRoles mkdb dropdb createdb dumpdb mkSite
 
