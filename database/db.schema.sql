@@ -228,7 +228,8 @@ CREATE TABLE site( -- site information
 	timezone TEXT, -- timezone
 	latitude LATITUDE, -- latitude in decimal degrees
 	longitude LONGITUDE, -- longitude in decimal degrees
-	elevation FLOAT CHECK (elevation BETWEEN -1000 AND 25000) -- elevation above MSL in feet
+	elevation FLOAT CHECK (elevation BETWEEN -413 AND 4000) -- elevation above MSL in meters
+								-- Dead Sea and above La Paz
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
 	('site', 'name',   0,True, 'Site Name', 'text', 'Crab Shack'),
@@ -237,7 +238,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder
 INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
 	('site', 'latitude',3,'Latitude (deg)', '-56.75', -90, 90, 1e-6),
 	('site', 'longitude',4,'Longitude (deg)', '125.66', -180, 180, 1e-6),
-	('site', 'elevation',5,'Elevation (m)', '432', -600, 8000, 1);
+	('site', 'elevation',5,'Elevation (m)', '432', -413, 4000, 0.1);
 
 -- Controler information
 DROP TABLE IF EXISTS controller CASCADE;
