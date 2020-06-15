@@ -52,7 +52,7 @@ foreach ($db->loadRows($sql, [$tbl]) as $row) { // Walk through any secondary ta
 	$key1 = $row['secondaryvalue'];
 	$sql = "DELETE FROM $stbl WHERE $key0=?;"; // Remove current entries
 	if (!$db->query($sql, [$id])) exit(dbMsg($db, 'Delete secondary'));
-	array_push($comment, 'Deleted $key0=$id row from $stbl');
+	array_push($comment, "Deleted $key0=$id row from $stbl");
 	if (!empty($_POST[$stbl])) { // Something to be stored
 		$qSecondary = true;
 		$sql = "INSERT INTO $stbl ($key0, $key1) VALUES(?,?);";
@@ -60,7 +60,7 @@ foreach ($db->loadRows($sql, [$tbl]) as $row) { // Walk through any secondary ta
 			if (!$db->query($sql, [$id, $sid])) {
 				exit(dbMsg($db, "Failed to insert secondary"));
 			}
-			array_push($comment, 'Insert into $stbl $key0=$id $key1=$sid');
+			array_push($comment, "Insert into $stbl $key0=$id $key1=$sid");
 		}
 	}
 }
