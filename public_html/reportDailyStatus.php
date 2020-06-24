@@ -10,7 +10,7 @@ header('X-Accel-Buffering: no');
 class DB {
 	private $errors = array(); // Error stack
 	private $daysBack = 9; # Days from current date to look backwards
-	private $daysFwd = 9; # Days from current date to look forwards
+	private $daysFwd =  9; # Days from current date to look forwards
 
 	function __construct(string $dbName) {
 		$db = new PDO("pgsql:dbname=$dbName;");
@@ -29,7 +29,7 @@ class DB {
 			. "tOn::DATE AS date,"
 			. "ROUND(EXTRACT(EPOCH FROM SUM(tOff-tOn))) AS dt"
 			. " FROM action"
-			. " WHERE tOn<=(CURRENT_DATE + INTERVAL '" . $this->daysFwd . " days')"
+			. " WHERE tOn<=(CURRENT_DATE + INTERVAL '" . ($this->daysFwd+1) . " days')"
 			. " AND (cmdOn IS NOT NULL)"
 			. " GROUP BY sensor,date;");
 
