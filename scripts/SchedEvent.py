@@ -15,13 +15,13 @@ class Event:
     def __init__(self, t:datetime.datetime, qOn:bool, act:Action) -> None:
         self.t = t
         self.qOn = qOn
-        if act is None: return # A dummy event for bisect's usage
-        self.sensor = act.sensor # Sensor for use getting constraints, flows, curents, ...
-        self.stn = act.stn # Program station for use getting constraints, flows, curents, ...
         self.sensors = set() # Active sensors keyed on sensor.id
         self.ctl = {} # Active sensors keyed on sensor.controller
         self.poc = {} # Active sensors keyed on sensor.poc
         self.pgm = {} # Active sensors keyed on stn.program
+        if act is None: return # A dummy event for bisect's usage
+        self.sensor = act.sensor # Sensor for use getting constraints, flows, curents, ...
+        self.stn = act.stn # Program station for use getting constraints, flows, curents, ...
         if qOn: self.__insertMySelf()
 
     def __repr__(self) -> str:
