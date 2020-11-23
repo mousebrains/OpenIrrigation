@@ -15,6 +15,16 @@ from SchedProgram import Programs
 from SchedProgramStation import ProgramStations
 from SchedTimeline import Timeline
 
+def prettyTimes(tOn:datetime.datetime, tOff:datetime.datetime) -> tuple:
+    dateStr = "%Y-%m-%d "
+    timeStr = "%H:%M:%S"
+    sOn = tOn.strftime(dateStr + timeStr + ("" if tOn.microsecond == 0 else ".%f"))
+    sOff= tOff.strftime(
+            ("" if tOn.date() == tOff.date() else dateStr) +
+            timeStr + 
+            ("" if tOff.microsecond == 0 else ".%f"))
+    return (sOn, sOff)
+
 def runScheduler(args:argparse.ArgumentParser, logger:logging.Logger) -> bool:
     with DB.DB(args.db, logger) as db, db.cursor() as cur:
         if doit(cur, args, logger):
@@ -60,7 +70,8 @@ def doit(cur:psycopg2.extensions.cursor,
         for pgm in programs: # Walk through programs in priority order
             (sTime, eTime) = pgm.mkTime(sDate)
             if sTime is None: continue # Nothing to do for this program on this sDate
-            logger.info('Program %s sTime=%s eTime=%s', pgm.name, sTime, eTime)
+            (sOn, sOff) = prettyTimes(sTime, eTime)
+            logger.info('Program %s %s to %s', pgm.name, sOn, sOff)
             if (minTime > sTime) and not args.noAdjustStime:
                 logger.info('Raising sTime from %s to %s', sTime, minTime)
                 sTime = minTime
@@ -112,13 +123,19 @@ def nearPending(cur:psycopg2.extensions.cursor, timeline:Timeline,
     sql+= " AND (tOn>%s);"
 
     cur.execute(sql, (minTime,)) # Remove future rows from action
-    logger.info('nearPending deleted %s rows after %s', cur.statusmessage, minTime)
+    logger.info('nearPending %s rows after %s', cur.statusmessage, minTime)
 
     # Everything left will be treated as pending
-    sql = "SELECT tOn,tOff,sensor,program,pgmStn,pgmDate FROM action"
+    sql = "SELECT"
+    sql+= " tOn,tOff,action.sensor,action.program,action.pgmStn,action.pgmDate"
+    sql+= ",program.name,station.name"
+    sql+= " FROM action"
+    sql+= " INNER JOIN program ON program.id=action.program"
+    sql+= " INNER JOIN pgmStn ON pgmStn.id=action.pgmStn"
+    sql+= " INNER JOIN station ON station.id=pgmStn.station"
     sql+= " WHERE cmd=0;"
     cur.execute(sql) # The actions which are running or will before tThreshold
     for row in cur:
         timeline.existing(row[0], row[1], row[2], row[3], row[4], row[5])
-        logger.info("nearPending sensor=%s program=%s pgmStn=%s pgmDate=%s tOn=%s tOff=%s",
-                row[2], row[3], row[4], row[5], row[0], row[1])
+        (tOn, tOff) = prettyTimes(row[0], row[1])
+        logger.info("nearPending %s(%s) %s to %s pgmDate=%s", row[7], row[6], tOn, tOff, row[5])

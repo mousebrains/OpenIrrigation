@@ -21,6 +21,7 @@ class ProgramStations(dict):
         sql+= "pgmstn.id,pgmstn.program,pgmstn.station,pgmstn.runTime,pgmstn.qSingle"
         sql+= ",webList.key"
         sql+= ",program.maxStations,program.maxFlow"
+        sql+= ",program.name"
         sql+= " FROM pgmstn"
         sql+= " INNER JOIN webList ON webList.id=pgmstn.mode"
         sql+= " INNER JOIN program ON program.id=pgmstn.program"
@@ -47,6 +48,7 @@ class ProgramStation:
         (self.id, self.program, stationID, runTime, self.qSingle
                 , onOff
                 , self.pgmMaxStations, self.pgmMaxFlow
+                , self.pgmName
                 ) = row
         self.logger = logger
         self.qOn = onOff == 'on'
