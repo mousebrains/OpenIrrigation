@@ -92,7 +92,7 @@ function adjustColors(data) {
 	OI_clearTimeouts(); // Shutdown any existing timeouts
 
 	all2Clear.forEach(function(x) {
-		$('#' + x).css('background-color', '#000000');
+		$('#' + x).css('background-color', '');
 		$('#a' + x).css('display', 'inline');
 		$('#b' + x).css('display', 'none');
 		$('#tt' + x).html('Nada');
