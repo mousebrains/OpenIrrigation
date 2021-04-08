@@ -5,8 +5,6 @@ function mkMsg(bool $flag, string $msg) {
 	return json_encode(['success' => $flag, 'messge' => $msg]);
 }
 
-function dbMsg($db, string $msg) {return mkMsg(false, $msg . ", " . $db->lastError());}
-
 require_once 'php/DB1.php';
 
 $_POST['codigo'] = "69";
