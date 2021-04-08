@@ -11,7 +11,28 @@ import argparse
 import datetime
 import DB
 import Notify
+import re
 from SchedMain import runScheduler
+
+def prettyWoke(reply:str, db:DB.DB) -> str:
+    a = []
+    for item in reply:
+        b = re.fullmatch(r"Manual insertion\((\d+)\)", item)
+        if b is None: # Not a station insertion
+            a.append(item)
+            continue
+        try:
+            stnID = b[1]
+            sql = "SELECT name FROM station WHERE id=%s;"
+            cur = db.cursor()
+            cur.execute(sql, (stnID,))
+            name = None
+            for row in cur: name = row[0]
+            a.append("Manual insertion {}::{}".format(stnID, name))
+        except:
+            a.append(item)
+    db.close()
+    return ", ".join(a)
 
 parser = argparse.ArgumentParser(description='OpenIrrigation scheduler')
 grp = parser.add_argument_group('Testing related options')
@@ -73,10 +94,10 @@ try:
             db.updateState(myName, msg)
             db.close() # Should be a while before I'm needed again
             reply = listener.fetch(dt.total_seconds())
-            if reply:
-                logger.info('Woke up due to notification(s), %s', reply)
+            if reply: # Run triggered by notification
+                logger.info("Woke up due to notification(s), %s", prettyWoke(reply, db))
                 db.updateState(myName, 'Starting notification {}'.format(reply))
-            else:
+            else: # Run triggered by timeout
                 db.updateState(myName, 'Starting')
         logger.info('Starting scheduler run')
         runScheduler(args, logger)
