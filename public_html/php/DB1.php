@@ -77,6 +77,27 @@ class DB {
 		foreach ($a as $row) { array_push($rows, $row['col']); }
 		return $rows;
 	}
+
+	function chgLog(string $addr, string $msg) {
+		$sql = "INSERT INTO changeLog (ipAddr,description) VALUES(?,?);";
+		$stmt = $this->prepare($sql);
+		$stmt->execute([$addr, $msg]);
+	}
+
+	function mkMsg(bool $flag, string $msg) {
+		$addr = array_key_exists("REMOTE_ADDR", $_SERVER) ? 
+			$_SERVER["REMOTE_ADDR"] : "GotMe";
+		$fn = array_key_exists("SCRIPT_NAME", $_SERVER) ? 
+			basename($_SERVER["SCRIPT_NAME"]) : "GotMe";
+		$sql = "INSERT INTO changeLog (ipAddr,description) VALUES(?,?);";
+		$stmt = $this->prepare($sql);
+		$stmt->execute([$addr, "$msg, $fn"]);
+		return json_encode(["success" => $flag, "message" => $msg]);
+	}
+
+	function dbMsg(string $msg) {
+		return $this->mkMsg(false, $msg . ", " . $this->getError());
+	}
 } // DB
 
 $dbName = 'irrigation'; // Database name
