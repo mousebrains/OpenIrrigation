@@ -126,13 +126,17 @@ def nearPending(cur:psycopg2.extensions.cursor, timeline:Timeline,
     logger.info('nearPending %s rows after %s', cur.statusmessage, minTime)
 
     # Everything left will be treated as pending
+    # INNER JOIN is only if a match on both side, i.e. intersection
+    # LEFT JOIN is if the LHS is valid but the RHS may or may not be
+    # LEFT JOIN is needed for manual values who have been removed from PgmStn
+    #
     sql = "SELECT"
     sql+= " tOn,tOff,action.sensor,action.program,action.pgmStn,action.pgmDate"
     sql+= ",program.name,station.name"
     sql+= " FROM action"
     sql+= " INNER JOIN program ON program.id=action.program"
-    sql+= " INNER JOIN pgmStn ON pgmStn.id=action.pgmStn"
-    sql+= " INNER JOIN station ON station.id=pgmStn.station"
+    sql+= " LEFT JOIN pgmStn ON pgmStn.id=action.pgmStn"
+    sql+= " LEFT JOIN station ON station.id=pgmStn.station"
     sql+= " WHERE cmd=0;"
     cur.execute(sql) # The actions which are running or will before tThreshold
     for row in cur:
