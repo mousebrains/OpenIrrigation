@@ -113,7 +113,7 @@ class Fetcher(MyBaseThread):
             return None
         except Exception as e:
             self.logger.error('Unexpected exception fetching %s', url)
-            raise (e)
+            raise e
         return None
 
     def parsePage(self, page:str, codigoToIndex:dict) -> list:
@@ -164,9 +164,9 @@ class Fetcher(MyBaseThread):
                     try:
                         val = float(items[i])
                         rows.append((t, stations[i-1], codigos[i-1], val))
-                    except:
+                    except (ValueError, TypeError):
                         continue
-            except:
+            except (ValueError, IndexError):
                 state = 0
                 rows = []
                 continue

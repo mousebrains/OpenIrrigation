@@ -26,6 +26,7 @@ import logging
 import logging.handlers
 import argparse
 import psycopg2
+from psycopg2 import sql
 import datetime
 from pathlib import Path
 import subprocess
@@ -51,13 +52,13 @@ class BufferingSMTPHandler(logging.handlers.BufferingHandler):
         s = smtplib.SMTP(self.args.smtphost, self.args.smtpport)
         s.send_message(msg)
         s.quit()
-      except:
+      except Exception:
         self.handleError(None)
       self.buffer = []
 
 def doRsync(dirname, args, logger):
-  args = ["/usr/bin/rsync", "--archive", "--quiet", dirname.as_posix(), args.rsyncto]
-  a = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+  cmd = ["/usr/bin/rsync", "--archive", "--quiet", dirname.as_posix(), args.rsyncto]
+  a = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
   a = str(a.stdout, 'utf-8')
   if len(a) > 0:
     logger.warning(a)
@@ -112,15 +113,19 @@ def getTableNames(cur, ktables, logger):
 
 def saveMonthly(cur, tbl, dirname, tname, logger):
   # Dump data through 21 days ago
-  now = datetime.datetime.utcnow()
+  now = datetime.datetime.now(datetime.timezone.utc)
   maxdate = now - \
-            datetime.timedelta(days=21, 
-                               microseconds=now.microsecond, 
-                               seconds=now.second, 
+            datetime.timedelta(days=21,
+                               microseconds=now.microsecond,
+                               seconds=now.second,
                                minutes=now.minute)
 
-  cur.execute("SELECT min({}),max({}) FROM {} WHERE {}<'{}';".format(
-              tname, tname, tbl, tname, maxdate))
+  col = sql.Identifier(tname)
+  table = sql.Identifier(tbl)
+  cur.execute(
+      sql.SQL("SELECT min({col}),max({col}) FROM {tbl} WHERE {col} < %s;").format(
+          col=col, tbl=table),
+      (maxdate,))
   (stime,etime) = cur.fetchone()
 
   if stime is None: # No records
@@ -130,18 +135,17 @@ def saveMonthly(cur, tbl, dirname, tname, logger):
   etime = etime.replace(microsecond=0, second=0, minute=0) + datetime.timedelta(hours=1)
 
   fn = dirname.joinpath("{}.{}.{}.csv".format(tbl, stime.isoformat(), etime.isoformat()))
-  
+
   logger.info('Dumping %s', fn)
 
   # Copy rows that are before maxdate into a CSV file and delete them from
   # the database
 
-  cur.execute("COPY (DELETE FROM {} ".format(tbl) \
-            + "WHERE {}>='{}' ".format(tname, stime.isoformat()) \
-            + "AND {}<'{}'".format(tname,etime.isoformat()) \
-            + " RETURNING *) " \
-            + " TO '{}' ".format(fn) \
-            + " WITH (FORMAT 'csv', HEADER TRUE);")
+  cur.execute(
+      sql.SQL("COPY (DELETE FROM {tbl} WHERE {col} >= %s AND {col} < %s RETURNING *)"
+              " TO %s WITH (FORMAT 'csv', HEADER TRUE);").format(
+          tbl=table, col=col),
+      (stime, etime, fn.as_posix()))
 
 def mkHandler(ch, qVerbose, level):
   ch.setLevel(logging.DEBUG if qVerbose else level)
@@ -251,5 +255,5 @@ try:
 
   if args.rsyncto is not None:
     doRsync(dirname, args, logger)
-except:
+except Exception:
   logger.exception(str(args))

@@ -113,7 +113,7 @@ class Serial(MyBaseThread):
             if not c:
                 self.logger.warning('src=%s, expecting SYNC but timed out', src)
             else:
-                self.logger.warning('src=%s, expecting SYNC but got %s', c, src)
+                self.logger.warning('src=%s, expecting SYNC but got %s', src, c)
             return (None, None) # No reply
         t0 = time.time() # Time of sync
         msg = self.readFixed(0.1, 2) # Get length of message

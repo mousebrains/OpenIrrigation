@@ -17,10 +17,10 @@ from DB import DB
 def __toNum(val: str):
     try: # Try and convert to an integer
         return int(val)
-    except: # Failed, so now try a float
+    except (ValueError, TypeError): # Failed, so now try a float
         try:
             return float(val)
-        except: # Failed, so return the string
+        except (ValueError, TypeError): # Failed, so return the string
             return val.strip()
 
 def __decode(val: str): 

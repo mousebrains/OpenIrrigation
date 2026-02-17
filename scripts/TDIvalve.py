@@ -249,7 +249,7 @@ class ValveOps(MyBaseThread):
             for row in cur:
                 self.logger.info('ON: %s to %s %s,%s', row[0], row[1], row[2], row[3]);
         except Exception as e:
-            self.logger.exception('Error executing %s (%s,%s)', sql, a)
+            self.logger.exception('Error executing %s (%s,)', sql, (self.controller,))
 
     def dbExec(self, cur:psycopg2.extensions.cursor, sql:str, args:list) -> bool:
         try:

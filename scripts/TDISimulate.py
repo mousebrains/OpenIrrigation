@@ -249,7 +249,7 @@ class TDISimul(MyBaseThread):
     def convert2Hex(self, codigo, body, item):
         try:
             return int(str(item, 'utf-8'), 16)
-        except:
+        except Exception:
             self.logger.warning('Error converting %s to an hex number for %s', item, codigo + body)
         return self.cmdZ(codigo, body, 0)
 
