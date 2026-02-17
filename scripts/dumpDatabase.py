@@ -25,8 +25,8 @@ import sys
 import logging
 import logging.handlers
 import argparse
-import psycopg2
-from psycopg2 import sql
+import psycopg
+from psycopg import sql
 import datetime
 from pathlib import Path
 import subprocess
@@ -241,7 +241,7 @@ try:
   saveSchema(dirname, args.db, logger)
   toSave = []
 
-  with psycopg2.connect("dbname=" + args.db) as conn, conn.cursor() as cur:
+  with psycopg.connect("dbname=" + args.db) as conn, conn.cursor() as cur:
     tables = getTableNames(cur, knownTables, logger)
     for key in tables:
       val = tables[key]

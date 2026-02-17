@@ -4,21 +4,20 @@
 #
 
 from collections import OrderedDict
-import datetime 
-import psycopg2 
-import psycopg2.extras 
+import datetime
+import psycopg
+from psycopg import sql as sql_module
+from psycopg.rows import dict_row
 import argparse
 
 class Value:
-    def __init__(self, val):
+    def __init__(self, val, conn=None):
         if val is None:
             self.val = "NULL"
         elif isinstance(val, str) and not val.isnumeric():
-            self.val = str(psycopg2.extensions.QuotedString(val))
-        elif isinstance(val, datetime.datetime) \
-             or isinstance(val, datetime.date) \
-             or isinstance(val, datetime.time):
-            self.val = str(psycopg2.extensions.QuotedString(str(val)))
+            self.val = sql_module.Literal(val).as_string(conn)
+        elif isinstance(val, (datetime.datetime, datetime.date, datetime.time)):
+            self.val = sql_module.Literal(str(val)).as_string(conn)
         else:
             self.val = str(val)
 
@@ -31,7 +30,7 @@ class KeyValue(dict):
         with db.cursor() as cur:
             cur.execute(sql)
             for row in cur:
-                self[row[0]] = Value(row[1])
+                self[row[0]] = Value(row[1], db)
 
 class Info:
     def __init__(self, db):
@@ -131,7 +130,7 @@ def mkSpecial(row, fields):
 
 
 def getBasic(db, fields, sql, comment, tbl):
-    with db.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+    with db.cursor(row_factory=dict_row) as cur:
         entries = []
         cur.execute(sql)
         for row in cur:
@@ -139,7 +138,7 @@ def getBasic(db, fields, sql, comment, tbl):
         outputEntries(comment, tbl + "(" + ",".join(fields) + ")", entries)
 
 def getSpecial(db, fields, sFields, sql, comment, tbl):
-    with db.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+    with db.cursor(row_factory=dict_row) as cur:
         entries = []
         cur.execute(sql)
         for row in cur:
@@ -297,7 +296,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--db', help='database name', required=True)
 args = parser.parse_args()
 
-with psycopg2.connect(dbname=args.db) as db:
+with psycopg.connect(dbname=args.db) as db:
     info = Info(db)
     print('-- Generated', datetime.datetime.now())
     getSoil(db)

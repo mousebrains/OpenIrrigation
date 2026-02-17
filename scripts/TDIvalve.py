@@ -3,7 +3,7 @@
 from MyBaseThread import MyBaseThread
 from TDIbase import MessageHandler,parseZee
 import DB
-import psycopg2
+import psycopg
 import argparse
 import logging
 import serial
@@ -95,7 +95,7 @@ class ValveOps(MyBaseThread):
         return time.time() + 3600 # We should be woken up by a notification on changes sooner
 
 
-    def chkZee(self, cur:psycopg2.extensions.cursor, msg:str, t:float, reply:str) -> bool:
+    def chkZee(self, cur:psycopg.Cursor, msg:str, t:float, reply:str) -> bool:
         if reply and (len(reply) > 1) and (reply[1:2] == b'Z'):
             args = parseZee(reply, self.logger)
             if args:
@@ -108,7 +108,7 @@ class ValveOps(MyBaseThread):
             return True
         return False
 
-    def valveOn(self, cmdID:int, addr:int, name:str, cur:psycopg2.extensions.cursor) -> bool:
+    def valveOn(self, cmdID:int, addr:int, name:str, cur:psycopg.Cursor) -> bool:
         """ Turn a valve on """
         sqlOkay = 'SELECT command_on_done(%s,%s,%s,%s,%s,%s);'
         sqlFail = 'SELECT command_on_failed(%s,%s);'
@@ -148,7 +148,7 @@ class ValveOps(MyBaseThread):
         self.dbExec(cur, sqlFail, (cmdID,-2))
         return False
 
-    def valveOff(self, cmdID:int, addr:int, name:str, cur:psycopg2.extensions.cursor) -> bool:
+    def valveOff(self, cmdID:int, addr:int, name:str, cur:psycopg.Cursor) -> bool:
         """ Turn a valve off """
         sqlOkay = 'SELECT command_off_done(%s,%s,%s);'
         sqlFail = 'SELECT command_off_failed(%s,%s);'
@@ -180,7 +180,7 @@ class ValveOps(MyBaseThread):
         self.logger.info('Failed to turn off %s(%s) cmdID=%s', name, addr, cmdID)
         self.dbExec(cur, sqlFail, (cmdID,-3))
 
-    def valveTest(self, cmdID:int, addr:int, name:str, cur:psycopg2.extensions.cursor) -> bool:
+    def valveTest(self, cmdID:int, addr:int, name:str, cur:psycopg.Cursor) -> bool:
         """ Run a valve test """
         sqlOkay = 'SELECT command_tee_done(%s,%s,%s,%s,%s,%s);'
         sqlFail = 'SELECT command_tee_failed(%s,%s);'
@@ -221,7 +221,7 @@ class ValveOps(MyBaseThread):
                 name, addr, args[1], args[2], args[3])
         return True
 
-    def onInfo(self, cur:psycopg2.extensions.cursor, addr:int) -> tuple:
+    def onInfo(self, cur:psycopg.Cursor, addr:int) -> tuple:
         """ Get the earliest on time for an addr and the number of stations on for a controller """
         sql = 'SELECT action_time_on(%s, %s), action_number_on(%s);'
         a = (self.controller, addr, self.controller)
@@ -233,7 +233,7 @@ class ValveOps(MyBaseThread):
             self.logger.exception('Error executing %s (%s,%s)', sql, a)
         return (None, None)
 
-    def onStations(self, cur:psycopg2.extensions.cursor) -> None:
+    def onStations(self, cur:psycopg.Cursor) -> None:
         """ Spit out all stations which are on for this controller """
         sql = 'SELECT tOn,tOff,station.name,program.name' \
                 + ' FROM action' \
@@ -248,11 +248,11 @@ class ValveOps(MyBaseThread):
         except Exception:
             self.logger.exception('Error executing %s (%s,)', sql, (self.controller,))
 
-    def dbExec(self, cur:psycopg2.extensions.cursor, sql:str, args:list) -> bool:
+    def dbExec(self, cur:psycopg.Cursor, sql:str, args:list) -> bool:
         try:
             self.logger.debug('dbExec %s %s', sql, args)
             cur.execute(sql, args)
-            cur.execute('COMMIT;')
+            self.db.commit()
             return True
         except Exception:
             self.logger.exception('Unable to execute %s %s', sql, args)
