@@ -25,8 +25,8 @@ class Serial(MyBaseThread):
             return None
         msg = s.read(max(1,min(n, s.in_waiting)))
         if msg: return msg # Not an EOF
-        raise(Exception('EOF while reading from serial port n={} in_waiting={}'.format(
-            n, s.in_waiting)))
+        raise Exception('EOF while reading from serial port n={} in_waiting={}'.format(
+            n, s.in_waiting))
 
     def readFixed(self, dt:float, n:int) -> bytes:
         """ Read serial port with a timeout via the select mechanism a message of n bytes """
@@ -39,8 +39,8 @@ class Serial(MyBaseThread):
                 return bytes(msg) if len(msg) else None
             a = s.read(max(1,min(n - len(msg), s.in_waiting)))
             if not a: # EOF
-                raise(Exception('EOF while reading from serial port n={} in_waiting={}, msg={}'
-                    .format(n, nWaiting, msg)))
+                raise Exception('EOF while reading from serial port n={} in_waiting={}, msg={}'
+                    .format(n, s.in_waiting, msg))
             msg += a
             now = time.time()
         return bytes(msg) if len(msg) else None

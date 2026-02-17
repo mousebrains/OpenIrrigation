@@ -111,7 +111,7 @@ class PgmDateTime:
         """ Choose which date close to use """
         if action == 'dow': return DateDOW(dows)
         if action == 'nDays': return DateDays(nDays, refDate)
-        raise(Exception('Unsupported date action={}'.format(action)))
+        raise Exception('Unsupported date action={}'.format(action))
 
 class DateDOW:
     """ Return a date if it is in the set of day-of-weeks """

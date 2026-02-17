@@ -93,7 +93,7 @@ def doit(cur:psycopg2.extensions.cursor,
         logger.info('%s', act)
         try: # In case pgmstn was deleted for a manual station
             cur.execute(sql, (act.tOn, act.tOff, act.sensor.id, act.pgm, act.pgmStn, act.pgmDate))
-        except:
+        except Exception:
             logger.warning('Unable to insert %s', act);
             cur.execute('SELECT program,pgmstn,tOn,tOff FROM action WHERE sensor=%s ORDER BY tOn;',
                     (act.sensor.id,))

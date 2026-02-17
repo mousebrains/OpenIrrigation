@@ -63,7 +63,7 @@ class ValveOps(MyBaseThread):
                             tNext = min(a, tNext) if tNext else a
                         except Exception as e:
                             self.logger.warning('Error converting %s to a float, %s',
-                                    notifications[i], e.reason)
+                                    notifications[i], e)
     
     def doPending(self) -> None:
         """ Get the pending events and execute them """

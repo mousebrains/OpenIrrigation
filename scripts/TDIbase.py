@@ -67,7 +67,7 @@ class MessageHandler: # construct/deconstruct TDI messages
         if self.qString:
             try:
                 return (str(msg[2:], 'utf-8'),) # A single string argument
-            except:
+            except Exception:
                 self.logger.warning('Unable to convert %s to a string', msg[2:])
                 return (msg[2:],) # A single bytes argument
 
@@ -84,7 +84,7 @@ class MessageHandler: # construct/deconstruct TDI messages
             try:
                 val = int(str(c, 'utf-8'), 16)
                 args.append(val)
-            except:
+            except Exception:
                 self.logger.error('Error converting %s to a hex number in %s', c, msg)
                 return None
         return args
@@ -97,17 +97,17 @@ def parseZee(msg, logger): # Parse and build reply for 1Z messages
     try:
         args.append(str(msg[2:3], 'utf-8'))
     except Exception as e:
-        logger.warning('Unable to convert %s to a string in %s, %s', msg[2:3], msg, e.reason)
+        logger.warning('Unable to convert %s to a string in %s, %s', msg[2:3], msg, e)
         return None
     try:
         args.append(int(str(msg[3:5], 'utf-8'), 16))
     except Exception as e:
-        logger.warning('Unable to convert %s in %s, %s', msg[3:5], msg, e.reason)
+        logger.warning('Unable to convert %s in %s, %s', msg[3:5], msg, e)
         return None
     try:
         args.append(int(str(msg[5:], 'utf-8'), 16))
     except Exception as e:
-        logger.warning('Unable to convert %s in %s, %s', msg[5:], msg, e.reason)
+        logger.warning('Unable to convert %s in %s, %s', msg[5:], msg, e)
         return None
     return args
 

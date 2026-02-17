@@ -24,12 +24,12 @@ def prettyWoke(reply:str, db:DB.DB) -> str:
         try:
             stnID = b[1]
             sql = "SELECT name FROM station WHERE id=%s;"
-            cur = db.cursor()
-            cur.execute(sql, (stnID,))
-            name = None
-            for row in cur: name = row[0]
+            with db.cursor() as cur:
+                cur.execute(sql, (stnID,))
+                name = None
+                for row in cur: name = row[0]
             a.append("Manual insertion {}::{}".format(stnID, name))
-        except:
+        except Exception:
             a.append(item)
     db.close()
     return ", ".join(a)

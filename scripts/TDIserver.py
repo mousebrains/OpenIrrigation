@@ -60,7 +60,7 @@ try:
 
     e = qExcept.get() # wait on a thread to throw an exception
     qExcept.task_done()
-    raise(e)
+    raise e
 except Exception as e:
     logger.exception('Thread exception')
     db = DB.DB(args.db, logger)

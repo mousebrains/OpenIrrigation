@@ -68,8 +68,8 @@ class Fetcher(MyBaseThread):
             if qForce: break
             self.logger.info('Sleeping until %s', tNext)
             time.sleep((tNext - datetime.datetime.now()).total_seconds()) # sleep until tNext
-        raise(Exception('Broke out of while loop'))
-    
+        raise Exception('Broke out of while loop')
+
     def sleepTillTime(self, tod:list) -> None:
         now = datetime.datetime.now()
         tNow = now.time()
@@ -188,7 +188,7 @@ class Fetcher(MyBaseThread):
                 db.commit()
             self.logger.info('Stored %d rows', len(rows))
             return True
-        except Exceptions as e:
+        except Exception as e:
             self.logger.exception('Unable to store %s rows', len(rows))
         return False
 
@@ -230,7 +230,7 @@ class Stats(MyBaseThread):
             db.updateState(myName, 'Sleeping until {}'.format(tNext))
             db.close() # It will be a while until I need a connection again
             if qForce: break
-        raise(Exception('Broke out of while loop'))
+        raise Exception('Broke out of while loop')
 
 
 
@@ -264,7 +264,7 @@ try:
 
     e = qExcept.get()
     qExcept.task_done()
-    raise(e)
+    raise e
 except Exception as e:
     logger.exception('Thread Exception')
     db = DB.DB(args.db, logger)

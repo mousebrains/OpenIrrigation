@@ -90,7 +90,7 @@ class TDISimul(MyBaseThread):
                 return None
             (ifds, ofds, efds) = select.select([fd], [], [], t1 - now)
             c = os.read(fd, 1) # Read a byte
-            if not len(c): raise('EOF while reading character')
+            if not len(c): raise Exception('EOF while reading character')
             msg += c
         return bytes(msg)
 
@@ -113,7 +113,7 @@ class TDISimul(MyBaseThread):
         logger = self.logger
 
         c = os.read(self.fd, 1) # Read a byte which should be a SYNC character
-        if not c: raise(Exception('EOF while reading'))
+        if not c: raise Exception('EOF while reading')
         if c != SYNC: # Didn't find a sync
             logger.warning('Unexpected character %s', c)
             return None
@@ -126,7 +126,7 @@ class TDISimul(MyBaseThread):
         try: # Try converting to string and integer
             msgLen = int(str(hdr, 'utf-8'), 16) # msg length
         except Exception as e:
-            logger.warning('Error converting length %s to a hex number, %s', hdr, e.reason)
+            logger.warning('Error converting length %s to a hex number, %s', hdr, e)
             os.write(fd, NAK) # Send back a NAK, there was a problem
             return None
         body = self.read(t1, msgLen) # Read message body

@@ -176,15 +176,12 @@ class DB:
             return True
         except psycopg2.Warning as e:
             self.logger.exception('Unable to execute to %s, sql=%s args=%s', self.dbName, sql, args)
-            # self.logger.warning('Unable to execute to %s, sql=%s args=%s, %s',
-                    # self.dbName, sql, args, e.diag.message_primary)
         except psycopg2.Error as e:
             self.logger.exception('Unable to execute to %s, sql=%s args=%s', self.dbName, sql, args)
-            # self.logger.error('Unable to execute to %s, sql=%s args=%s, %s',
-                    # self.dbName, sql, args, e.diag.message_primary)
         except Exception as e:
             self.logger.exception('Unable to execute to %s, sql=%s args=%s', self.dbName, sql, args)
-            # self.logger.error('Unable to execute sql=%s args=%s, %s', sql, args, e.reason)
+        finally:
+            cur.close()
         return False
 
     def updateState(self, name:str, msg:str) -> None:
