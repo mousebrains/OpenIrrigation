@@ -3,7 +3,7 @@
 # filled in with controller, poc, and station information
 #
 # Since there is a one to one mapping from stations to sensors
-# this is equivalent to stations but indexed by sensor.id, 
+# this is equivalent to stations but indexed by sensor.id,
 # minus non-station sensors, i.e. masterValve, flow, ...
 #
 # Oct-2019, Pat Welch, pat@mousebrains

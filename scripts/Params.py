@@ -7,9 +7,9 @@
 #
 # If value has a comma an array is created.
 #
-# Each value is converted to 
-#            an integer, 
-#            a float, or 
+# Each value is converted to
+#            an integer,
+#            a float, or
 #            leading/trailing blanks are stripped off
 
 from DB import DB
@@ -23,8 +23,8 @@ def __toNum(val: str):
         except (ValueError, TypeError): # Failed, so return the string
             return val.strip()
 
-def __decode(val: str): 
-    """ Try and split str by commas and convert elements to numbers 
+def __decode(val: str):
+    """ Try and split str by commas and convert elements to numbers
         if all the elements are numeric """
 
     if ',' not in val: return __toNum(val.strip())

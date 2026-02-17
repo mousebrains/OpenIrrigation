@@ -44,12 +44,12 @@ class MessageHandler: # construct/deconstruct TDI messages
             return self.cmd # Body is empty
 
         if not self.argLimit: # There are args, but there shouldn't be
-            self.logger.error('For cmd=%s args, %s, is not consistent with argLimit %s', 
+            self.logger.error('For cmd=%s args, %s, is not consistent with argLimit %s',
                     self.cmd, args, self.argLimit)
             return None # shouldn't have any arguments
 
         if len(args) != len(self.argLimit): # Number of args is wrong
-            self.logger.error('For cmd=%s args, %s, is not consistent with argLimit %s', 
+            self.logger.error('For cmd=%s args, %s, is not consistent with argLimit %s',
                     self.cmd, args, self.argLimit)
             return None # Incorrect number of args
 
@@ -57,7 +57,7 @@ class MessageHandler: # construct/deconstruct TDI messages
         for i in range(len(self.argLimit)):
             val = args[i]
             if val >= self.argLimit[i]:
-                self.logger.error('For cmd=%s i=%s value is out of range, %s >= %s', 
+                self.logger.error('For cmd=%s i=%s value is out of range, %s >= %s',
                         self.cmd, i, val, self.argLimit[i])
                 return None
             msg += self.argFormat[i].format(val)
@@ -72,7 +72,7 @@ class MessageHandler: # construct/deconstruct TDI messages
                 return (msg[2:],) # A single bytes argument
 
         if len(msg) != self.replyLength:
-            self.logger.error('Number of bytes(%s) in reply=%s is not correct, expected %s', 
+            self.logger.error('Number of bytes(%s) in reply=%s is not correct, expected %s',
                     len(msg), msg, self.replyLength)
             return None
 
@@ -111,10 +111,10 @@ def parseZee(msg, logger): # Parse and build reply for 1Z messages
         return None
     return args
 
-    
+
 
 class Base(MyBaseThread):
-    def __init__(self, logger, qExcept, serial, dbOut, label, dt, cmd, argInfo, replyInfo, 
+    def __init__(self, logger, qExcept, serial, dbOut, label, dt, cmd, argInfo, replyInfo,
             sql, zeeSQL):
         MyBaseThread.__init__(self, label, logger, qExcept)
         self.serial = serial
@@ -137,7 +137,7 @@ class Base(MyBaseThread):
         if not args: args = [None]
 
         initialDelay = random.uniform(30,60) # Startup delay
-        logger.info('Starting dt=%s cmd=%s initial sleep %s seconds', 
+        logger.info('Starting dt=%s cmd=%s initial sleep %s seconds',
                 dt, self.msgHandler.cmd, initialDelay)
         time.sleep(initialDelay)
         while True:
@@ -150,13 +150,22 @@ class Base(MyBaseThread):
                     logger.warning('Timeout for %s', msg)
                 elif (len(reply) > 1) and (reply[1:2] == b'Z'):
                     replyArgs = parseZee(reply, logger)
-                    logger.warning('Zee reply, %s, for %s, SQL=%s args=%s', 
+                    logger.warning('Zee reply, %s, for %s, SQL=%s args=%s',
                             reply, msg, self.zeeSQL, replyArgs)
                     if replyArgs: self.dbOut.put(self.zeeSQL, t, replyArgs)
                 else:
                     replyArgs = msgHandler.procReplyArgs(reply)
                     if replyArgs is not None: self.procReply(t, reply, replyArgs)
-                time.sleep(dt);  # Wait a bit to send message
+                time.sleep(dt)  # Wait a bit to send message
+
+    def _procReplyChanged(self, t, reply, args, channel, val):
+        """Store a reading only if the value changed for this channel."""
+        if (channel not in self.previous) or (self.previous[channel] != val):
+            self.previous[channel] = val
+            self.logger.debug('Fresh reading t=%s %s %s', t, reply, args)
+            self.dbOut.put(self.msgHandler.sql, t, [channel, val])
+        else:
+            self.logger.debug('Dropped reading t=%s %s %s', t, reply, args)
 
     def procReply(self, t, reply, args):
         if not self.previous or (self.previous != args): # Fresh reading

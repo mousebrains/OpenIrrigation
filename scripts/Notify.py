@@ -23,7 +23,7 @@ def onException(args:argparse.ArgumentParser, logger:logging.Logger) -> None:
             cur.execute(sql)
             for row in cur: email.append(row[0])
         db.close()
-        if email: 
+        if email:
             fqdn = socket.getfqdn()
             item = os.path.basename(sys.argv[0])
             cnt = "command line:\n" + ' '.join(sys.argv)
@@ -35,5 +35,5 @@ def onException(args:argparse.ArgumentParser, logger:logging.Logger) -> None:
             s = smtplib.SMTP('localhost')
             s.send_message(msg)
             s.quit()
-    except Exception as e:
+    except Exception:
         logger.exception('Exception processing during Notify')

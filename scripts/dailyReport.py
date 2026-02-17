@@ -7,13 +7,11 @@
 #
 
 import MyLogger
-import Params
 import Notify
 import DB
 import argparse
 import datetime
 import time
-import sys
 import getpass
 import socket
 from smtplib import SMTP
@@ -63,7 +61,7 @@ def mkRows(historical:dict, pending:dict) -> list:
     for key in sorted(set(list(historical.keys()) + list(pending.keys()))):
         row = [key]
         pgm = []
-        if key in historical: 
+        if key in historical:
             dt = datetime.timedelta(seconds=0)
             for item in historical[key]:
                 pgm.append(item[0])
@@ -71,7 +69,7 @@ def mkRows(historical:dict, pending:dict) -> list:
             row.append(str(dt))
         else:
             row.append(None)
-        if key in pending: 
+        if key in pending:
             dt = datetime.timedelta(seconds=0)
             for item in pending[key]:
                 pgm.append(item[0])
@@ -186,6 +184,6 @@ try:
         logger.info('Sleeping until %s', now + dt)
         time.sleep(dt.total_seconds())
 
-except Exception as e:
+except Exception:
     logger.exception('Unexpected exception')
     Notify.onException(args, logger)

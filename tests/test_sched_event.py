@@ -1,6 +1,5 @@
 """Tests for SchedEvent: Event construction, state management, and constraint checks."""
 
-import pytest
 import datetime
 from SchedEvent import Event
 from SchedAction import Action

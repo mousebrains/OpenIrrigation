@@ -1,21 +1,20 @@
 #! /usr/bin/python3
 #
-# This script is designed to run as a service and 
+# This script is designed to run as a service and
 # fetch information from the AgriMet system
 #
 #
 import MyLogger
 import logging # For typing
-import DB 
+import DB
 import Notify
-import psycopg2.extras 
+import psycopg2.extras
 import Params
 import argparse
 import urllib.request
 import time
 import datetime
 from MyBaseThread import MyBaseThread
-import math
 import queue
 import re
 import os.path
@@ -24,7 +23,7 @@ myName = 'AgriMet'
 
 class Fetcher(MyBaseThread):
     """ Fetch an AgriMET webpage, parse it, and store it in the ET table """
-    def __init__(self, args:argparse.ArgumentParser, params:dict, 
+    def __init__(self, args:argparse.ArgumentParser, params:dict,
             logger:logging.Logger, qExcept:queue.Queue):
         MyBaseThread.__init__(self, 'Fetcher', logger, qExcept)
         self.args = args # command line arguments
@@ -39,7 +38,7 @@ class Fetcher(MyBaseThread):
         extraBack = datetime.timedelta(days=self.params['extraBack'])
         tod = [] # Times of day
         for t in self.params['times'].split(','):
-            tod.append(datetime.time.fromisoformat(t)) 
+            tod.append(datetime.time.fromisoformat(t))
 
         qForce = self.args.force
         logger('Starting, qForce=%s, earliest=%s, tod=%s, extra=%s',
@@ -59,10 +58,10 @@ class Fetcher(MyBaseThread):
             if page:
                 codigos = self.codigoToIndex(db)
                 rows = self.parsePage(page, codigos)
-                if rows: 
+                if rows:
                     db.updateState(myName, 'Loaded {} rows'.format(len(rows)))
                     self.storeRows(db, rows)
-            tNext = self.sleepTillTime(tod) 
+            tNext = self.sleepTillTime(tod)
             db.updateState(myName, 'Sleeping until {}'.format(tNext))
             db.close() # I'm going to be a while before I need the connection again, so close it
             if qForce: break
@@ -78,7 +77,7 @@ class Fetcher(MyBaseThread):
             if t > tNow:
                 tNext = datetime.datetime.combine(now.date(), t)
                 break
-        if tNext is None: 
+        if tNext is None:
             tNext = datetime.datetime.combine(now.date() + datetime.timedelta(days=1), tod[0])
         return tNext
 
@@ -138,16 +137,16 @@ class Fetcher(MyBaseThread):
                 if line == "BEGIN DATA":
                     state += 1
             if state == 1: # Should be a DATE line with fields
-                if not re.match('\s*DATE\s*,', line):
+                if not re.match(r'\s*DATE\s*,', line):
                     state = 0
                     rows = []
                     self.logger.warning('Expected a DATE header line, but got a %s line', line)
                     continue
-                items = re.split('\s*,\s*', line)
+                items = re.split(r'\s*,\s*', line)
                 for i in range(1,len(items)):
-                    parts = re.split('\s+', items[i])
+                    parts = re.split(r'\s+', items[i])
                     if len(parts) != 2:
-                        self.logger.warning('Field, %s, does not contain station code format', 
+                        self.logger.warning('Field, %s, does not contain station code format',
                                 items[i])
                         state = 0
                         rows = []
@@ -156,7 +155,7 @@ class Fetcher(MyBaseThread):
                     codigos.append(codigoToIndex[parts[1]] if parts[1] in codigoToIndex else None)
                 state += 1
                 continue
-            items = re.split('\s*,\s*', line)
+            items = re.split(r'\s*,\s*', line)
             try:
                 t = datetime.datetime.strptime(items[0], '%m/%d/%Y').date()
                 for i in range(1, len(items)):
@@ -173,7 +172,7 @@ class Fetcher(MyBaseThread):
 
         self.logger.info('Found %s rows', len(rows))
         return rows if len(rows) else None
-                
+
 
 
     def storeRows(self, db:DB.DB, rows:list) -> bool:
@@ -188,7 +187,7 @@ class Fetcher(MyBaseThread):
                 db.commit()
             self.logger.info('Stored %d rows', len(rows))
             return True
-        except Exception as e:
+        except Exception:
             self.logger.exception('Unable to store %s rows', len(rows))
         return False
 

@@ -3,27 +3,16 @@
 #
 # Oct-2019, Pat Welch, pat@mousebrains.com
 #
-from MyBaseThread import MyBaseThread
 import DB
 import datetime
 import psycopg2.extensions
 import argparse
 import logging
-import queue
 from SchedSensor import Sensors
 from SchedProgram import Programs
 from SchedProgramStation import ProgramStations
 from SchedTimeline import Timeline
-
-def prettyTimes(tOn:datetime.datetime, tOff:datetime.datetime) -> tuple:
-    dateStr = "%Y-%m-%d "
-    timeStr = "%H:%M:%S"
-    sOn = tOn.strftime(dateStr + timeStr + ("" if tOn.microsecond == 0 else ".%f"))
-    sOff= tOff.strftime(
-            ("" if tOn.date() == tOff.date() else dateStr) +
-            timeStr + 
-            ("" if tOff.microsecond == 0 else ".%f"))
-    return (sOn, sOff)
+from SchedUtils import prettyTimes
 
 def runScheduler(args:argparse.ArgumentParser, logger:logging.Logger) -> bool:
     with DB.DB(args.db, logger) as db, db.cursor() as cur:
@@ -94,7 +83,7 @@ def doit(cur:psycopg2.extensions.cursor,
         try: # In case pgmstn was deleted for a manual station
             cur.execute(sql, (act.tOn, act.tOff, act.sensor.id, act.pgm, act.pgmStn, act.pgmDate))
         except Exception:
-            logger.warning('Unable to insert %s', act);
+            logger.warning('Unable to insert %s', act)
             cur.execute('SELECT program,pgmstn,tOn,tOff FROM action WHERE sensor=%s ORDER BY tOn;',
                     (act.sensor.id,))
             for row in cur:

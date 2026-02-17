@@ -65,13 +65,13 @@ def doRsync(dirname, args, logger):
 
 def saveSchema(dirname, dbname, logger):
   fn = dirname.joinpath(dbname + ".schema.sql")
-  args = ["/usr/bin/pg_dump", 
-          "--file=" + fn.as_posix(), 
-          "--format=p", 
-          "--schema=public", 
-          "--schema-only", 
-          "--no-owner", 
-          "--no-privileges", 
+  args = ["/usr/bin/pg_dump",
+          "--file=" + fn.as_posix(),
+          "--format=p",
+          "--schema=public",
+          "--schema-only",
+          "--no-owner",
+          "--no-privileges",
           "--dbname=" + dbname]
   logger.info("Saving schema %s", fn)
   a = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -81,10 +81,10 @@ def saveSchema(dirname, dbname, logger):
 
 def saveData(dirname, dbname, names, logger):
   fn = dirname.joinpath(dbname + ".data.sql")
-  args = ["/usr/bin/pg_dump", 
-          "--file=" + fn.as_posix(), 
-          "--format=p", 
-          "--data-only", 
+  args = ["/usr/bin/pg_dump",
+          "--file=" + fn.as_posix(),
+          "--format=p",
+          "--data-only",
           "--dbname=" + dbname]
   for name in names:
     args.append("--table=" + name)
@@ -94,7 +94,7 @@ def saveData(dirname, dbname, names, logger):
   a = str(a.stdout, 'utf-8')
   if len(a) > 0:
     logger.info(a)
-  
+
 
 def getTableNames(cur, ktables, logger):
   cur.execute("SELECT table_name FROM information_schema.tables"
@@ -138,14 +138,19 @@ def saveMonthly(cur, tbl, dirname, tname, logger):
 
   logger.info('Dumping %s', fn)
 
-  # Copy rows that are before maxdate into a CSV file and delete them from
-  # the database
+  # First copy matching rows to file, then delete them.
+  # If the COPY fails, the DELETE never runs, keeping data safe.
 
   cur.execute(
-      sql.SQL("COPY (DELETE FROM {tbl} WHERE {col} >= %s AND {col} < %s RETURNING *)"
+      sql.SQL("COPY (SELECT * FROM {tbl} WHERE {col} >= %s AND {col} < %s)"
               " TO %s WITH (FORMAT 'csv', HEADER TRUE);").format(
           tbl=table, col=col),
       (stime, etime, fn.as_posix()))
+
+  cur.execute(
+      sql.SQL("DELETE FROM {tbl} WHERE {col} >= %s AND {col} < %s;").format(
+          tbl=table, col=col),
+      (stime, etime))
 
 def mkHandler(ch, qVerbose, level):
   ch.setLevel(logging.DEBUG if qVerbose else level)
@@ -204,7 +209,7 @@ parser.add_argument('--log', help='logfile, if not specified use the console')
 parser.add_argument('--logMaxSize', help='logfile maximum size in bytes', default=1000000, type=int)
 parser.add_argument('--logBackupCount', help='logfile maximum size in bytes', default=3, type=int)
 parser.add_argument('--email', help='Who to email log to', nargs='*')
-parser.add_argument('--sentFrom', help='Who is sending the email', 
+parser.add_argument('--sentFrom', help='Who is sending the email',
                     default= getpass.getuser() + "@" + socket.gethostname())
 parser.add_argument('--smtphost', help='SMTP hostname', default='localhost')
 parser.add_argument('--smtpport', help='SMTP port', default=25, type=int)
@@ -222,7 +227,7 @@ if args.log is None and args.email is None:
   logger.addHandler(mkHandler(logging.StreamHandler(), args.verbose, logging.INFO))
 
 if args.log is not None:
-  ch = logging.handlers.RotatingFileHandler(filename=args.log, 
+  ch = logging.handlers.RotatingFileHandler(filename=args.log,
                                             maxBytes=args.logMaxSize,
                                             backupCount=args.logBackupCount)
   logger.addHandler(mkHandler(ch, args.verbose, logging.INFO))

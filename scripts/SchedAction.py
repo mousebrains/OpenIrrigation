@@ -7,7 +7,7 @@
 import datetime
 from SchedSensor import Sensor
 from SchedProgramStation import ProgramStation
-import SchedMain 
+from SchedUtils import prettyTimes
 
 class Action:
     """ An action object which is used in the Timeline class """
@@ -22,7 +22,7 @@ class Action:
         self.stn = stn
 
     def __repr__(self) -> str:
-        (tOn, tOff) = SchedMain.prettyTimes(self.tOn, self.tOff)
+        (tOn, tOff) = prettyTimes(self.tOn, self.tOff)
         msg = 'Action {}({})'.format(self.sensor.name, self.stn.pgmName)
         msg+= ' {} to {}'.format(tOn, tOff)
         msg+= ' pgmDate={}'.format(self.pgmDate)

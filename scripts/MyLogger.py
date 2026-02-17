@@ -17,7 +17,7 @@ def addArgs(parser: argparse.ArgumentParser):
     grp.add_argument('--backupcount', type=int, default=7, metavar='count',
             help='Number of logfiles to keep')
 
-def mkLogger(args:argparse.ArgumentParser, name:str, 
+def mkLogger(args:argparse.ArgumentParser, name:str,
         fmt:str=None) -> logging.Logger:
     """ Make a logging object based on the options in args """
     logger = logging.getLogger(name)
@@ -27,7 +27,7 @@ def mkLogger(args:argparse.ArgumentParser, name:str,
         ch = logging.StreamHandler()
     else:
         ch = logging.handlers.RotatingFileHandler(args.logfile,
-                                maxBytes=args.maxlogsize, 
+                                maxBytes=args.maxlogsize,
                                 backupCount=args.backupcount)
 
     ch.setLevel(logging.DEBUG if args.verbose else logging.INFO)

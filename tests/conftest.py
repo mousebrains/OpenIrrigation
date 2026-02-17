@@ -7,6 +7,9 @@ def _install_psycopg2_stub():
         pg2 = types.ModuleType('psycopg2')
         pg2.extensions = types.ModuleType('psycopg2.extensions')
         pg2.extras = types.ModuleType('psycopg2.extras')
+        pg2.sql = types.ModuleType('psycopg2.sql')
+        pg2.sql.SQL = lambda fmt: type('SQL', (), {'format': lambda self, *a, **kw: ''})()
+        pg2.sql.Identifier = lambda name: name
         pg2.extensions.cursor = type('cursor', (), {})
         pg2.extensions.connection = type('connection', (), {})
         pg2.Warning = Warning
@@ -14,6 +17,7 @@ def _install_psycopg2_stub():
         sys.modules['psycopg2'] = pg2
         sys.modules['psycopg2.extensions'] = pg2.extensions
         sys.modules['psycopg2.extras'] = pg2.extras
+        sys.modules['psycopg2.sql'] = pg2.sql
 
 _install_psycopg2_stub()
 
@@ -24,14 +28,16 @@ if 'astral' not in sys.modules:
     sys.modules['astral'] = astral_mod
 
 # Provide stub for other missing modules
-for _mod_name in ('serial', 'Notify', 'Params', 'MyLogger'):
+for _mod_name in ('serial', 'Notify', 'Params'):
     if _mod_name not in sys.modules:
         sys.modules[_mod_name] = types.ModuleType(_mod_name)
 
-# Pre-import SchedMain to resolve the circular import:
-#   SchedAction -> SchedMain -> SchedTimeline -> SchedAction
-# In production this works because scheduler.py imports SchedMain first.
-import SchedMain  # noqa: E402
+# MyLogger stub needs addArgs and mkLogger to support AgriMet module-level code
+if 'MyLogger' not in sys.modules:
+    _ml = types.ModuleType('MyLogger')
+    _ml.addArgs = lambda parser: None
+    _ml.mkLogger = lambda args, name: __import__('logging').getLogger(name)
+    sys.modules['MyLogger'] = _ml
 
 import pytest
 import logging

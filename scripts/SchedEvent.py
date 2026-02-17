@@ -5,7 +5,6 @@
 #
 
 import datetime
-import logging
 from SchedAction import Action
 from SchedSensor import Sensor
 from SchedProgramStation import ProgramStation

@@ -7,7 +7,7 @@ import logging
 import queue
 
 class MyBaseThread(threading.Thread):
-    """ 
+    """
     Extension of threading.Thread
 
     Arguments:

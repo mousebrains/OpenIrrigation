@@ -13,8 +13,9 @@ import select
 import psycopg2
 import psycopg2.extensions
 import psycopg2.extras # For dictionary cursor
+from psycopg2 import sql
 
-class DB: 
+class DB:
     """ Open a database connection and execute statements
 
     Args:
@@ -51,7 +52,7 @@ class DB:
         """ When testing the boolean value of this class """
         return self.db is not None and not self.db.closed
 
-    def count(self) -> int: 
+    def count(self) -> int:
         """ Return open/close count """
         return self.connectCount
 
@@ -63,17 +64,12 @@ class DB:
             self.db = None
             self.connectCount += 1
             return True
-        except psycopg2.Warning as e:
+        except psycopg2.Warning:
             self.logger.exception('Unable to close connection to %s', self.dbName)
-            # self.logger.warning('Unable to close connection to %s, %s',
-                    # self.dbName, e.diag.message_primary)
-        except psycopg2.Error as e:
+        except psycopg2.Error:
             self.logger.exception('Unable to close connection to %s', self.dbName)
-            # self.logger.error('Unable to close connection to %s, %s',
-                    # self.dbName, e.diag.message_primary)
-        except Exception as e:
+        except Exception:
             self.logger.exception('Unable to close connection to %s', self.dbName)
-            # self.logger.error('Unable to close connection to %s, %s', self.dbName, e.reason)
         self.db = None
         return False
 
@@ -87,41 +83,31 @@ class DB:
                 self.db = psycopg2.connect(dbname=self.dbName)
                 self.connectCount += 1
                 return self.db
-            except psycopg2.Warning as e:
+            except psycopg2.Warning:
                 self.logger.exception('Unable to open connection to %s', self.dbName)
-                # self.logger.warning('Unable to open connection to %s, %s',
-                        # self.dbName, e.diag.message_primary)
-            except psycopg2.Error as e:
+            except psycopg2.Error:
                 self.logger.exception('Unable to open connection to %s', self.dbName)
-                # self.logger.error('Unable to open connection to %s, %s',
-                        # self.dbName, e.diag.message_primary)
-            except Exception as e:
+            except Exception:
                 self.logger.exception('Unable to open connection to %s', self.dbName)
-                # self.logger.error('Unable to open connection to %s, %s', self.dbName, e.reason)
             self.close() # Drop the connection and try again
             if (i+1) < nTries: time.sleep(5) # Wait 5 seconds between attempts
         return None # Failed
 
     def cursor(self, qDict:bool =False) -> psycopg2.extensions.cursor:
         """ Get an cursor object for the database"""
-        for i in range(2): # Try twice
+        for _i in range(2): # Try twice
             db = self.open() # get an active database connection
             if not db: return None # Couldn't get an active connection and I've already tried twice
             try:
                 if qDict: # Create a cursor with a dictionary like cursor
                     return db.cursor(cursor_factory=psycopg2.extras.DictCursor)
                 return db.cursor() # Create a non-dictionary cursor
-            except psycopg2.Warning as e:
+            except psycopg2.Warning:
                 self.logger.exception('Unable to create a cursor for %s', self.dbName)
-                # self.logger.warning('Unable to create a cursor for %s, %s',
-                        # self.dbName, e.diag.message_primary)
-            except psycopg2.Error as e:
+            except psycopg2.Error:
                 self.logger.exception('Unable to create a cursor for %s', self.dbName)
-                # self.logger.error('Unable to create a cursor for %s, %s',
-                        # self.dbName, e.diag.message_primary)
-            except Exception as e:
+            except Exception:
                 self.logger.exception('Unable to create a cursor for %s', self.dbName)
-                # self.logger.error('Unable to create a cursor for %s, %s', self.dbName, e.reason)
             self.close() # Drop the connection and try again
         return None # Couldn't get a cursor
 
@@ -132,17 +118,12 @@ class DB:
         try:
             db.commit() # Commit any changes that are pending
             return True
-        except psycopg2.Warning as e:
+        except psycopg2.Warning:
             self.logger.exception('Unable to commit to %s', self.dbName)
-            # self.logger.warning('Unable to commit to %s, %s',
-                    # self.dbName, e.diag.message_primary)
-        except psycopg2.Error as e:
+        except psycopg2.Error:
             self.logger.exception('Unable to commit to %s', self.dbName)
-            # self.logger.error('Unable to commit to %s, %s',
-                    # self.dbName, e.diag.message_primary)
-        except Exception as e:
+        except Exception:
             self.logger.exception('Unable to commit updates for %s', self.dbName)
-            # self.logger.error('Unable to commit updates for %s, %s', self.dbName, e.reason)
         return False
 
     def rollback(self) -> bool:
@@ -152,17 +133,12 @@ class DB:
         try:
             db.rollback() # Commit any changes that are pending
             return True
-        except psycopg2.Warning as e:
+        except psycopg2.Warning:
             self.logger.exception('Unable to rollback to %s', self.dbName)
-            # self.logger.warning('Unable to rollback to %s, %s',
-                    # self.dbName, e.diag.message_primary)
-        except psycopg2.Error as e:
+        except psycopg2.Error:
             self.logger.exception('Unable to rollback to %s', self.dbName)
-            # self.logger.error('Unable to rollback to %s, %s',
-                    # self.dbName, e.diag.message_primary)
-        except Exception as e:
+        except Exception:
             self.logger.exception('Unable to rollback updates for %s', self.dbName)
-            # self.logger.error('Unable to rollback updates for %s, %s', self.dbName, e.reason)
         return False
 
     def execute(self, sql: str, args: list = None) -> bool:
@@ -174,11 +150,11 @@ class DB:
         try:
             cur.execute(sql, args)
             return True
-        except psycopg2.Warning as e:
+        except psycopg2.Warning:
             self.logger.exception('Unable to execute to %s, sql=%s args=%s', self.dbName, sql, args)
-        except psycopg2.Error as e:
+        except psycopg2.Error:
             self.logger.exception('Unable to execute to %s, sql=%s args=%s', self.dbName, sql, args)
-        except Exception as e:
+        except Exception:
             self.logger.exception('Unable to execute to %s, sql=%s args=%s', self.dbName, sql, args)
         finally:
             cur.close()
@@ -199,13 +175,13 @@ class DBout(MyBaseThread):
         self.controller = args.controller
         self.queue = queue.Queue() # SQL+args to be written to DB
 
-    def put(self, sql:str , t:float, args:list) -> None: 
+    def put(self, sql:str , t:float, args:list) -> None:
         """ Store data in my queue """
-        self.queue.put((sql, t, args)) 
+        self.queue.put((sql, t, args))
 
-    def putShort(self, sql:str , args:list) -> None: 
+    def putShort(self, sql:str , args:list) -> None:
         """ Store data in my queue """
-        self.queue.put((sql, args)) 
+        self.queue.put((sql, args))
 
     def runMain(self) -> None:
         """ Called on thread start """
@@ -244,19 +220,24 @@ class Listen:
         self.dbName = dbName
         self.channel = channel
         self.logger = logger
-        self.count = 0 
+        self.count = 0
         self.db = DB(dbName, logger)
         self.__setup()
 
     def __setup(self) -> bool:
         """ Open a database connect, execute the listen command, and commit it """
         self.logger.info('Opening listen for %s to %s', self.channel, self.dbName)
-        if not self.db.execute('LISTEN {};'.format(self.channel)): return False
-        if not self.db.commit(): return False
-        self.count = self.db.count()
-        return True
+        try:
+            with self.db.cursor() as cur:
+                cur.execute(sql.SQL('LISTEN {}').format(sql.Identifier(self.channel)))
+            if not self.db.commit(): return False
+            self.count = self.db.count()
+            return True
+        except Exception:
+            self.logger.exception('Unable to setup LISTEN for %s', self.channel)
+            return False
 
-    def fetch(self, timeout: float) -> list: 
+    def fetch(self, timeout: float) -> list:
         """ Wait for a notification or a timeout """
         if not self.db or (self.count != self.db.count()): # Not opened or reconnected
             self.__setup() # issue LISTEN command
@@ -277,16 +258,10 @@ class Listen:
                 notify = conn.notifies.pop(0)
                 notifications.append(notify.payload)
             return notifications
-        except psycopg2.Warning as e:
+        except psycopg2.Warning:
             self.logger.exception('Unable to listen to channel %s in %s', self.channel, self.dbName)
-            # self.logger.warning('Unable to rollback to %s, %s',
-                    # self.dbName, e.diag.message_primary)
-        except psycopg2.Error as e:
+        except psycopg2.Error:
             self.logger.exception('Unable to listen to channel %s in %s', self.channel, self.dbName)
-            # self.logger.error('Unable to rollback to %s, %s',
-                    # self.dbName, e.diag.message_primary)
-        except Exception as e:
+        except Exception:
             self.logger.exception('Unable to listen to channel %s in %s', self.channel, self.dbName)
-            # self.logger.error('Unable to gt notifications on %s for %s, %s', 
-                    # self.dbName, self.channel, e.reason)
         return None

@@ -1,7 +1,7 @@
 # Do valve operations for the TDI controller
 
 from MyBaseThread import MyBaseThread
-from TDIbase import Base, MessageHandler,parseZee
+from TDIbase import MessageHandler,parseZee
 import DB
 import psycopg2
 import argparse
@@ -11,9 +11,9 @@ import queue
 import time
 import datetime
 
-class ValveOps(MyBaseThread): 
+class ValveOps(MyBaseThread):
     """ Interface to database to drive valve related operations """
-    def __init__(self, args:argparse.ArgumentParser, params:dict, 
+    def __init__(self, args:argparse.ArgumentParser, params:dict,
             logger:logging.Logger, qExcept:queue.Queue, serial:serial.Serial):
         MyBaseThread.__init__(self, 'ValveOps', logger, qExcept)
         self.args = args # Command line arguments
@@ -40,12 +40,9 @@ class ValveOps(MyBaseThread):
                 self.controller = row[0]
 
     def runMain(self) -> None: # Called on thread start
-        logger = self.logger
-        serial = self.serial
 
-        db = self.db
         self.setController()
-        self.logger.info('Starting db=%s channel=%s controller=%s', 
+        self.logger.info('Starting db=%s channel=%s controller=%s',
                 self.dbName, self.listenName, self.controller)
         tNext = self.nextTime() # Get the next wakeup time
         while True:
@@ -64,7 +61,7 @@ class ValveOps(MyBaseThread):
                         except Exception as e:
                             self.logger.warning('Error converting %s to a float, %s',
                                     notifications[i], e)
-    
+
     def doPending(self) -> None:
         """ Get the pending events and execute them """
         with self.db.cursor() as cur0, self.db.cursor() as cur1:
@@ -120,9 +117,9 @@ class ValveOps(MyBaseThread):
         if tOn:
             logger.warning('%s(%s) was turned on at %s', name, addr, tOn)
         elif nOn >= self.maxStations:  # Not on but over limit
-            logger.warning('Maximum number of stations, %s, reached for %s(%s), nOn=%s', 
+            logger.warning('Maximum number of stations, %s, reached for %s(%s), nOn=%s',
                     self.maxStations, name, addr, nOn)
-            self.onStations(cur);
+            self.onStations(cur)
             self.dbExec(cur, sqlFail, (cmdID,-1))
             return False
         else:
@@ -135,12 +132,12 @@ class ValveOps(MyBaseThread):
                 self.logger.warning('Valve on attempt %s failed in sending %s', i, msg)
                 continue
             t = datetime.datetime.fromtimestamp(t).astimezone()
-            if self.chkZee(cur, msg, t, reply): 
+            if self.chkZee(cur, msg, t, reply):
                 self.logger.warning('Valve on recieved a Zee message, %s, in reply to %s',
                         reply, msg)
                 continue
             args = self.msgOn.procReplyArgs(reply)
-            if args is None: 
+            if args is None:
                 self.logger.warning('Valve on error processing %s, in reply to %s', reply, msg)
                 continue # error processing reply message, so try again
             a = [cmdID, t]
@@ -190,7 +187,7 @@ class ValveOps(MyBaseThread):
         logger = self.logger
         (tOn, nOn)  = self.onInfo(cur, addr)
         if tOn:
-            logger.info('Can not test %s(%s) since it has been on since %s', 
+            logger.info('Can not test %s(%s) since it has been on since %s',
                     name, addr, tOn.isoformat())
             self.dbExec(cur, sqlFail, (cmdID,-4))
             return False
@@ -207,12 +204,12 @@ class ValveOps(MyBaseThread):
             self.dbExec(cur, sqlFail, (cmdID,-6))
             return False
         t = datetime.datetime.fromtimestamp(t).astimezone()
-        if self.chkZee(cur, msg, t, reply): 
+        if self.chkZee(cur, msg, t, reply):
             self.logger.warning('Valve off recieved a Zee message, %s, in reply to %s', reply, msg)
             self.dbExec(cur, sqlFail, (cmdID,-7))
             return False
         args = self.msgTest.procReplyArgs(reply)
-        if args is None: 
+        if args is None:
             logger.warning('No reply to %s', msg)
             self.dbExec(cur, sqlFail, (cmdID,-8))
             return False
@@ -220,7 +217,7 @@ class ValveOps(MyBaseThread):
             logger.info('ValveTest Failed')
             self.dbExec(cur, sqlFail, (cmdID,-9))
             return False
-        logger.info('ValveTest passed %s(%s), pre=%s peak=%s post=%s', 
+        logger.info('ValveTest passed %s(%s), pre=%s peak=%s post=%s',
                 name, addr, args[1], args[2], args[3])
         return True
 
@@ -232,7 +229,7 @@ class ValveOps(MyBaseThread):
             cur.execute(sql, a)
             for row in cur:
                 return (row[0], row[1])
-        except Exception as e:
+        except Exception:
             self.logger.exception('Error executing %s (%s,%s)', sql, a)
         return (None, None)
 
@@ -245,10 +242,10 @@ class ValveOps(MyBaseThread):
                 + ' WHERE cmdOn is NULL AND controller=%s' \
                 + ' ORDER BY tOn,tOff;'
         try:
-            cur.execute(sql, (self.controller,));
+            cur.execute(sql, (self.controller,))
             for row in cur:
-                self.logger.info('ON: %s to %s %s,%s', row[0], row[1], row[2], row[3]);
-        except Exception as e:
+                self.logger.info('ON: %s to %s %s,%s', row[0], row[1], row[2], row[3])
+        except Exception:
             self.logger.exception('Error executing %s (%s,)', sql, (self.controller,))
 
     def dbExec(self, cur:psycopg2.extensions.cursor, sql:str, args:list) -> bool:
@@ -257,6 +254,6 @@ class ValveOps(MyBaseThread):
             cur.execute(sql, args)
             cur.execute('COMMIT;')
             return True
-        except Exception as e:
+        except Exception:
             self.logger.exception('Unable to execute %s %s', sql, args)
         return False

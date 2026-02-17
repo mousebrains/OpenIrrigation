@@ -10,7 +10,7 @@
 import psycopg2.extensions
 import logging
 from datetime import timedelta
-from SchedSensor import Sensors, Sensor
+from SchedSensor import Sensors
 
 class ProgramStations(dict):
     """ Dictionary of program stations indexed by pgmstn.id """
@@ -52,7 +52,7 @@ class ProgramStation:
                 ) = row
         self.logger = logger
         self.qOn = onOff == 'on'
-        if runTime == None:
+        if runTime is None:
             logger.error('pgmStn(%s) runTime is None, row=%s', stationID, row)
             return
 

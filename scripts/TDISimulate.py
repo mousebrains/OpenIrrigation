@@ -14,7 +14,6 @@ import select
 import random
 import math
 from MyBaseThread import MyBaseThread
-import sys
 
 def mkSerial(args, params, logger, qExcept):
     if args.simulate:
@@ -47,9 +46,9 @@ def mkArgs(parser): # Add simulation related options
 
     grp = parser.add_argument_group('Simulation related options')
     grp.add_argument('--simResend', action='store_true', help='Should not ACK messages be resent?')
-    grp.add_argument('--simNAK', type=float, default=0, 
+    grp.add_argument('--simNAK', type=float, default=0,
             help='controller fraction to send NAKs for good sentences')
-    grp.add_argument('--simZee', type=float, default=0, 
+    grp.add_argument('--simZee', type=float, default=0,
             help='Fraction of time to send a 1Z response')
     grp.add_argument('--simBad', type=float, default=0,
             help='controller fraction to send bad character in sentence')
@@ -141,7 +140,7 @@ class TDISimul(MyBaseThread):
             return None
         try: # Try converting to string and integer
             csum = int(str(chkSum, 'utf-8'), 16) # check sum
-        except Exception as e:
+        except Exception:
             logger.warning('Error converting checksum %s to a hex number, %s', chkSum, hdr + body)
             os.write(fd, NAK) # Send back a NAK, there was a problem
             return None
@@ -167,8 +166,8 @@ class TDISimul(MyBaseThread):
 
         codigo = msg[0:2]
         body = msg[2:]
-      
-        
+
+
         if self.args.simZee and (self.args.simZee > random.random()): # Generate a 1Z message
             (dt0, dt1, reply) = self.cmdZ(codigo, body, random.randrange(0,3))
             self.logger.info('Generate a random Zee, %s, for %s', reply, codigo + body)
@@ -192,7 +191,6 @@ class TDISimul(MyBaseThread):
         os.write(self.fd, SYNC + self.mkMessage(reply) + b'\r') # Send the message, '\r' extra
 
         c = self.read(time.time() + 1, 1) # Wait for ACK/NAK
-        qOkay = c == ACK # Did I get an ACK back? i.e. message was sent properly
         if c == ACK: # Message sent properly
             return True
         if c is None: # Time out while reading
@@ -205,7 +203,7 @@ class TDISimul(MyBaseThread):
 
     def mkMessage(self, body):
         n = len(body)
-        if self.args.simLenLess and (self.args.simLenLess > random.random()): 
+        if self.args.simLenLess and (self.args.simLenLess > random.random()):
             n = random.randrange(0,n)
             self.logger.info('Reduced length from %s to %s', len(body), n)
         elif self.args.simLenMore and (self.args.simLenMore > random.random()):
@@ -257,7 +255,7 @@ class TDISimul(MyBaseThread):
         a = self.chkLength(0, codigo, body)
         if a is not None: return a
         return (0.05 * (0.5 + random.random()),
-                0.10 * (0.5 + random.random()), 
+                0.10 * (0.5 + random.random()),
                 b'1E00')
 
     def cmdPound(self, codigo, body): # Maximum number of stations
@@ -266,7 +264,7 @@ class TDISimul(MyBaseThread):
         XX = self.convert2Hex(codigo, body, body)
         if not isinstance(XX, int): return XX
         return (0.05 * (0.5 + random.random()),
-                0.05 * (0.5 + random.random()), 
+                0.05 * (0.5 + random.random()),
                 b'1#' + body)
 
     def cmdPathTwo(self, codigo, body, fmt): # Common code for 02 and 0P
@@ -287,7 +285,7 @@ class TDISimul(MyBaseThread):
         dt1 = 0.05 * (0.5 + random.random())
 
         if YY == 0xff:
-            return (dt0, dt1, 
+            return (dt0, dt1,
                     b'12'+body[0:2]+bytes(fmt.format(self.wirePaths[XX]), 'utf-8'))
 
         self.wirePaths[XX] = (YY == 1)
@@ -316,7 +314,7 @@ class TDISimul(MyBaseThread):
         self.sensors[XX] = t
 
         flag = 2 # Never seen
-        if XX == 0: 
+        if XX == 0:
             flag = 4 if dt > 10 else 0 # 0->old reading, 4-> fresh reading
 
         n = len(self.valves)
@@ -327,7 +325,7 @@ class TDISimul(MyBaseThread):
         freq = max(0, (flow / k) - offset)
 
         return (0.05 * (0.5 + random.random()),
-                0.05 * (0.5 + random.random()), 
+                0.05 * (0.5 + random.random()),
                 b'1S' + body + bytes('{:02X}{:04X}'.format(flag, math.floor(freq * 10)), 'utf-8'))
 
     def cmdTest(self, codigo, body): # Test a valve
@@ -340,7 +338,7 @@ class TDISimul(MyBaseThread):
         else:
             (pre, peak, post) = (0, 0, 0)
         return (0.05 * (0.5 + random.random()),
-                0.15 * (0.5 + random.random()), 
+                0.15 * (0.5 + random.random()),
                 b'1T' + bytes('{:02X}{:04X}{:04X}{:04X}'.format(XX, pre, peak, post), 'utf-8'))
 
     def cmdU(self, codigo, body): # Current draw of system
@@ -350,7 +348,7 @@ class TDISimul(MyBaseThread):
         voltage = random.randrange(240, 251) # Voltage * 10
         current = random.randrange(23,31) + math.floor(n * random.uniform(45,55))
         return (0.05 * (0.5 + random.random()),
-                0.15 * (0.5 + random.random()), 
+                0.15 * (0.5 + random.random()),
                 b'1U' + bytes('{:04X}{:04X}'.format(voltage, current), 'utf-8'))
 
     def cmdValveOff(self, codigo, body): # Turn a valve on if not already on
@@ -367,7 +365,7 @@ class TDISimul(MyBaseThread):
             YY = 0
 
         return (0.05 * (0.5 + random.random()),
-                0.25 * (0.5 + random.random()), 
+                0.25 * (0.5 + random.random()),
                 b'1D' + bytes('{:02X}{:02X}'.format(XX, YY), 'utf-8'))
 
     def cmdValveOn(self, codigo, body): # Turn a valve on if not already on
@@ -389,18 +387,18 @@ class TDISimul(MyBaseThread):
             (pre, peak, post) = self.valveInfo[XX]
 
         return (0.05 * (0.5 + random.random()),
-                0.25 * (0.5 + random.random()), 
-                b'1A' + 
+                0.25 * (0.5 + random.random()),
+                b'1A' +
                 bytes('{:02X}{:02X}{:04X}{:04X}{:04X}'.format(XX, ZZ, pre, peak, post), 'utf-8'))
 
     def cmdVersion(self, codigo, body): # Version queury
         a = self.chkLength(0, codigo, body)
         if a is not None: return a
         return (0.05 * (0.5 + random.random()),
-                0.05 * (0.5 + random.random()), 
+                0.05 * (0.5 + random.random()),
                 b'1V3.0b4')
 
     def cmdZ(self, codigo, body, reason): # Unknown sentence, but checksum okay
         return (0.05 * (0.5 + random.random()),
-                0.05 * (0.5 + random.random()), 
+                0.05 * (0.5 + random.random()),
                 b'1Z' + codigo[1:2] + bytes('{:02X}'.format(reason), 'utf-8') + b'00')

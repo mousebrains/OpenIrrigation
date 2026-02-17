@@ -11,7 +11,7 @@ from SchedProgramStation import ProgramStations
 
 class Programs(list):
     """ Collection of active program objects in priority order """
-    def __init__(self, cur:psycopg2.extensions.cursor, stations: ProgramStations, 
+    def __init__(self, cur:psycopg2.extensions.cursor, stations: ProgramStations,
             logger:logging.Logger) -> None:
         """ Grab all the active programs from the database  """
 
@@ -89,7 +89,7 @@ class Program:
 
 class PgmDateTime:
     """ Class to construct a date/time from a program date """
-    def __init__(self, action:str, nDays:int, refDate:datetime.date, dows:list, 
+    def __init__(self, action:str, nDays:int, refDate:datetime.date, dows:list,
             t:datetime.time, mode:str, siteInfo:dict) -> None:
         self.time = self.__mkTime(mode, t, siteInfo)
         self.date = self.__mkDate(action, nDays, refDate, dows)
@@ -138,7 +138,7 @@ class DateDays:
     """ Return a date if it is n days from the ref date else None """
     def __init__(self, nDays:int, refDate:datetime.date):
         self.nDays = nDays
-        self.ref = refDate 
+        self.ref = refDate
 
     def __repr__(self):
         return 'nDays={} ref={}'.format(self.nDays, self.ref.isoformat())
@@ -148,7 +148,7 @@ class DateDays:
         return None if (dt % self.nDays) else d # If zero remainder then good
 
     def mkRefDate(self, d:datetime.date) -> datetime.date:
-        dd = (d - self.ref).days # Days between 
+        dd = (d - self.ref).days # Days between
         return d + datetime.timedelta(days=dd + self.nDays - (dd % self.nDays))
 
 class TimeClock:

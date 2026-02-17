@@ -14,7 +14,7 @@ class Serial(MyBaseThread):
         self.s = s
         self.queue = queue.Queue()
 
-    def put(self, msg:bytes, queue:queue.Queue) -> None: 
+    def put(self, msg:bytes, queue:queue.Queue) -> None:
         """ Send a message """
         self.queue.put((msg, queue))
 
@@ -64,7 +64,7 @@ class Serial(MyBaseThread):
                 if msg is None:
                     logger.error('Empty message, msg=%s q=%s', msg, q)
                     continue
-            except queue.Empty as e:
+            except queue.Empty:
                 continue
             if not self.sendMessage(msg):
                 q.put(None, None)
@@ -78,7 +78,7 @@ class Serial(MyBaseThread):
         NAK = b'\x15' # Not acknowledge
 
         c = self.readFixed(1, 1) # Read ACK/NAK
-        if c == ACK: 
+        if c == ACK:
             self.logger.debug('Sent %s', msg)
             return True
         if not c: # Timeout
@@ -102,7 +102,7 @@ class Serial(MyBaseThread):
         self.s.flush()
         return self.readACK(msg)
 
-    def readMessage(self, src:bytes) -> tuple: 
+    def readMessage(self, src:bytes) -> tuple:
         """ Read a reply to src message """
         SYNC = b'\x16' # Start of a message
         ACK = b'\x06' # Acknowledge
@@ -127,7 +127,7 @@ class Serial(MyBaseThread):
             if n == 0:
                 self.logger.warning('Message length was 0, %s', msg)
                 return (None, None) # Invalid length
-        except Exception as e:
+        except Exception:
             self.s.write(NAK) # Failure for this message
             self.s.flush()
             self.logger.exception('src=%s Unable to convert %s to a number', src, msg)
@@ -136,7 +136,7 @@ class Serial(MyBaseThread):
         if not body or (len(body) != n):
             self.s.write(NAK) # Failure for this message
             self.s.flush()
-            self.logger.warning('src=%s, expecting %s bytes of response body, but got %s', 
+            self.logger.warning('src=%s, expecting %s bytes of response body, but got %s',
                     src, n, body)
             return (None, None) # No body
         chkSum = self.readFixed(0.1, 2) # Get check sum of message
@@ -147,7 +147,7 @@ class Serial(MyBaseThread):
             return (None, None) # Bad checksum
         try: # convert hex digits to length
             csum = int(str(chkSum, 'utf-8'), 16)
-        except Exception as e:
+        except Exception:
             self.s.write(NAK) # Failure for this message
             self.s.flush()
             self.logger.exception('src=%s Unable to convert %s to a number', src, chkSum)
@@ -158,7 +158,7 @@ class Serial(MyBaseThread):
         if (asum & 0xff) != csum:
             self.s.write(NAK) # Failure for this message
             self.s.flush()
-            self.logger.warning('src=%s reply=%s bad checksum, %s', 
+            self.logger.warning('src=%s reply=%s bad checksum, %s',
                     src, msg+body+chkSum, '{:02X}'.format(asum&0xff))
             return (None, None) # Bad checksum
         self.s.write(ACK) # Acknowledge the message was received properly
