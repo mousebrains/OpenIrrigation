@@ -2,6 +2,7 @@
 class DB {
 	private $db = null;
 	private $lastError = null;
+	private string $dbName;
 
 	function __construct(string $dbName) {
 		$this->dbName = $dbName;
@@ -24,7 +25,7 @@ class DB {
 		$db = $this->getDB();
 		$a = $db->prepare($sql);
 		if ($a != false) return $a;
-		$lastError = $db->errorInfo();
+		$this->lastError = $db->errorInfo();
 		return false;
 	}
 
