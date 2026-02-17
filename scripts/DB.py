@@ -256,9 +256,11 @@ class Listen:
             if select.select([self.conn.fileno()], [], [], timeout) == ([],[],[]):
                 return None # Timed out
 
+            # Read pending data from the socket and drain notifications
             notifications = []
-            for notify in self.conn.notifies(timeout=0):
-                notifications.append(notify.payload)
+            self.conn.pgconn.consume_input()
+            while (n := self.conn.pgconn.notifies()) is not None:
+                notifications.append(n.extra.decode('utf-8') if n.extra else '')
             return notifications if notifications else None
         except psycopg.Warning:
             self.logger.exception('Unable to listen to channel %s in %s', self.channel, self.dbName)
