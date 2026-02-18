@@ -3,7 +3,7 @@
 all:
 
 Makefile.params: config
-	@echo You should rebuilt $< since $@ is newer
+	@echo You should rerun $< since it is newer than $@
 
 all install clean: Makefile.params
 	$(MAKE) -C database $@

@@ -19,6 +19,7 @@ require_once 'php/navBar.php';
 <thead><tr><th>Item</th><th>Date</th><th>Message</th></tr></thead>
 <tbody id='messages'></tbody>
 <tfoot><tr><th>Item</th><th>Date</th><th>Message</th></tr></tfoot>
+</table></center>
 <script src=js/processState.js></script>
 </body>
 </html> 

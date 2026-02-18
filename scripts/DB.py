@@ -173,12 +173,14 @@ class DBout(MyBaseThread):
                 a.append(self.controller)
             else: # 2 items
                 (sql, a) = items
-            q.task_done() # Indicate we're done with this task
-            self.logger.debug('sql=%s args=%s', sql, a)
-            if self.db.execute(sql, a): # Execute the SQL
-                self.db.commit() # succeeded, so commit the updates
-            else:
-                self.db.rollback() # failed, so rollback any updates
+            try:
+                self.logger.debug('sql=%s args=%s', sql, a)
+                if self.db.execute(sql, a): # Execute the SQL
+                    self.db.commit() # succeeded, so commit the updates
+                else:
+                    self.db.rollback() # failed, so rollback any updates
+            finally:
+                q.task_done() # Indicate we're done with this task
 
 class Listen:
     """ Listen on a PostgreSQL connection for a notification using the LISTEN SQL extension

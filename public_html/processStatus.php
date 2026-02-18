@@ -43,7 +43,7 @@ $db = new DB($dbName);
 $tPrev = time();
 echo "data: " . json_encode($db->fetchInfo(0)) . "\n\n";
 
-while (True) { # Wait forever
+while (!connection_aborted()) { # Wait until client disconnects
 	if (ob_get_length()) {ob_flush();} // Flush output buffer
 	flush();
 	$notifications = $db->notifications($delay);

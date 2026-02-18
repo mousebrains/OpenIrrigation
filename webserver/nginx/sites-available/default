@@ -41,6 +41,21 @@ server { # HTTPS
 
 	server_name _;
 
+	# Restrict to non-routable networks (IPv4 + IPv6)
+	allow 127.0.0.1;
+	allow 10.0.0.0/8;
+	allow 172.16.0.0/12;
+	allow 192.168.0.0/16;
+	allow ::1;
+	allow fd00::/8;
+	allow fe80::/10;
+	deny all;
+
+	# Security headers
+	add_header X-Content-Type-Options "nosniff" always;
+	add_header X-Frame-Options "DENY" always;
+	add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
 	location / {
 		# First attempt to serve request as file, then
 		# as directory, then fall back to displaying a 404.

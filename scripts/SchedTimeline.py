@@ -176,13 +176,6 @@ class Timeline:
         self.logger.debug('iIE %s st=%s et=%s index=%s n=%s', stn.name, sTime, eTime, index, n)
         self.logger.debug('evt[%s]=%s', index-1, self.events[index-1])
         self.logger.debug('evt[%s]=%s', index, self.events[index])
-        # Look for previous instance of this stn if soak time is not zero
-        if stn.soakTime != datetime.timedelta(seconds=0):
-            tMin = sTime - stn.soakTime
-            for i in range(index,-1,-1):
-                ev = self.events[i]
-                if ev.t < tMin: break
-
         while index < n: # Walk through events from index
             # Find a starting event and time
             (iLeft, tLeft) = self.findLeftSide(index-1, stn, sTime, eTime)

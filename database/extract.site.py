@@ -91,11 +91,11 @@ class Info:
 
     def program(self, id):
         return "(SELECT id FROM program WHERE name={})".format(self.programs[id])
-    
+
     def pgmStn(self, id):
         if id is None: return "NULL"
         return "(SELECT id FROM pgmStn WHERE program={} AND station={})".format(
-                self.program(self.pgmStn2program[id].id()), 
+                self.program(self.pgmStn2program[id].id()),
                 self.station(self.pgmStn2station[id].id()))
 
     def station(self, id):
@@ -147,7 +147,7 @@ def getSoil(db):
     getBasic(db, fields, 'SELECT * FROM soil ORDER BY name;', 'Soil Information', 'soil')
 
 def getCrop(db):
-    fields = ['name', 'plantdate', 'lini', 'ldev', 'lmid', 'llate', 
+    fields = ['name', 'plantdate', 'lini', 'ldev', 'lmid', 'llate',
             'kcinit', 'kcmid', 'kcend', 'height', 'depth', 'mad', 'notes']
     getBasic(db, fields, 'SELECT * FROM crop ORDER BY name;', 'Crop Information', 'crop')
 
@@ -158,7 +158,7 @@ def getUser(db):
 def getEMail(db, info):
     sFields = OrderedDict([('usr', info.user), ('format', info.list)])
     fields = ['email']
-    getSpecial(db, fields, sFields, 'SELECT * FROM email ORDER BY email;', 
+    getSpecial(db, fields, sFields, 'SELECT * FROM email ORDER BY email;',
             'EMail addresses', 'email')
 
 def getEMailReports(db, info):
@@ -183,7 +183,7 @@ def getSensor(db, info):
             'driver', 'addr', 'wirepath', 'make', 'model', 'installed', 'notes']
     getSpecial(db, fields, sFields, 'SELECT * FROM sensor ORDER BY addr;',
             'sensor information', 'sensor')
-            
+
 def getPOC(db, info):
     sFields = OrderedDict([('site', info.site)])
     fields = ['name', 'targetflow', 'maxflow', 'delayon', 'delayoff']
@@ -210,7 +210,7 @@ def getPOCPump(db, info):
 
 def getStation(db, info):
     sFields = OrderedDict([('poc', info.poc), ('sensor', info.sensor)])
-    fields = ['name', 'make', 'model', 'sortorder', 'mincycletime', 'maxcycletime', 
+    fields = ['name', 'make', 'model', 'sortorder', 'mincycletime', 'maxcycletime',
             'soaktime', 'maxcostations', 'measuredflow', 'userflow',
             'lowflowfrac', 'highflowfrac',
             'flowdelayon', 'flowdelayoff']
@@ -220,8 +220,8 @@ def getStation(db, info):
 def getProgram(db, info):
     sFields = OrderedDict([('site', info.site), ('onoff', info.list),
         ('action', info.list), ('startmode', info.list), ('stopmode', info.list)])
-    fields = ['name', 'label', 'priority', 'qhide', 'ndays', 'refdate', 
-            'starttime', 'endtime', 'attractorfrac', 'maxstations',
+    fields = ['name', 'label', 'priority', 'qhide', 'ndays', 'refdate',
+            'starttime', 'endtime', 'maxflow', 'maxstations',
             'etthreshold']
     getSpecial(db, fields, sFields, 'SELECT * FROM program ORDER BY priority,name;',
             'program information', 'program')
@@ -232,7 +232,7 @@ def getProgramDOW(db, info):
             'program/day-of-week information', 'pgmDOW')
 
 def getProgramStation(db, info):
-    sFields = OrderedDict([('program', info.program), ('station', info.station), 
+    sFields = OrderedDict([('program', info.program), ('station', info.station),
         ('mode', info.list)])
     fields = ['runtime', 'priority', 'qsingle']
     getSpecial(db, fields, sFields, 'SELECT * FROM pgmStn ORDER BY program,station;',
@@ -252,7 +252,9 @@ def getHistorical(db, info):
     sql = "SELECT * FROM historical ORDER BY tOn,sensor;"
     getSpecial(db, fields, sFields, sql, "Historical information", "historical")
 
-def logBasic(db, info, tbl, fields=['timestamp', 'value'], sFields = None):
+def logBasic(db, info, tbl, fields=None, sFields = None):
+    if fields is None:
+        fields = ['timestamp', 'value']
     if sFields is None:
         sFields = [('controller', info.ctl)]
     sFields = OrderedDict(sFields)

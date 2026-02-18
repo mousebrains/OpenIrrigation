@@ -161,7 +161,7 @@ $db = new DB($dbName);
 echo "data: " . $db->fetchInitial() . "\n\n";
 $tPrev = time();
 
-while (True) { # Wait forever
+while (!connection_aborted()) { # Wait until client disconnects
 	if (ob_get_length()) {ob_flush();} // Flush output buffer
 	flush();
 	$info = array_merge(

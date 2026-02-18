@@ -131,25 +131,25 @@ class TDISimul(MyBaseThread):
         body = self.read(t1, msgLen) # Read message body
         if body is None: # Not enough read
             logger.warning("Didn't get %s bytes while reading body", msgLen)
-            os.write(fd, NAK) # Send back a NAK, there was a problem
+            os.write(self.fd, NAK) # Send back a NAK, there was a problem
             return None
         chkSum = self.read(t1, 2) # Read checksum
         if chkSum is None: # Not enough read
             logger.warning("Didn't get 2 bytes while reading checksum, %s", hdr + body)
-            os.write(fd, NAK) # Send back a NAK, there was a problem
+            os.write(self.fd, NAK) # Send back a NAK, there was a problem
             return None
         try: # Try converting to string and integer
             csum = int(str(chkSum, 'utf-8'), 16) # check sum
         except Exception:
             logger.warning('Error converting checksum %s to a hex number, %s', chkSum, hdr + body)
-            os.write(fd, NAK) # Send back a NAK, there was a problem
+            os.write(self.fd, NAK) # Send back a NAK, there was a problem
             return None
         asum = 0
         for c in hdr: asum += c
         for c in body: asum += c
         if (asum & 0xff) != csum: # Checksum mismatch
             logger.warning('Checksum missmatch %s!=%s for %s',asum & 0xff, csum, hdr + body + chkSum)
-            os.write(fd, NAK) # Send back a NAK, there was a problem
+            os.write(self.fd, NAK) # Send back a NAK, there was a problem
             return None
         if self.args.simNAK and (self.args.simNAK > random.random()):
             self.logger.info('Generate a random NAK for %s', hdr + body + chkSum)

@@ -82,7 +82,8 @@ class ValveOps(MyBaseThread):
                     + " WHERE EXTRACT(EPOCH FROM timestamp) <= %s AND controller=%s" \
                     + " ORDER BY timestamp"
             cur0.execute(sql, (time.time(),self.controller))
-            for row in cur0:
+            rows = cur0.fetchall()
+            for row in rows:
                 cmd = row[-1]
                 self.logger.debug('doPending row=%s', row)
                 if cmd == 0:  # On command
@@ -129,7 +130,7 @@ class ValveOps(MyBaseThread):
         (tOn, nOn)  = self.onInfo(cur, addr)
         if tOn:
             logger.warning('%s(%s) was turned on at %s', name, addr, tOn)
-        elif nOn >= self.maxStations:  # Not on but over limit
+        elif nOn is not None and nOn >= self.maxStations:  # Not on but over limit
             logger.warning('Maximum number of stations, %s, reached for %s(%s), nOn=%s',
                     self.maxStations, name, addr, nOn)
             self.onStations(cur)
@@ -215,7 +216,7 @@ class ValveOps(MyBaseThread):
                     name, addr, tOn.isoformat())
             self.dbExec(cur, sqlFail, (cmdID, ERR_TEST_ALREADY_ON))
             return False
-        if nOn >= self.maxStations:  # Not on but over limit
+        if nOn is not None and nOn >= self.maxStations:  # Not on but over limit
             logger.info('Can not test %s(%s) since maximum number of stations, %s <= %s',
                     name, addr, self.maxStations, nOn)
             self.dbExec(cur, sqlFail, (cmdID, ERR_TEST_MAX_STNS))
@@ -285,4 +286,5 @@ class ValveOps(MyBaseThread):
             return True
         except Exception:
             self.logger.exception('Unable to execute %s %s', sql, args)
+            self.db.rollback()
         return False

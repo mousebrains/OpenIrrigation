@@ -7,8 +7,6 @@ import psycopg
 import logging
 import datetime
 from zoneinfo import ZoneInfo
-from astral import Observer
-from astral.sun import sun as astral_sun
 from SchedProgramStation import ProgramStations
 
 class Programs(list):
@@ -106,10 +104,10 @@ class PgmDateTime:
         """ Choose which time class to use """
         try:
             tzinfo = ZoneInfo(siteInfo['tz'])
-        except KeyError:
+        except KeyError as e:
             raise RuntimeError(
                     f"Timezone {siteInfo['tz']!r} not found."
-                    " Install timezone data: pip install tzdata")
+                    " Install timezone data: pip install tzdata") from e
         if mode == 'clock': return TimeClock(t, tzinfo)
         return TimeAstral(mode, t, siteInfo, tzinfo)
 
@@ -143,6 +141,8 @@ class DateDOW:
 class DateDays:
     """ Return a date if it is n days from the ref date else None """
     def __init__(self, nDays:int, refDate:datetime.date):
+        if nDays <= 0:
+            raise ValueError('nDays must be positive, got {}'.format(nDays))
         self.nDays = nDays
         self.ref = refDate
 
@@ -176,12 +176,14 @@ class TimeAstral:
         self.dt = datetime.timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
         if t > datetime.time(12,0,0): # Times past noon encode a negative offset from the
             self.dt -= datetime.timedelta(days=1) # astral event, e.g. 23:30 → −30 minutes
+        from astral import Observer
         self.observer = Observer(latitude=site['lat'], longitude=site['lon'], elevation=site['elev'])
 
     def __repr__(self):
         return "mode={} dt={} observer={}".format(self.mode, self.dt, self.observer)
 
     def mkTime(self, pgmDate:datetime.date) -> datetime.datetime:
+        from astral.sun import sun as astral_sun
         sun = astral_sun(self.observer, date=pgmDate, tzinfo=self.tz)
         if self.mode not in sun:
             raise Exception('Mode, {}, is not an astral sun position'.format(self.mode))

@@ -18,11 +18,9 @@ def onException(args:argparse.ArgumentParser, logger:logging.Logger) -> None:
                 + ' LEFT JOIN emailReports ON email.id=emailReports.email' \
                 + ' LEFT JOIN webList ON webList.id=emailReports.report' \
                 + " WHERE webList.key='systemd';"
-        db = DB.DB(args.db, logger)
-        with db.cursor() as cur:
+        with DB.DB(args.db, logger) as db, db.cursor() as cur:
             cur.execute(sql)
             for row in cur: email.append(row[0])
-        db.close()
         if email:
             fqdn = socket.getfqdn()
             item = os.path.basename(sys.argv[0])

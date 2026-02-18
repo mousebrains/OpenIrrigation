@@ -161,7 +161,7 @@ CREATE TABLE crop( -- crop definitions
 	KcEnd POSFLOAT DEFAULT 1, -- Kc at end
 	height FLOAT CHECK (height BETWEEN 0 AND 100), -- height of plant (m)
 	depth FLOAT CHECK (depth BETWEEN 0 AND 10), -- root depth (m)
-	MAD FLOAT CHECK (MAD BETWEEN 0 AND 100) NOT NULL, -- maximum allowed depletion without stress at 5mm/day ETc
+	MAD FLOAT CHECK (MAD BETWEEN 0 AND 1) NOT NULL, -- maximum allowed depletion without stress at 5mm/day ETc
 	notes TEXT -- Comment on coefficients
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
@@ -468,7 +468,7 @@ CREATE TABLE program( -- program information
 	id SERIAL PRIMARY KEY, -- id
 	site INTEGER REFERENCES site(id) ON DELETE CASCADE, -- site's id
 	name TEXT UNIQUE NOT NULL, -- descriptive name
-	label TEXT UNIQUE NOT NULL, -- label in some tables
+	label TEXT NOT NULL, -- label in some tables
 	onOff INTEGER REFERENCES webList(id) ON DELETE SET NULL,
 	priority INTEGER DEFAULT 0, -- sort order for windows within a program
 	qManual BOOLEAN DEFAULT False, -- Use this program as a manual program for site
@@ -549,8 +549,8 @@ CREATE TABLE EtStation( -- ET information for each station
 	station INTEGER UNIQUE REFERENCES station(id) ON DELETE CASCADE , -- station's id 
 	crop INTEGER REFERENCES crop(id) ON DELETE SET NULL, -- crop id 
 	soil INTEGER REFERENCES soil(id) ON DELETE SET NULL, -- soil id 
-	sDate TIME, -- start date for Linitial in day/month seconds
-	eDate TIME, -- end date for Lfinal in day/month seconds
+	sDate DATE, -- start date for Linitial
+	eDate DATE, -- end date for Lfinal
 	userRootNorm POSFLOAT DEFAULT 1, -- user's root depth normalization
 	userInfiltrationRate POSFLOAT, -- user's infiltration rate
 	userMAD PERCENT, -- user's maximum allowed depletion in %
@@ -611,7 +611,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 DROP TABLE IF EXISTS ETannual;
 CREATE TABLE ETannual( -- day of year average ET information
 	id SERIAL PRIMARY KEY, -- id
-	doy INTEGER NOT NULL, -- day of year [0,366]
+	doy INTEGER NOT NULL CHECK (doy BETWEEN 0 AND 366), -- day of year [0,366]
 	station TEXT NOT NULL, -- station for this entry
 	code INTEGER REFERENCES params(id) ON DELETE CASCADE, -- code for this entry
 	value FLOAT NOT NULL, -- median value this doy/code pair
@@ -913,8 +913,8 @@ CREATE TABLE historical( -- history of actions take
 	post INTEGER CHECK (post BETWEEN 0 AND 65535), -- post on current in mAmps
 	CONSTRAINT historical_causal CHECK (tOn <= tOff) -- causality
 );
-DROP INDEX IF EXISTS action_index;
-CREATE INDEX action_index ON action(tOn,tOff);
+DROP INDEX IF EXISTS historical_index;
+CREATE INDEX historical_index ON historical(tOn,tOff);
 
 -- Command queue (Generated/removed by insert/delete to/from action)
 DROP TABLE IF EXISTS command CASCADE;
@@ -1051,12 +1051,9 @@ BEGIN
 			address, ctrlID, timeOn;
 	END IF;
 
-	SELECT station.name INTO stnName 
-		FROM pgmStn 
-		INNER JOIN station ON station.id=pgmStn.station 
-		WHERE pgmStn.id=pStnID;
+	SELECT name INTO stnName FROM station WHERE sensor=sensorID;
 
-	INSERT INTO action (cmd, tOn, tOff, sensor, addr, controller, program, pgmStn, pgmDate) 
+	INSERT INTO action (cmd, tOn, tOff, sensor, addr, controller, program, pgmStn, pgmDate)
 		VALUES (2, timeOn, timeOn, sensorID, address, ctrlID, NULL, NULL, NULL)
 		RETURNING id INTO actID;
 	INSERT INTO command (addr,name,controller,action,timestamp,cmd) VALUES

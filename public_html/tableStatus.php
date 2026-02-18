@@ -124,7 +124,7 @@ $db->listen(strtolower($tbl) . "_update");
 $info = fetchInfo($db, $tbl, $orderBy, Null, []);
 $info['info'] = tableInfo($db, $tbl);
 
-while (True) { # Wait forever
+while (!connection_aborted()) { # Wait until client disconnects
 	echo "data: " . json_encode($info) . "\n\n";
 	if (ob_get_length()) {ob_flush();} // Flush output buffer
 	flush();

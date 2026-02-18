@@ -12,7 +12,7 @@ if (array_key_exists('poc', $_POST)) { // work on a POC
 	if (array_key_exists('time', $_POST)) { // Turn a master valve on
 		$dt = $_POST['time'];
 		if ($db->query('SELECT poc_off(?,?);', [$poc, $dt]))
-			exit($db->mkMsg("Turned POC $poc off for $dt minutes"));
+			exit($db->mkMsg(true, "Turned POC $poc off for $dt minutes"));
 		exit($db->dbMsg("Failed to turn POC $poc off for $dt minutes"));
 	}
 	if ($db->query('SELECT poc_on(?)', [$poc])) exit($db->mkMsg(true, "Turned on POC $poc"));

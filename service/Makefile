@@ -21,7 +21,7 @@ SRC = $(SERVICES) $(TIMERS)
 
 DEST = $(SRC:%=$(SERVICEDIR)/%)
 
-.PHONY: all install install-services install-logs clean start stop retart status reload enable disable
+.PHONY: all install install-services install-logs clean start stop restart status reload enable disable
 
 all:
 

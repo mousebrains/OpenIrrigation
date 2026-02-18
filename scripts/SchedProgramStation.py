@@ -51,6 +51,7 @@ class ProgramStation:
                 , self.pgmName
                 ) = row
         self.logger = logger
+        self.qOkay = False
         self.qOn = onOff == 'on'
         if runTime is None:
             logger.error('pgmStn(%s) runTime is None, row=%s', stationID, row)

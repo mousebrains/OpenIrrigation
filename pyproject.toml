@@ -16,7 +16,6 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B", "E402"]
-"scripts/TDISimulate.py" = ["F821"]  # pre-existing bug: `fd` should be `self.fd`
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

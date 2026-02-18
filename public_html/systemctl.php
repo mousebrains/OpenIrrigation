@@ -14,10 +14,10 @@
 <?php
 require_once 'php/navBar.php';
 echo "<pre>\n";
-$lastLine = system("/bin/systemctl --full --no-pager status OITDI OISched OIAgriMet", $retval);
+$output = shell_exec("/bin/systemctl --full --no-pager status OITDI OISched OIAgriMet");
+echo htmlspecialchars($output, ENT_QUOTES, 'UTF-8');
 echo "</pre>\n";
 echo "<hr>\n";
-echo "Return value: $retval\n";
 ?>
 </body>
 </html> 

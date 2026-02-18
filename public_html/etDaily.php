@@ -2,13 +2,10 @@
 // Grab a column of data for et information
 
 function mkMsg(bool $flag, string $msg) {
-	return json_encode(['success' => $flag, 'messge' => $msg]);
+	return json_encode(['success' => $flag, 'message' => $msg]);
 }
 
 require_once 'php/DB1.php';
-
-$_POST['codigo'] = "69";
-$_POST['sdate'] = time() - 20*86400;
 
 if (empty($_POST['codigo'])) exit(mkMsg(false, "No codigo supplied"));
 if (empty($_POST['sdate'])) exit(mkMsg(false, "No sdate supplied"));

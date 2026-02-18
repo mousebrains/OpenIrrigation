@@ -67,10 +67,6 @@ def parsePage(page:str, codigoToIndex:dict, logger:logging.Logger) -> list:
         if (state == 0) or (line == "END DATA"):
             state = 0
             continue
-        if state == 0:
-            line = line.strip()
-            if line == "BEGIN DATA":
-                state += 1
         if state == 1: # Should be a DATE line with fields
             if not re.match(r'\s*DATE\s*,', line):
                 state = 0
@@ -138,7 +134,7 @@ def doFetch(args:argparse.ArgumentParser, params:dict, logger:logging.Logger) ->
         t = cur.fetchone()[0]
         if t is None: t = earliestDate
     tBack = max(datetime.timedelta(), now.date() - t) + extraBack
-    db.updateState(myName, 'Fetch page from {}'.format(datetime.datetime.now()+tBack))
+    db.updateState(myName, 'Fetch page from {}'.format(datetime.datetime.now()-tBack))
     page = fetchPage(tBack, params, args, logger)
     if page:
         codigos = codigoToIndex(db, logger)
@@ -163,31 +159,32 @@ def doStats(args:argparse.ArgumentParser, params:dict, logger:logging.Logger) ->
         db.commit()
     db.updateState('Stats', 'Stats complete at {}'.format(datetime.datetime.now()))
 
-parser = argparse.ArgumentParser(description='AgriMET data fetcher')
-grp = parser.add_argument_group('Database related options')
-grp.add_argument('--db', required=True, type=str, help='ET database name')
-grp.add_argument('--group', type=str, default='AGRIMET', help='parameter group name to use')
-grp = parser.add_argument_group('AgriMET related options')
-grp.add_argument('--stats', action='store_true', help='run stats generation instead of fetching')
-grp.add_argument('--earliestDate', type=str, help='Earliest date to fetch')
-grp.add_argument('--input', type=str, help='Read from this file instead of fetching URL')
-grp.add_argument('--output', type=str, help='Write page fetched from URL to this file')
-MyLogger.addArgs(parser)
-args = parser.parse_args()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='AgriMET data fetcher')
+    grp = parser.add_argument_group('Database related options')
+    grp.add_argument('--db', required=True, type=str, help='ET database name')
+    grp.add_argument('--group', type=str, default='AGRIMET', help='parameter group name to use')
+    grp = parser.add_argument_group('AgriMET related options')
+    grp.add_argument('--stats', action='store_true', help='run stats generation instead of fetching')
+    grp.add_argument('--earliestDate', type=str, help='Earliest date to fetch')
+    grp.add_argument('--input', type=str, help='Read from this file instead of fetching URL')
+    grp.add_argument('--output', type=str, help='Write page fetched from URL to this file')
+    MyLogger.addArgs(parser)
+    args = parser.parse_args()
 
-logger = MyLogger.mkLogger(args, __name__)
-logger.info('Args=%s', args)
+    logger = MyLogger.mkLogger(args, __name__)
+    logger.info('Args=%s', args)
 
-try:
-    params = Params.load(args.db, args.group, logger)
-    logger.info('Params=%s', params)
+    try:
+        params = Params.load(args.db, args.group, logger)
+        logger.info('Params=%s', params)
 
-    if args.stats:
-        doStats(args, params, logger)
-    else:
-        doFetch(args, params, logger)
-except Exception as e:
-    logger.exception('Unexpected exception')
-    db = DB.DB(args.db, logger)
-    db.updateState(myName, repr(e))
-    Notify.onException(args, logger)
+        if args.stats:
+            doStats(args, params, logger)
+        else:
+            doFetch(args, params, logger)
+    except Exception as e:
+        logger.exception('Unexpected exception')
+        db = DB.DB(args.db, logger)
+        db.updateState(myName, repr(e))
+        Notify.onException(args, logger)

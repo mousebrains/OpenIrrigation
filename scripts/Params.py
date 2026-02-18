@@ -27,6 +27,7 @@ def __decode(val: str):
     """ Try and split str by commas and convert elements to numbers
         if all the elements are numeric """
 
+    if val is None: return None
     if ',' not in val: return __toNum(val.strip())
     a = []
     nNumeric =  0

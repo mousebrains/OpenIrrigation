@@ -64,6 +64,11 @@ else
     install -d -m 700 /etc/nginx/certs
     SSL_CERT="/etc/nginx/certs/irrigation.cert"
     SSL_KEY="/etc/nginx/certs/irrigation.key"
+    if [ ! -f "$SSL_CERT" ] || [ ! -f "$SSL_KEY" ]; then
+        openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+            -keyout "$SSL_KEY" -out "$SSL_CERT" \
+            -subj "/CN=${DOMAIN:-localhost}"
+    fi
     if [ -n "$DOMAIN" ]; then
         echo "Hint: to use Let's Encrypt, run:"
         echo "  certbot certonly --webroot -w /home/${USER}/public_html -d ${DOMAIN}"
