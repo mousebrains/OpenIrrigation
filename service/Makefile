@@ -70,3 +70,4 @@ stop:
 
 status:
 	-systemctl --no-pager status $(SRC)
+	systemctl --no-pager list-timers $(TIMERS)
