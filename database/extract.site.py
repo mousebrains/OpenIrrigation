@@ -4,21 +4,20 @@
 #
 
 from collections import OrderedDict
-import datetime 
-import psycopg2 
-import psycopg2.extras 
+import datetime
+import psycopg
+from psycopg import sql as sql_module
+from psycopg.rows import dict_row
 import argparse
 
 class Value:
-    def __init__(self, val):
+    def __init__(self, val, conn=None):
         if val is None:
             self.val = "NULL"
         elif isinstance(val, str) and not val.isnumeric():
-            self.val = str(psycopg2.extensions.QuotedString(val))
-        elif isinstance(val, datetime.datetime) \
-             or isinstance(val, datetime.date) \
-             or isinstance(val, datetime.time):
-            self.val = str(psycopg2.extensions.QuotedString(str(val)))
+            self.val = sql_module.Literal(val).as_string(conn)
+        elif isinstance(val, (datetime.datetime, datetime.date, datetime.time)):
+            self.val = sql_module.Literal(str(val)).as_string(conn)
         else:
             self.val = str(val)
 
@@ -31,7 +30,7 @@ class KeyValue(dict):
         with db.cursor() as cur:
             cur.execute(sql)
             for row in cur:
-                self[row[0]] = Value(row[1])
+                self[row[0]] = Value(row[1], db)
 
 class Info:
     def __init__(self, db):
@@ -54,8 +53,6 @@ class Info:
         self.pgmStn2program = KeyValue(db, 'SELECT id,program FROM pgmStn;')
         self.pgmStn2station = KeyValue(db, 'SELECT id,station FROM pgmStn;')
         self.stations = KeyValue(db, 'SELECT id,sensor FROM station;')
-        self.events = KeyValue(db, 'SELECT id,name FROM event;')
-        self.groups = KeyValue(db, 'SELECT id,name FROM groups;')
 
     def list(self, id):
         return "(SELECT id FROM webList WHERE grp={} AND key={})".format(
@@ -105,13 +102,6 @@ class Info:
         return "(SELECT id FROM station WHERE sensor={})".format(
                 self.sensor(self.stations[id].id()))
 
-    def event(self, id):
-        return "(SELECT id FROM event WHERE name={})".format(self.events[id])
-
-    def group(self, id):
-        return "(SELECT id FROM groups WHERE name={})".format(self.groups[id])
-
-
 def outputEntries(comment, tbl, entries):
     if entries:
         print("\n-- BEGIN ", comment)
@@ -131,7 +121,7 @@ def mkSpecial(row, fields):
 
 
 def getBasic(db, fields, sql, comment, tbl):
-    with db.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+    with db.cursor(row_factory=dict_row) as cur:
         entries = []
         cur.execute(sql)
         for row in cur:
@@ -139,7 +129,7 @@ def getBasic(db, fields, sql, comment, tbl):
         outputEntries(comment, tbl + "(" + ",".join(fields) + ")", entries)
 
 def getSpecial(db, fields, sFields, sql, comment, tbl):
-    with db.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+    with db.cursor(row_factory=dict_row) as cur:
         entries = []
         cur.execute(sql)
         for row in cur:
@@ -248,18 +238,6 @@ def getProgramStation(db, info):
     getSpecial(db, fields, sFields, 'SELECT * FROM pgmStn ORDER BY program,station;',
             'program/station information', 'pgmStn')
 
-def getEvent(db, info):
-    sFields = OrderedDict([('site', info.site), ('onoff', info.list),
-        ('action', info.list), ('startmode', info.list), ('stopmode', info.list)])
-    fields = ['name', 'ndays', 'refdate', 'starttime', 'endtime', 'nrepeat', 'notes']
-    getSpecial(db, fields, sFields, 'SELECT * FROM event ORDER BY name;',
-            'event information', 'event')
-
-def getEventDOW(db, info):
-    sFields = OrderedDict([('event', info.event), ('dow', info.list)])
-    getSpecial(db, [], sFields, 'SELECT * FROM eventDOW ORDER BY event,dow;',
-            'event/day-of-week information', 'eventDOW')
-
 def getETStation(db, info):
     sFields = OrderedDict([('station', info.station), ('crop', info.crop), ('soil', info.soil)])
     fields = ['sdate', 'edate', 'userrootnorm', 'userinfiltrationrate', 'usermad',
@@ -267,18 +245,6 @@ def getETStation(db, info):
               'depletion', 'cycletime', 'soaktime', 'fracadjust']
     getSpecial(db, fields, sFields, 'SELECT * FROM ETStation ORDER BY station;',
             'ET/station information', 'ETStation')
-
-def getGroup(db, info):
-    sFields = OrderedDict([('site', info.site)])
-    fields = ['name']
-    getSpecial(db, fields, sFields, 'SELECT * FROM groups ORDER BY name;',
-            'group information', 'groups')
-
-def getGroupStation(db, info):
-    sFields = OrderedDict([('groups', info.group), ('station', info.station)])
-    fields = ['sortorder']
-    getSpecial(db, fields, sFields, 'SELECT * FROM groupStation ORDER BY groups,station;',
-            'group/station information', 'groupStation')
 
 def getHistorical(db, info):
     sFields = OrderedDict([('sensor', info.sensor), ('program', info.program)])
@@ -297,7 +263,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--db', help='database name', required=True)
 args = parser.parse_args()
 
-with psycopg2.connect(dbname=args.db) as db:
+with psycopg.connect(dbname=args.db) as db:
     info = Info(db)
     print('-- Generated', datetime.datetime.now())
     getSoil(db)
@@ -316,11 +282,7 @@ with psycopg2.connect(dbname=args.db) as db:
     getProgram(db, info)
     getProgramDOW(db, info)
     getProgramStation(db, info)
-    getEvent(db, info)
-    getEventDOW(db, info)
     getETStation(db, info)
-    getGroup(db, info)
-    getGroupStation(db, info)
 
     getHistorical(db, info)
     # logBasic(db, info, 'onLog', ['timestamp', 'code', 'pre', 'peak', 'post'],

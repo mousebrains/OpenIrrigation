@@ -9,6 +9,14 @@ header('X-Accel-Buffering: no');
 
 class DB {
 	private $errors = array(); // Error stack
+	private PDO $db;
+	private int $hoursPast;
+	private int $hoursFuture;
+	private PDOStatement $getActive;
+	private PDOStatement $getPending;
+	private PDOStatement $getPast;
+	private PDOStatement $getStations;
+	private PDOStatement $getPOCs;
 
 	function __construct(string $dbName) {
 		$db = new PDO("pgsql:dbname=$dbName;");
@@ -91,7 +99,7 @@ class DB {
 	} // fetchInitial
 
 	function exec($stmt) {
-		if ($stmt->execute([]) == false) {
+		if ($stmt->execute([]) === false) {
 			array_push($this->errors, $stmt->errorInfo());
 			return false;
 		}

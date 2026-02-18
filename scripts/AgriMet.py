@@ -8,7 +8,6 @@ import MyLogger
 import logging # For typing
 import DB
 import Notify
-import psycopg2.extras
 import Params
 import argparse
 import urllib.request
@@ -176,14 +175,11 @@ class Fetcher(MyBaseThread):
 
 
     def storeRows(self, db:DB.DB, rows:list) -> bool:
-        myID = 'ETInsert'
-        sql = "PREPARE " + myID + " AS INSERT INTO ET(t,station,code,value) " \
-                + "VALUES($1,$2,$3,$4) " \
-                + "ON CONFLICT (station,code,t) DO UPDATE SET value=EXCLUDED.value;"
+        sql = "INSERT INTO ET(t,station,code,value) VALUES(%s,%s,%s,%s)" \
+                " ON CONFLICT (station,code,t) DO UPDATE SET value=EXCLUDED.value"
         try:
             with db.cursor() as cur:
-                cur.execute(sql)
-                psycopg2.extras.execute_batch(cur, "EXECUTE " + myID + "(%s,%s,%s,%s);", rows)
+                cur.executemany(sql, rows)
                 db.commit()
             self.logger.info('Stored %d rows', len(rows))
             return True

@@ -8,13 +8,13 @@
 #
 # Oct-2019, Pat Welch, pat@mousebrains
 
-import psycopg2.extensions
+import psycopg
 import logging
 from datetime import timedelta
 
 class Sensors(dict):
     """ Collection of all sensors """
-    def __init__(self, cur:psycopg2.extensions.cursor, logger:logging.Logger) -> None:
+    def __init__(self, cur:psycopg.Cursor, logger:logging.Logger) -> None:
         """ Grab all the stations from the database """
         self.logger = logger
         self.stations = {} # Station keys to Sensor object mapping

@@ -3,7 +3,7 @@
 #
 # Oct-2019, Pat Welch, pat@mousebrains
 
-import psycopg2.extensions
+import psycopg
 import logging
 import datetime
 import astral
@@ -11,7 +11,7 @@ from SchedProgramStation import ProgramStations
 
 class Programs(list):
     """ Collection of active program objects in priority order """
-    def __init__(self, cur:psycopg2.extensions.cursor, stations: ProgramStations,
+    def __init__(self, cur:psycopg.Cursor, stations: ProgramStations,
             logger:logging.Logger) -> None:
         """ Grab all the active programs from the database  """
 

@@ -1,15 +1,15 @@
-var statusControllers;
-var statusPOCs;
+let statusControllers;
+let statusPOCs;
 
 function updateSystemctlStatus(val, id) {
-	$(id).html(val);
-	$(id).css('color', val == "active" ? "#000000" : "#FF0000");
+	$(id).html(escapeHTML(val));
+	$(id).css('color', val === "active" ? "#000000" : "#FF0000");
 }
 
 function updateSystemctl(info) {
-	if (info.length != 3) {
+	if (info.length !== 3) {
 		console.log('Invalid systemctl info block');
-		conso.log(info);
+		console.log(info);
 		return;
 	}
 	updateSystemctlStatus(info[0], '#statusOITDI');
@@ -19,10 +19,10 @@ function updateSystemctl(info) {
 
 $('#runScheduler').submit({'url': 'runScheduler.php'}, OI_processForm);
 
-if (typeof(EventSource) != "undefined") {
-	var statusSource = new EventSource("status.php");
+if (typeof(EventSource) !== "undefined") {
+	const statusSource = new EventSource("status.php");
 	statusSource.onmessage = function(event) {
-		var data = JSON.parse(event.data);
+		const data = JSON.parse(event.data);
 		if ('controllers' in data) {statusControllers = data['controllers'];}
 		if ('pocs' in data) {statusPOCs = data['pocs'];}
 		if ('simulation' in data) {
@@ -33,15 +33,15 @@ if (typeof(EventSource) != "undefined") {
 			}
 		}
                 if ('ctl' in data) { // Current
-			var t = new Date(data['tcurrent'] * 1000);
-			$('#statusCurrent').html(statusControllers[data['ctl']]
+			const t = new Date(data['tcurrent'] * 1000);
+			$('#statusCurrent').html(escapeHTML(statusControllers[data['ctl']])
 				+ ' ' + data['volts'] + 'V ' + data['mamps'] + 'mA'
 				+ ' ' + t.toTimeString().substr(0,9)
 			);
 		}
                 if ('poc' in data) { // Flow
-			var t = new Date(data['tflow'] * 1000);
-			$('#statusFlow').html(statusPOCs[data['poc']]
+			const t = new Date(data['tflow'] * 1000);
+			$('#statusFlow').html(escapeHTML(statusPOCs[data['poc']])
 				+ ' ' + data['flow'] + 'GPM'
 				+ ' ' + t.toTimeString().substr(0,9)
 			);

@@ -5,7 +5,7 @@
 #
 import DB
 import datetime
-import psycopg2.extensions
+import psycopg
 import argparse
 import logging
 from SchedSensor import Sensors
@@ -28,7 +28,7 @@ def runScheduler(args:argparse.ArgumentParser, logger:logging.Logger) -> bool:
         db.rollback() # Rollback what was just built
     return False
 
-def doit(cur:psycopg2.extensions.cursor,
+def doit(cur:psycopg.Cursor,
         args:argparse.ArgumentParser, logger:logging.Logger) -> bool:
     if args.minCleanTime is None:
         minTime = datetime.datetime.now().astimezone() \
@@ -94,14 +94,14 @@ def doit(cur:psycopg2.extensions.cursor,
 
     return True
 
-def historical(cur:psycopg2.extensions.cursor, pgmDate:datetime.date, timeline:Timeline) -> None:
+def historical(cur:psycopg.Cursor, pgmDate:datetime.date, timeline:Timeline) -> None:
     """ Load actions which have already completed for pgmDate """
     sql = "SELECT tOn,tOff,sensor,program,pgmStn FROM historical WHERE pgmDate=%s;"
     cur.execute(sql, (pgmDate,))
     for row in cur:
         timeline.existing(row[0], row[1], row[2], row[3], row[4], pgmDate)
 
-def nearPending(cur:psycopg2.extensions.cursor, timeline:Timeline,
+def nearPending(cur:psycopg.Cursor, timeline:Timeline,
         minTime:datetime.datetime, logger:logging.Logger) -> None:
     """ Delete future actions which will not start before args.minCleanTime """
     # Delete what is further than args.minCleanTime seconds into the future

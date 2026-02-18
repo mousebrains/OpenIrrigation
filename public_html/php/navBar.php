@@ -12,7 +12,6 @@
       <a href='tableEditor.php?tbl=pgmStn'>Program Station</a>
       <a href='tableEditor.php?tbl=station&orderby=name'>Station</a>
       <a href='tableEditor.php?tbl=ETStation&orderby=station'>ET Stations</a>
-      <a href='tableEditor.php?tbl=site&orderby=name'>Site</a>
       <a href='tableEditor.php?tbl=usr&orderby=name'>User</a>
       <a href='tableEditor.php?tbl=email&orderby=email'>email</a>
       <a href='tableEditor.php?tbl=controller&orderby=name'>Controller</a>

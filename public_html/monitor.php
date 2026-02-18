@@ -37,19 +37,18 @@ require_once 'php/navBar.php';
 </div>
 <div id='pendingDiv' style='display:none;'>
 <center>
-<table id='pendingTable' stye='display:hidden;'>
+<table id='pendingTable'>
 <caption>Pending stations</caption>
 <thead><tr><th></th><th>Station</th><th>Start</th><th>Run Time</th><th>Program</th></tr></thead>
 <tbody></tbody>
 <tfoot><tr><th></th><th>Station</th><th>Start</th><th>Run Time</th><th>Program</th></tr></tfoot>
-<th>Program</th><th>Pre</th><th>Peak</th><th>Post</th><th>On Code</th></tr></tfoot>
 </table>
 </center>
 <hr>
 </div>
 <div id='pastDiv' style='display:none;'>
 <center>
-<table id='pastTable' stye='display:hidden;'>
+<table id='pastTable'>
 <caption>Historical stations</caption>
 <thead><tr><th>Station</th><th>Start</th><th>Run Time</th><th>Time Left</th>
 <th>Program</th><th>Pre</th><th>Peak</th><th>Post</th><th>On Code</th></tr></thead>

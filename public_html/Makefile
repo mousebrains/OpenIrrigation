@@ -21,7 +21,7 @@ SRC+= runScheduler.php
 
 DEST = $(SRC:%=$(WEBDIR)/%)
 
-.PHONY: all install clean
+.PHONY: all install clean php_lint
 
 all:
 
@@ -36,4 +36,8 @@ install clean::
 	$(MAKE) -C packages $@
 	$(MAKE) -C js $@
 	$(MAKE) -C css $@
+	$(MAKE) -C php $@
+
+php_lint:
+	@fail=0; for f in $(filter %.php,$(SRC)); do php -l $$f || fail=1; done; exit $$fail
 	$(MAKE) -C php $@

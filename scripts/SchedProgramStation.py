@@ -7,14 +7,14 @@
 #
 # Oct-2019, Pat Welch, pat@mousebrains
 
-import psycopg2.extensions
+import psycopg
 import logging
 from datetime import timedelta
 from SchedSensor import Sensors
 
 class ProgramStations(dict):
     """ Dictionary of program stations indexed by pgmstn.id """
-    def __init__(self, cur:psycopg2.extensions.cursor, sensors:Sensors,
+    def __init__(self, cur:psycopg.Cursor, sensors:Sensors,
             logger:logging.Logger) -> None:
         self.pgm2stn = {} # program.id -> list of stations
         sql = "SELECT "

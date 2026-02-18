@@ -11,6 +11,13 @@ class DB {
 	private $errors = array(); // Error stack
 	private $daysBack = 9; # Days from current date to look backwards
 	private $daysFwd =  9; # Days from current date to look forwards
+	private PDO $db;
+	private PDOStatement $getPast;
+	private PDOStatement $getPending;
+	private PDOStatement $getActive;
+	private PDOStatement $getDates;
+	private PDOStatement $getPgmStn;
+	private PDOStatement $getStations;
 
 	function __construct(string $dbName) {
 		$db = new PDO("pgsql:dbname=$dbName;");
@@ -83,7 +90,7 @@ class DB {
 	} // fetchInitial
 	
 	function exec($stmt) {
-		if ($stmt->execute([]) == false) {
+		if ($stmt->execute([]) === false) {
 			array_push($this->errors, $stmt->errorInfo());
 			return false;
 		}

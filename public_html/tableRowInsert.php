@@ -14,8 +14,8 @@ $vals = array();
 
 foreach ($cols as $key) {
 	if (array_key_exists($key, $_POST)) {
-		$val = $_POST[$key] == '' ? NULL : $_POST[$key];
-		array_push($keys, $key);
+		$val = $_POST[$key] === '' ? NULL : $_POST[$key];
+		array_push($keys, $db->quoteIdent($key));
 		array_push($markers, '?');
 		array_push($vals, $val);
 	}
@@ -25,11 +25,11 @@ if (empty($vals)) exit($db->mkMsg(false, "No columns found in $tbl"));
 
 $db->beginTransaction();
 
-$sql = "INSERT INTO $tbl (" . implode(',', $keys) . ") VALUES (" . implode(',', $markers) . ")"
+$sql = "INSERT INTO " . $db->quoteIdent($tbl) . " (" . implode(',', $keys) . ") VALUES (" . implode(',', $markers) . ")"
 	. " RETURNING id;";
 
 $stmt = $db->prepare($sql); // Prepare the statement
-if ($stmt == false) exit($db->dbMsg('Error preparing $sql'));
+if ($stmt === false) exit($db->dbMsg('Error preparing $sql'));
 if (!$stmt->execute($vals)) exit($db->dbMsg("Error executing $sql"));
 $id = $stmt->fetch(PDO::FETCH_NUM)[0];
 
@@ -42,10 +42,10 @@ $sec = $db->loadRows($sql, [$tbl]);
 
 if (!empty($sec)) {
 	foreach($sec as $row) {
-		$stbl = $row['col'];
-		$key0 = $row['secondarykey'];
-		$key1 = $row['secondaryvalue'];
-		if (!empty($_POST[$stbl])) { // Something to be stored
+		$stbl = $db->quoteIdent($row['col']);
+		$key0 = $db->quoteIdent($row['secondarykey']);
+		$key1 = $db->quoteIdent($row['secondaryvalue']);
+		if (!empty($_POST[$row['col']])) { // Something to be stored
 			$sql = "INSERT INTO $stbl ($key0, $key1) VALUES(?,?);";
 			foreach ($_POST[$stbl] as $sid) {
 				if (!$db->query($sql, [$id, $sid])) {
