@@ -10,8 +10,8 @@ function buildTable(info) {
 	row += '<th></th>'; // Delete
 	row += '<th></th>'; // Update
 
-	info.forEach(function(x) {
-		row += '<th>' + escapeHTML(x['label']) + '</th>';
+	info.forEach((x) => {
+		row += `<th>${escapeHTML(x['label'])}</th>`;
 		myTableName = x['tbl'];
 	});
 	row += '</tr>';
@@ -28,25 +28,25 @@ function mkRefTable(a, x, form) {
 	const id = (x !== null) ? x['id'] : null;
 	const qMultiple = col in mySecondaryInfo;
 	const sec = qMultiple ? mySecondaryInfo[col] : null;
-	let msg = "<select name='" + col + (qMultiple ? "[]'" : "'");
+	let msg = `<select name='${col}${qMultiple ? "[]'" : "'"}`;
 	if (a['qrequired'] === true) msg += ' required';
 	if (qMultiple) {
 		val = (id in sec) ? sec[id].join() : '';  // Redo val for multiples
 		msg += ' multiple';
 	}
 	msg += form;
-	myReferenceInfo[col].forEach(function(y) {
+	myReferenceInfo[col].forEach((y) => {
 		const yid = y['id'];
-		msg += "<option value='" + escapeHTML(yid) + "'";
+		msg += `<option value='${escapeHTML(yid)}'`;
 		if ((yid === val) || (qMultiple && (id in sec) && sec[id].includes(yid))) {
 			msg += " selected";
 		}
-		msg += ">" + escapeHTML(y['name']) + "</option>";
+		msg += `>${escapeHTML(y['name'])}</option>`;
 	});
 	msg += "</select>";
 	if (x !== null) {
-		msg += "<input type='hidden' name='" + col + "Prev'"
-			+ " value='" + escapeHTML(val) + "'" + form;
+		msg += `<input type='hidden' name='${col}Prev'`
+			+ ` value='${escapeHTML(val)}'${form}`;
 	}
 	return msg;
 }
@@ -54,14 +54,14 @@ function mkRefTable(a, x, form) {
 function mkTextArea(a, x, form) {
 	const col = a['col'];
 	const val = (x !== null) && (col in x) && (x[col] !== null) ? x[col] : "";
-	let msg = "<textarea rows='2' cols='20' name='" + col + "'";
+	let msg = `<textarea rows='2' cols='20' name='${col}'`;
 	if (a['qrequired'] === true) msg += ' required';
 	msg += form;
 	msg += escapeHTML(val);
 	msg += "</textarea>";
 	if (x !== null) {
-		msg += "<input type='hidden' name='" + col + "Prev'"
-			+ " value='" + escapeHTML(val) + "'" + form;
+		msg += `<input type='hidden' name='${col}Prev'`
+			+ ` value='${escapeHTML(val)}'${form}`;
 	}
 	return msg;
 }
@@ -69,42 +69,42 @@ function mkTextArea(a, x, form) {
 function mkInputField(a, x, form) {
 	const col = a['col'];
 	const rawVal = (x !== null) && (col in x) && (x[col] !== null) ? x[col] : null;
-	const val = rawVal === null ? "" : ("value='" + escapeHTML(rawVal) + "'");
-	let msg = "<input type='" + a['inputtype'] + "'";
+	const val = rawVal === null ? "" : `value='${escapeHTML(rawVal)}'`;
+	let msg = `<input type='${a['inputtype']}'`;
 	if (a['inputtype'] === 'password') msg += " autocomplete='on'";
-	if (a['valmin'] !== null) msg += " min='" + a['valmin'] + "'";
-	if (a['valmax'] !== null) msg += " max='" + a['valmax'] + "'";
-	if (a['valstep'] !== null) msg += " step='" + a['valstep'] + "'";
-	msg += " name='" + col + "'" + val;
-	if (a['placeholder'] !== '') msg += " placeholder='" + escapeHTML(a['placeholder']) + "'";
+	if (a['valmin'] !== null) msg += ` min='${a['valmin']}'`;
+	if (a['valmax'] !== null) msg += ` max='${a['valmax']}'`;
+	if (a['valstep'] !== null) msg += ` step='${a['valstep']}'`;
+	msg += ` name='${col}'${val}`;
+	if (a['placeholder'] !== '') msg += ` placeholder='${escapeHTML(a['placeholder'])}'`;
 	if (a['qrequired'] === true) msg += ' required';
 	if ((a['inputtype'] === 'checkbox') && rawVal) msg += ' checked';
 	msg += form;
-	if (x !== null) msg += "<input type='hidden' name='" + col + "Prev'" + val + form;
+	if (x !== null) msg += `<input type='hidden' name='${col}Prev'${val}${form}`;
 	return msg;
 }
 
 function buildRow(x, qInsert) {
 	const id = (x === null) ? 'Insert' : x['id'];
-	const form = " form='f" + id + "'>";
-	const tbl = "<input type='hidden' name='tableName' value='" + escapeHTML(myTableName) + "'>";
-	let row = "<tr id='tr" + id + "'>";
+	const form = ` form='f${id}'>`;
+	const tbl = `<input type='hidden' name='tableName' value='${escapeHTML(myTableName)}'>`;
+	let row = `<tr id='tr${id}'>`;
 	if (qInsert) { // Insertion row
 		row += "<td colspan=2>";
-		row += "<form class='formInsert' id='f" + id + "'>";
+		row += `<form class='formInsert' id='f${id}'>`;
 		row += tbl;
 		row += "<input type='submit' value='Insert'>";
 		row += "</form>";
 		row += "</td>";
 	} else { // data row
-		const idIn = "<input type='hidden' name='id' value='" + id + "'>";
+		const idIn = `<input type='hidden' name='id' value='${id}'>`;
 		row += "<td><form class='formDelete'>";
 		row += tbl;
 		row += idIn;
 		row += "<input type='submit' value='Delete'>";
 		row += "</form></td>";
 		row += "<td>";
-		row += "<form class='formUpdate' id='f" + id + "'>";
+		row += `<form class='formUpdate' id='f${id}'>`;
 		row += tbl;
 		row += idIn;
 		row += "<input type='submit' value='Update'>";
@@ -112,7 +112,7 @@ function buildRow(x, qInsert) {
 		row += "</td>";
 	}
 
-	myTableInfo.forEach(function(a) {
+	myTableInfo.forEach((a) => {
 		const col = a['col'];
 		row += "<td>";
 		if (a['inputtype'] === 'textarea') {
@@ -131,7 +131,7 @@ function buildRow(x, qInsert) {
 function buildBody(data) {
 	const tbl = $('tbody');
 	tbl.find('tr').remove(); // remove all rows in the body
-	data.forEach(function(x) {
+	data.forEach((x) => {
 		if (!('qhide' in x) || !x['qhide']) {
 			tbl.append(buildRow(x, false));
 		}
@@ -225,7 +225,7 @@ function receivedStatus(event) {
 		buildBody([]); // For insert row
 	}
 	if ('action' in data) {
-		const trID = '#tr' + data['id'];
+		const trID = `#tr${data['id']}`;
 		if (data['action'] === 'DELETE') {
 			$(trID).remove();
 			return;
@@ -243,19 +243,19 @@ function receivedStatus(event) {
 			updateActions($(trID));
 			return;
 		}
-		console.log('Unrecognized action, "' + data['action'] + '"');
+		console.log(`Unrecognized action, "${data['action']}"`);
 		console.log(data);
 		return;
 	}
 	if ('data' in data) {buildBody(data['data']);}
 }
 
-if (typeof(EventSource) !== "undefined") {
+if (typeof EventSource !== "undefined") {
 	const base = 'tableStatus.php';
 	const parts = window.location.href.split('?'); // Get parameters
-	const url = parts.length > 1 ? (base + '?' + parts.slice(-1)) : base;
+	const url = parts.length > 1 ? (`${base}?${parts.slice(-1)}`) : base;
 	statusSource = OI_connectSSE(url, receivedStatus);
-	$('title').html('Table Editor ' + escapeHTML(myTableName));
+	$('title').html(`Table Editor ${escapeHTML(myTableName)}`);
 
 	$('#batchUpdate').click(batchUpdate);
 	$('#batchCancel').click(batchCancel);

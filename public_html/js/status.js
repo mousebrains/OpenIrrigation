@@ -20,24 +20,24 @@ function updateSystemctl(info) {
 $('#runScheduler').submit({'url': 'runScheduler.php'}, OI_processForm);
 
 // Hamburger menu: click/touch toggle (replaces hover-only)
-$('#topdropbtn').on('click', function(e) {
+$('#topdropbtn').on('click', (e) => {
 	e.preventDefault();
 	$('#top-dropdown-content').toggleClass('open');
 	$('#topdropdown').toggleClass('open');
 });
-$(document).on('click', function(e) {
+$(document).on('click', (e) => {
 	if (!$(e.target).closest('#topdropdown').length) {
 		$('#top-dropdown-content').removeClass('open');
 		$('#topdropdown').removeClass('open');
 	}
 });
-$('#top-dropdown-content a').on('click', function() {
+$('#top-dropdown-content a').on('click', () => {
 	$('#top-dropdown-content').removeClass('open');
 	$('#topdropdown').removeClass('open');
 });
 
-if (typeof(EventSource) !== "undefined") {
-	const statusSource = OI_connectSSE("status.php", function(event) {
+if (typeof EventSource !== "undefined") {
+	const statusSource = OI_connectSSE("status.php", (event) => {
 		const data = JSON.parse(event.data);
 		if ('controllers' in data) {statusControllers = data['controllers'];}
 		if ('pocs' in data) {statusPOCs = data['pocs'];}
@@ -50,21 +50,15 @@ if (typeof(EventSource) !== "undefined") {
 		}
                 if ('ctl' in data) { // Current
 			const t = new Date(data['tcurrent'] * 1000);
-			$('#statusCurrent').html(escapeHTML(statusControllers[data['ctl']])
-				+ ' ' + data['volts'] + 'V ' + data['mamps'] + 'mA'
-				+ ' ' + t.toTimeString().substr(0,9)
-			);
+			$('#statusCurrent').html(`${escapeHTML(statusControllers[data['ctl']])} ${data['volts']}V ${data['mamps']}mA ${t.toTimeString().slice(0,9)}`);
 		}
                 if ('poc' in data) { // Flow
 			const t = new Date(data['tflow'] * 1000);
-			$('#statusFlow').html(escapeHTML(statusPOCs[data['poc']])
-				+ ' ' + data['flow'] + 'GPM'
-				+ ' ' + t.toTimeString().substr(0,9)
-			);
+			$('#statusFlow').html(`${escapeHTML(statusPOCs[data['poc']])} ${data['flow']}GPM ${t.toTimeString().slice(0,9)}`);
 		}
 		if ('non' in data) { // Number on
-			$('#statusActive').html('#On=' + data['non']);
-			$('#statusPending').html('#Pend=' + data['npending']);
+			$('#statusActive').html(`#On=${data['non']}`);
+			$('#statusPending').html(`#Pend=${data['npending']}`);
 		}
 		if ('system' in data) { // systemctl
 			updateSystemctl(data['system']);

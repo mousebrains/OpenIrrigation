@@ -4,40 +4,40 @@ let dtInfo = {'hoursFuture': 12, 'hoursPast': 12};
 function procForm(event) {
 	const id = $(this).attr('id').slice(-2); // Form's id
 	OI_processSubmit(event, 'indexProcess.php', $(this).serialize());
-	$('#rt' + id).val(''); // reset the value
-	$('#' + id).css('background-color', '#00A0DD'); // Set row color
+	$(`#rt${id}`).val(''); // reset the value
+	$(`#${id}`).css('background-color', '#00A0DD'); // Set row color
 }
 
 function buildTable(info, tblID, runLabel, stopLabel) {
 	const tbl = $(tblID);
 	tbl.find('tbody tr').remove(); // Drop existing rows in body
-	info.forEach(function(x) {
+	info.forEach((x) => {
 		const key = x[0]; // Sensor ID
 		const name = x[1]; // Station name
 		let msg = "";
-		let inputs = "<input type='hidden' name='id' value='" + key + "'>";
+		let inputs = `<input type='hidden' name='id' value='${key}'>`;
 		if (x.length > 2) {
-			inputs += "<input type='hidden' name='poc' value='" + x[2] + "'>";
+			inputs += `<input type='hidden' name='poc' value='${x[2]}'>`;
 		}
-		msg += "<tr id='" + key + "'>";
+		msg += `<tr id='${key}'>`;
 		msg += "<td class='tooltip' onclick=''>"; // onclick for ios/safari hover to work
-		msg += "<span class='tooltiptext tooltip-left' id='tt" + key + "'>Nada</span>";
-		msg += escapeHTML(name) + "</td>";
+		msg += `<span class='tooltiptext tooltip-left' id='tt${key}'>Nada</span>`;
+		msg += `${escapeHTML(name)}</td>`;
 		msg += "<td style='text-align:right;'>";
-		msg += "<span id='a" + key + "' style='display:inline;'>";
-		msg += "<form class='indexForm' id='f" +key + "'>";
+		msg += `<span id='a${key}' style='display:inline;'>`;
+		msg += `<form class='indexForm' id='f${key}'>`;
 		msg += inputs;
-		msg += "<input type='number' name='time' id='rt" + key + "'";
+		msg += `<input type='number' name='time' id='rt${key}'`;
 		msg += 		" title='Number of minutes'";
 		msg +=		" min='0.1' max='300' step='0.1'>";
-		msg += "<input type='submit' value='" + runLabel + "'>";
+		msg += `<input type='submit' value='${runLabel}'>`;
 		msg += "</form>";
 		msg += "</span>";
-		msg += "<span id='b" + key + "' style='display:none;'>";
-		msg += "<span id='bc" + key + "'></span>";
-		msg += "<form class='indexForm' id='g" + key + "' style='display:inline;'>";
+		msg += `<span id='b${key}' style='display:none;'>`;
+		msg += `<span id='bc${key}'></span>`;
+		msg += `<form class='indexForm' id='g${key}' style='display:inline;'>`;
 		msg += inputs;
-		msg += "<input type='submit' value='" + stopLabel + "'>";
+		msg += `<input type='submit' value='${stopLabel}'>`;
 		msg += "</form>";
 		msg += "</span>";
 		msg += "</td></tr>";
@@ -49,26 +49,26 @@ function mkTime(dt) { // Convert dt seconds to h:mm:ss
 	const hours = Math.floor(dt / 3600);
 	const mins = ("00" + Math.floor(dt / 60) % 60).slice(-2);
 	const secs = ("00" + Math.floor(dt % 60)).slice(-2);
-	return hours + ":" + mins + ":" + secs;
+	return `${hours}:${mins}:${secs}`;
 }
 
 function mkToolTip(key, data) {
 	let msg = '';
 	if (key in data['active']) {
 		const dt = data['active'][key][0][1] - data['active'][key][0][0];
-		msg += 'Current: ' + mkTime(dt);
+		msg += `Current: ${mkTime(dt)}`;
 	}
 	if (key in data['pending']) {
 		let dt = 0;
-		data['pending'][key].forEach(function(x) {dt += x[1] - x[0];});
+		data['pending'][key].forEach((x) => {dt += x[1] - x[0];});
 		if (msg !== '') {msg += "<br />";}
-		msg += 'Next ' + dtInfo['hoursFuture'] + 'Hr: ' + mkTime(dt);
+		msg += `Next ${dtInfo['hoursFuture']}Hr: ${mkTime(dt)}`;
 	}
 	if (key in data['past']) {
 		let dt = 0;
-		data['past'][key].forEach(function(x) {dt += x[1] - x[0];});
+		data['past'][key].forEach((x) => {dt += x[1] - x[0];});
 		if (msg !== '') {msg += "<br />";}
-		msg += 'Prev ' + dtInfo['hoursPast'] + 'Hr: ' + mkTime(dt);
+		msg += `Prev ${dtInfo['hoursPast']}Hr: ${mkTime(dt)}`;
 	}
 	return msg;
 }
@@ -91,29 +91,29 @@ function adjustColors(data) {
 
 	OI_clearTimeouts(); // Shutdown any existing timeouts
 
-	all2Clear.forEach(function(x) {
-		$('#' + x).css('background-color', '');
-		$('#a' + x).css('display', 'inline');
-		$('#b' + x).css('display', 'none');
-		$('#tt' + x).html('Nada');
+	all2Clear.forEach((x) => {
+		$(`#${x}`).css('background-color', '');
+		$(`#a${x}`).css('display', 'inline');
+		$(`#b${x}`).css('display', 'none');
+		$(`#tt${x}`).html('Nada');
 	});
-	active2Set.forEach(function(x) {
-		$('#' + x).css('background-color', '#8FBC8F');
-		$('#a' + x).css('display', 'none');
-		$('#b' + x).css('display', 'inline');
-		$('#tt' + x).html(mkToolTip(x, data));
+	active2Set.forEach((x) => {
+		$(`#${x}`).css('background-color', '#8FBC8F');
+		$(`#a${x}`).css('display', 'none');
+		$(`#b${x}`).css('display', 'inline');
+		$(`#tt${x}`).html(mkToolTip(x, data));
 	});
-	pending2Set.forEach(function(x) {
-		$('#' + x).css('background-color', '#DDA0DD');
-		$('#a' + x).css('display', 'inline');
-		$('#b' + x).css('display', 'none');
-		$('#tt' + x).html(mkToolTip(x, data));
+	pending2Set.forEach((x) => {
+		$(`#${x}`).css('background-color', '#DDA0DD');
+		$(`#a${x}`).css('display', 'inline');
+		$(`#b${x}`).css('display', 'none');
+		$(`#tt${x}`).html(mkToolTip(x, data));
 	});
-	past2Set.forEach(function(x) {
-		$('#' + x).css('background-color', '#FDDEB3');
-		$('#a' + x).css('display', 'inline');
-		$('#b' + x).css('display', 'none');
-		$('#tt' + x).html( mkToolTip(x, data));
+	past2Set.forEach((x) => {
+		$(`#${x}`).css('background-color', '#FDDEB3');
+		$(`#a${x}`).css('display', 'inline');
+		$(`#b${x}`).css('display', 'none');
+		$(`#tt${x}`).html( mkToolTip(x, data));
 	});
 
 	// info['times'] = data['active']; // For time left calculation
@@ -122,9 +122,9 @@ function adjustColors(data) {
 
 	if (indexInfo['active'].size) { // Something active
 		indexInfo['etime'] = {};
-		indexInfo['active'].forEach(function(key) {
+		indexInfo['active'].forEach((key) => {
 			indexInfo['etime'][key] = data['active'][key][0][1];
-			OI_timeDown('#bc' + key, indexInfo['etime'][key], null);
+			OI_timeDown(`#bc${key}`, indexInfo['etime'][key], null);
 		});
 	}
 
@@ -146,6 +146,6 @@ function receivedStatus(event) {
 	if ('active' in data) { adjustColors(data); }
 }
 
-if (typeof(EventSource) !== "undefined") {
+if (typeof EventSource !== "undefined") {
 	const statusSource = OI_connectSSE("indexStatus.php", receivedStatus);
 }

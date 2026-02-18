@@ -4,8 +4,8 @@ function addToMyInfo(cnt, t, dateKey, colKey) {
 	const year = t.getUTCFullYear();
 	const mon = t.getUTCMonth() + 1;
 	const dom = ('0' + t.getUTCDate()).slice(-2);
-	const a = mon + '-' + dom;
-	const key = year + '-' + ('0' + mon).slice(-2) + '-' + dom;
+	const a = `${mon}-${dom}`;
+	const key = `${year}-${('0' + mon).slice(-2)}-${dom}`;
 	myInfo[dateKey].push(a);
 	myInfo[colKey][key] = cnt;
 	return cnt + 1;
@@ -41,15 +41,15 @@ function mkHeaders(tbl) {
 	let past = "<tr>";
 	let pending = "<th>Today</th>";
 	const mid =  "<th rowspan='2'>Station</th><th rowspan='2'>Program</th>";
-	const pre = "<tr><th colspan='" + nPast + "'>Recent</th>";
-	const post = "<th colspan='" + nPending + "'>Future</th></tr>";
+	const pre = `<tr><th colspan='${nPast}'>Recent</th>`;
+	const post = `<th colspan='${nPending}'>Future</th></tr>`;
 
-	(myInfo['pastDates'].slice(0,-1)).forEach(function(x) {
-		past += "<th>" + x.slice(-5) + "</th>";});
+	(myInfo['pastDates'].slice(0,-1)).forEach((x) => {
+		past += `<th>${x.slice(-5)}</th>`;});
 	past += "<th>Today</th>";
 
-	(myInfo['pendingDates'].slice(1)).forEach(function(x) {
-		pending += "<th>" + x.slice(-5) + "</th>";}) + "<tr>";
+	(myInfo['pendingDates'].slice(1)).forEach((x) => {
+		pending += `<th>${x.slice(-5)}</th>`;});
 
 	thead.append(pre + mid + post);
 	thead.append(past + pending);
@@ -58,18 +58,18 @@ function mkHeaders(tbl) {
 }
 
 function mkBodyRow(id, name, program, rowCount) {
-	const color = " style='background-color:" + ((rowCount & 0x01) ? "#fcbe03;'" : "#03cffc;'");
+	const color = ` style='background-color:${(rowCount & 0x01) ? "#fcbe03;'" : "#03cffc;'"}`;
 	let cnt = 0;
 	let line = "<tr>";
-	myInfo['pastDates'].forEach(function(x) {
-		line += "<td id='R" + id + "C" + cnt + "'></td>";
+	myInfo['pastDates'].forEach((x) => {
+		line += `<td id='R${id}C${cnt}'></td>`;
 		++cnt;
 	});
 
-	line += "<th" + color + ">" + escapeHTML(name) + "</th><th" + color + ">" + escapeHTML(program) + "</th>";
+	line += `<th${color}>${escapeHTML(name)}</th><th${color}>${escapeHTML(program)}</th>`;
 
-	myInfo['pendingDates'].forEach(function(x) {
-		line += "<td id='R" + id + "C" + cnt + "'></td>";
+	myInfo['pendingDates'].forEach((x) => {
+		line += `<td id='R${id}C${cnt}'></td>`;
 		++cnt;
 	});
 	return line + "</tr>";
@@ -77,7 +77,7 @@ function mkBodyRow(id, name, program, rowCount) {
 
 function mkBody(tbl, info) {
 	let cnt = 0;
-	info.forEach(function(x) {
+	info.forEach((x) => {
 		tbl.append(mkBodyRow(x[0], x[1], x[2], ++cnt));
 	});
 }
@@ -95,11 +95,11 @@ function buildTable(info, earliest, today, latest) {
 function mkTime(dt) {
 	const hours = Math.floor(dt / 3600);
 	const minutes = Math.floor(dt / 60) % 60;
-	return hours + ":" + ("00" + minutes).slice(-2);
+	return `${hours}:${("00" + minutes).slice(-2)}`;
 }
 
 function mkKey(id, d, key) {
-	return '#R' + id + 'C' + (((key in myInfo) && (d in myInfo[key])) ? myInfo[key][d] : 'XX');
+	return `#R${id}C${((key in myInfo) && (d in myInfo[key])) ? myInfo[key][d] : 'XX'}`;
 }
 
 function displayTimes(data) {
@@ -111,7 +111,7 @@ function displayTimes(data) {
 	}
 	myInfo['timeouts'] = {};
 
-	data['past'].forEach(function(x) {
+	data['past'].forEach((x) => {
 		const id = x[0];
 		const d = x[1];
 		const dt = parseFloat(x[2]);
@@ -120,7 +120,7 @@ function displayTimes(data) {
 		if (!(id in past)) {past[id] = {};}
 		past[id][d] = dt;
 	});
-	data['pending'].forEach(function(x) {
+	data['pending'].forEach((x) => {
 		const id = x[0];
 		const d = x[1];
 		const dt = parseFloat(x[2]);
@@ -132,7 +132,7 @@ function displayTimes(data) {
 
 	OI_clearTimeouts();
 
-	data['active'].forEach(function(x) {
+	data['active'].forEach((x) => {
 		const id = x[0];
 		const d = x[1];
 		const t0 = parseFloat(x[2]);
@@ -159,6 +159,6 @@ function receivedStatus(event) {
 	if ('active' in data) {displayTimes(data);}
 }
 
-if (typeof(EventSource) !== "undefined") {
+if (typeof EventSource !== "undefined") {
 	const statusSource = OI_connectSSE("reportDailyStatus.php", receivedStatus);
 }

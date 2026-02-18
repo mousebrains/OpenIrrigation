@@ -21,10 +21,10 @@ function OI_timeDown(key, eTime, prevNow) { // Display H:MM from now to eTime in
 	const dt1 = dt + 0.5; // For display purposes
 	const hours = Math.floor(dt1 / 3600);
 	const mins = Math.floor(dt1 / 60) % 60;
-	let msg = hours + ':' + ('00' + mins).slice(-2);
+	let msg = `${hours}:${('00' + mins).slice(-2)}`;
 	let resid = 60;
 	if (dt <= 120) {
-		msg += ':' + ('00' + Math.floor(dt1 % 60)).slice(-2);
+		msg += `:${('00' + Math.floor(dt1 % 60)).slice(-2)}`;
 		resid = 10; // Count down by 10 second intervals
 	}
 	$(key).html((dt > 0) ? msg : "");
@@ -44,16 +44,16 @@ function OI_timeUpDown(key0, key1, sTime, eTime, offset0, offset1, prevNow) {
 	let dt1 = dt + offset0 + 0.5; // For display purposes
 	let hours = Math.floor(dt1 / 3600);
 	let mins = Math.floor(dt1 / 60) % 60;
-	$(key0).html(hours + ':' + ('00' + mins).slice(-2));
+	$(key0).html(`${hours}:${('00' + mins).slice(-2)}`);
 
 	dt = eTime - now;
 	dt1 = dt + offset1 + 0.5; // For display purposes
 	hours = Math.floor(dt1 / 3600);
 	mins = Math.floor(dt1 / 60) % 60;
-	let msg = hours + ':' + ('00' + mins).slice(-2);
+	let msg = `${hours}:${('00' + mins).slice(-2)}`;
 	let resid = 60;
 	if (dt <= 120) {
-		msg += ':' + ('00' + Math.floor(dt1 % 60)).slice(-2);
+		msg += `:${('00' + Math.floor(dt1 % 60)).slice(-2)}`;
 		resid = 10; // Count down by 10 second intervals
 	}
 	$(key1).html((dt > 0) ? msg : '');
@@ -69,27 +69,27 @@ function OI_timeUpDown(key0, key1, sTime, eTime, offset0, offset1, prevNow) {
 
 function OI_toast(message, isError) {
 	const toast = document.createElement('div');
-	toast.className = 'oi-toast' + (isError ? ' oi-toast-error' : '');
+	toast.className = `oi-toast${isError ? ' oi-toast-error' : ''}`;
 	toast.textContent = message;
 	document.body.appendChild(toast);
 	toast.offsetHeight; // Trigger reflow for animation
 	toast.classList.add('oi-toast-show');
-	setTimeout(function() {
+	setTimeout(() => {
 		toast.classList.remove('oi-toast-show');
-		setTimeout(function() { toast.remove(); }, 300);
+		setTimeout(() => { toast.remove(); }, 300);
 	}, 4000);
 }
 
 function OI_connectSSE(url, onMessage) {
 	const source = new EventSource(url);
 	const statusEl = document.getElementById('sse-status');
-	source.onopen = function() {
+	source.onopen = () => {
 		if (statusEl) {
 			statusEl.textContent = '';
 		}
 	};
 	source.onmessage = onMessage;
-	source.onerror = function() {
+	source.onerror = () => {
 		if (statusEl) {
 			statusEl.textContent = 'Connection lost';
 		}
@@ -107,13 +107,13 @@ function OI_processSubmit(event, url, formData) { // Submission of form data to 
 		data: formData, // form data to be posted
 		dataType: 'json', // returned data format
 		encode: true
-	}).done(function(data){
+	}).done((data) => {
 		console.log(data);
 		if (('success' in data) && !data['success']) {
 			OI_toast(data['message'], true);
 		}
-	}).fail(function(jqXHR, textStatus) {
-		OI_toast('Request failed: ' + textStatus, true);
+	}).fail((jqXHR, textStatus) => {
+		OI_toast(`Request failed: ${textStatus}`, true);
 	});
 	event.preventDefault();
 }
