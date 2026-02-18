@@ -104,7 +104,12 @@ class PgmDateTime:
 
     def __mkTime(self, mode:str, t:str, siteInfo:dict):
         """ Choose which time class to use """
-        tzinfo = ZoneInfo(siteInfo['tz'])
+        try:
+            tzinfo = ZoneInfo(siteInfo['tz'])
+        except KeyError:
+            raise RuntimeError(
+                    f"Timezone {siteInfo['tz']!r} not found."
+                    " Install timezone data: pip install tzdata")
         if mode == 'clock': return TimeClock(t, tzinfo)
         return TimeAstral(mode, t, siteInfo, tzinfo)
 
