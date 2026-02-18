@@ -1,0 +1,3 @@
+<?php
+// Generated from config.php.in by make — do not edit
+define('OI_DBNAME', '__DBNAME__');

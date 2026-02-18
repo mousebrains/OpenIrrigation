@@ -113,7 +113,20 @@ class DB {
 	function dbMsg(string $msg) {
 		return $this->mkMsg(false, $msg . ", " . $this->getError());
 	}
+
+	static function isValidCriteria(string $s): bool {
+		// Allow: identifier='literal' (all current refCriteria values)
+		return preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*=\'[a-zA-Z0-9_]+\'$/', $s) === 1;
+	}
+
+	static function isValidOrderBy(string $s): bool {
+		// Allow: comma-separated identifiers (all current refOrderBy values)
+		foreach (explode(',', $s) as $part) {
+			if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', trim($part))) return false;
+		}
+		return true;
+	}
 } // DB
 
-$dbName = 'irrigation'; // Database name
-$db = new DB($dbName);
+require_once __DIR__ . '/config.php';
+$db = new DB(OI_DBNAME);

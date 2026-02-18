@@ -44,8 +44,10 @@ function tableReference($db, $name) {
 		$sql = "SELECT " . $db->quoteIdent($row['refkey']) . " AS id,"
 			. $db->quoteIdent($row['reflabel']) . " AS name"
 			. " FROM " . $tbl;
-		if ($row['refcriteria'] !== null) $sql .= " WHERE " . $row['refcriteria'];
-		if ($row['reforderby'] !== null) $sql .= " ORDER BY " . $row['reforderby'];
+		if ($row['refcriteria'] !== null && DB::isValidCriteria($row['refcriteria']))
+			$sql .= " WHERE " . $row['refcriteria'];
+		if ($row['reforderby'] !== null && DB::isValidOrderBy($row['reforderby']))
+			$sql .= " ORDER BY " . $row['reforderby'];
 		$sql .= ";";
 		$info[$col] = $db->loadRows($sql, []);
 	}

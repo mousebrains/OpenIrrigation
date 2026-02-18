@@ -7,6 +7,7 @@ if (empty($_POST['id'])) exit($db->mkMsg(false, 'No row id supplied'));
 
 $tbl = $_POST['tableName'];
 $id = $_POST['id'];
+if (!ctype_digit($id)) exit($db->mkMsg(false, "Invalid row ID"));
 
 if (!$db->tableExists($tbl)) exit($db->dbMsg("Table, $tbl, does not exist"));
 

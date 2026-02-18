@@ -15,6 +15,7 @@ import sys
 
 try:
     import psycopg
+    from psycopg import sql
 except ImportError:
     sys.exit("psycopg is required: pip install psycopg[binary]")
 
@@ -84,8 +85,9 @@ def migrate(db, dry_run):
                 skipped.append(f"etstation.{col}: column not found")
             elif "time" in dtype and "date" not in dtype:
                 # NULL out existing TIME values first, then ALTER
-                cur.execute(f'UPDATE "etstation" SET {col} = NULL WHERE {col} IS NOT NULL;')
-                cur.execute(f'ALTER TABLE "etstation" ALTER COLUMN {col} TYPE DATE USING NULL;')
+                col_id = sql.Identifier(col)
+                cur.execute(sql.SQL('UPDATE "etstation" SET {} = NULL WHERE {} IS NOT NULL;').format(col_id, col_id))
+                cur.execute(sql.SQL('ALTER TABLE "etstation" ALTER COLUMN {} TYPE DATE USING NULL;').format(col_id))
                 applied.append(f"etstation.{col}: TIME → DATE")
             else:
                 skipped.append(f"etstation.{col}: already {dtype}")
@@ -199,7 +201,7 @@ $$;
             row = cur.fetchone()
             if row:
                 conname = row[0]
-                cur.execute(f'ALTER TABLE "crop" DROP CONSTRAINT {conname};')
+                cur.execute(sql.SQL('ALTER TABLE "crop" DROP CONSTRAINT {};').format(sql.Identifier(conname)))
                 cur.execute(
                     'ALTER TABLE "crop"'
                     " ADD CONSTRAINT crop_mad_check CHECK (mad BETWEEN 0 AND 1);"

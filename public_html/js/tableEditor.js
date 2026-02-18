@@ -1,3 +1,4 @@
+let myTableName = document.getElementById('oi-config')?.dataset.tableName ?? '';
 let myTableInfo = {};
 let myReferenceInfo = {};
 let mySecondaryInfo = {};

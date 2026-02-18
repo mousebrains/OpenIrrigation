@@ -4,6 +4,7 @@ require_once 'php/DB1.php';
 
 if (empty($_POST['tableName'])) exit($db->mkMsg(false, 'No table name supplied'));
 if (empty($_POST['id'])) exit($db->mkMsg(false, 'No table row id supplied'));
+if (!ctype_digit($_POST['id'])) exit($db->mkMsg(false, "Invalid row ID"));
 
 $tbl = $_POST['tableName'];
 $id = $_POST['id'];

@@ -18,7 +18,7 @@ if (empty($_GET['tbl'])) {exit("<h1>tbl parameter not supplied</h1>\n</body>\n</
 require_once 'php/DB1.php';
 $tbl = $_GET['tbl'];
 if (!$db->tableExists($tbl)) {exit("<h1>Table, " . htmlspecialchars($tbl, ENT_QUOTES, 'UTF-8') . ", does not exist</h1>\n</body>\n</html>\n");}
-echo '<script>let myTableName=' . json_encode($tbl) . ';</script>';
+echo '<div id="oi-config" data-table-name="' . htmlspecialchars($tbl, ENT_QUOTES, 'UTF-8') . '" hidden></div>';
 
 require_once 'php/navBar.php';
 ?>
