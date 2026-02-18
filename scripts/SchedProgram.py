@@ -6,7 +6,8 @@
 import psycopg
 import logging
 import datetime
-import astral
+from astral import Observer
+from astral.sun import sun as astral_sun
 from SchedProgramStation import ProgramStations
 
 class Programs(list):
@@ -170,15 +171,13 @@ class TimeAstral:
         self.dt = datetime.timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
         if t > datetime.time(12,0,0): # After noon, so treat as a negative time from 1 day
             self.dt -= datetime.timedelta(days=1)
-        info = ('site', 'region', site['lat'], site['lon'], site['tz'], site['elev'])
-        self.astral = astral.Location(info)
-        self.astral.solar_depression='civil'
+        self.observer = Observer(latitude=site['lat'], longitude=site['lon'], elevation=site['elev'])
 
     def __repr__(self):
-        return "mode={} dt={} astral={}".format(self.mode, self.dt, self.astral)
+        return "mode={} dt={} observer={}".format(self.mode, self.dt, self.observer)
 
     def mkTime(self, pgmDate:datetime.date) -> datetime.datetime:
-        sun = self.astral.sun(pgmDate)
+        sun = astral_sun(self.observer, date=pgmDate, tzinfo=self.tz)
         if self.mode not in sun:
             raise Exception('Mode, {}, is not an astral sun position'.format(self.mode))
         t = sun[self.mode] + self.dt
