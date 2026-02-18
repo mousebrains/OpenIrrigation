@@ -8,19 +8,26 @@
 set -eu
 
 usage() {
-    echo "Usage: $0 --user=USER" >&2
+    echo "Usage: $0 --user=USER [--domain=FQDN]" >&2
     exit 1
 }
 
 # --- Parse arguments ---
 USER=
+DOMAIN=
 for arg in "$@"; do
     case "$arg" in
-        --user=*) USER="${arg#--user=}" ;;
+        --user=*)   USER="${arg#--user=}" ;;
+        --domain=*) DOMAIN="${arg#--domain=}" ;;
         *) usage ;;
     esac
 done
 [ -z "$USER" ] && usage
+
+# Auto-detect FQDN if not provided
+if [ -z "$DOMAIN" ]; then
+    DOMAIN=$(hostname -f 2>/dev/null || true)
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
@@ -47,11 +54,27 @@ sed "s|__PHPFPM_SOCK__|${PHPFPM_SOCK}|g" \
     "${SCRIPT_DIR}/nginx/sites-available/default" \
     > /etc/nginx/sites-available/irrigation
 
-# Install SSL snippet
-cp "${SCRIPT_DIR}/nginx/snippets/ssl.conf" /etc/nginx/snippets/ssl.conf
+# --- SSL certificate paths ---
+if [ -n "$DOMAIN" ] && [ -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then
+    echo "Using Let's Encrypt certificate for ${DOMAIN}"
+    SSL_CERT="/etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
+    SSL_KEY="/etc/letsencrypt/live/${DOMAIN}/privkey.pem"
+else
+    echo "Using self-signed certificate"
+    install -d -m 700 /etc/nginx/certs
+    SSL_CERT="/etc/nginx/certs/irrigation.cert"
+    SSL_KEY="/etc/nginx/certs/irrigation.key"
+    if [ -n "$DOMAIN" ]; then
+        echo "Hint: to use Let's Encrypt, run:"
+        echo "  certbot certonly --webroot -w /home/${USER}/public_html -d ${DOMAIN}"
+    fi
+fi
 
-# Create certs directory
-install -d -m 700 /etc/nginx/certs
+# Generate SSL snippet
+cat > /etc/nginx/snippets/ssl.conf <<SSLEOF
+ssl_certificate     ${SSL_CERT};
+ssl_certificate_key ${SSL_KEY};
+SSLEOF
 
 # Enable irrigation site, disable default
 rm -f /etc/nginx/sites-enabled/default
