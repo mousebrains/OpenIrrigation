@@ -38,7 +38,28 @@ s = None
 try:
     myName = 'TDI'
     params = Params.load(args.db, args.group, logger)
+    if not params:
+        raise ValueError('No parameters found for group {!r}'.format(args.group))
     logger.info('Params=%s', params)
+
+    # Validate required parameters up front for clear error messages
+    required = ['maxStations', 'listenChannel']
+    if not args.simulate:
+        required.extend(['port', 'baudrate'])
+    if not args.noPeriodic:
+        required.extend([
+            'errorPeriod', 'errorSQL',
+            'currentPeriod', 'currentSQL',
+            'peePeriod', 'peeSQL', 'peeChannels',
+            'numberPeriod', 'numberSQL', 'numberStations',
+            'sensorPeriod', 'sensorSQL', 'sensorChannels',
+            'twoPeriod', 'twoSQL', 'twoChannels',
+            'versionPeriod', 'versionSQL',
+            'zeeSQL',
+        ])
+    missing = [k for k in required if k not in params]
+    if missing:
+        raise ValueError('Missing required parameters: {}'.format(missing))
     qExcept = queue.Queue() # Exceptions from threads
     s = TDISimulate.mkSerial(args, params, logger, qExcept)
     thrSerial = TDIserial.Serial(s, logger, qExcept) # Interface to serial port

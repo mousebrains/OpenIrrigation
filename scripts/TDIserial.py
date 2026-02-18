@@ -59,7 +59,7 @@ class Serial(MyBaseThread):
                 continue
             timeout = 0.05 # Since we didn't get any garbage last time, wait this long next time
             try:
-                (msg, q) = self.queue.get(block=False)
+                (msg, q) = self.queue.get(timeout=0.05)
                 self.queue.task_done()
                 if msg is None:
                     logger.error('Empty message, msg=%s q=%s', msg, q)

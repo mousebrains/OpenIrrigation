@@ -32,7 +32,7 @@ class MessageHandler: # construct/deconstruct TDI messages
                 self.replyLength = offset
 
     def put(self, t, args): self.queue.put((t, args))
-    def get(self): return self.queue.get()
+    def get(self, timeout=None): return self.queue.get(timeout=timeout)
     def task_done(self): return self.queue.task_done()
 
     def buildMessage(self, args):
@@ -144,7 +144,12 @@ class Base(MyBaseThread):
             for item in args: # Loop over arguments
                 msg = msgHandler.buildMessage(item)
                 serial.put(msg, self.msgHandler)
-                (t, reply) = self.msgHandler.get()
+                try:
+                    (t, reply) = self.msgHandler.get(timeout=30)
+                except queue.Empty:
+                    logger.warning('Timeout waiting for serial reply to %s', msg)
+                    time.sleep(dt)
+                    continue
                 self.msgHandler.task_done()
                 if not reply:
                     logger.warning('Timeout for %s', msg)

@@ -120,13 +120,13 @@ class TDISimul(MyBaseThread):
         hdr = self.read(t1, 2) # Read 2 bytes for the length of the message
         if hdr is None:
             logger.warning("Didn't get two byte length field, %s", hdr)
-            os.write(fd, NAK) # Send back a NAK, there was a problem
+            os.write(self.fd, NAK) # Send back a NAK, there was a problem
             return None
         try: # Try converting to string and integer
             msgLen = int(str(hdr, 'utf-8'), 16) # msg length
         except Exception as e:
             logger.warning('Error converting length %s to a hex number, %s', hdr, e)
-            os.write(fd, NAK) # Send back a NAK, there was a problem
+            os.write(self.fd, NAK) # Send back a NAK, there was a problem
             return None
         body = self.read(t1, msgLen) # Read message body
         if body is None: # Not enough read
@@ -223,7 +223,7 @@ class TDISimul(MyBaseThread):
         for c in msg: chkSum += c
         msg += bytes('{:02X}'.format(chkSum & 0xff), 'utf-8')
         if self.args.simBad and (self.args.simBad > random.random()):
-            msg2 = msg
+            msg2 = bytearray(msg)
             msg[random.randrange(len(msg))] = random.randrange(256)
             self.logger.info('Mucked up %s to %s', bytes(msg2), bytes(msg))
         if self.args.simBadChk0 and (self.args.simBadChk0 > random.random()):

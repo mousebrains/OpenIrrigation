@@ -11,6 +11,19 @@ import queue
 import time
 import datetime
 
+# Error codes recorded in the database when valve operations fail
+ERR_MAX_STATIONS    = -1  # Too many stations already on
+ERR_SEND_FAILED     = -2  # Failed to send on command after retries
+ERR_OFF_FAILED      = -3  # Failed to send off command after retries
+ERR_TEST_ALREADY_ON = -4  # Cannot test: valve is already on
+ERR_TEST_MAX_STNS   = -5  # Cannot test: too many stations on
+ERR_TEST_SEND       = -6  # Test command send failed
+ERR_TEST_ZEE        = -7  # Test got a Zee (error) reply
+ERR_TEST_NO_REPLY   = -8  # No valid reply to test command
+ERR_TEST_DB_FAIL    = -9  # Test succeeded but DB write failed
+
+REPLY_TIMEOUT = 30  # seconds to wait for a serial reply
+
 class ValveOps(MyBaseThread):
     """ Interface to database to drive valve related operations """
     def __init__(self, args:argparse.ArgumentParser, params:dict,
@@ -76,7 +89,7 @@ class ValveOps(MyBaseThread):
                     self.valveOn(row[0], row[1], row[2], cur1)
                 elif cmd == 1:  # Off command
                     self.valveOff(row[0], row[1], row[2], cur1)
-                elif cmd == 2:  # Off command
+                elif cmd == 2:  # Test command
                     self.valveTest(row[0], row[1], row[2], cur1)
                 else:
                     self.logger.warning('Invalid command, %s, for command row %s', cmd, row)
@@ -120,14 +133,18 @@ class ValveOps(MyBaseThread):
             logger.warning('Maximum number of stations, %s, reached for %s(%s), nOn=%s',
                     self.maxStations, name, addr, nOn)
             self.onStations(cur)
-            self.dbExec(cur, sqlFail, (cmdID,-1))
+            self.dbExec(cur, sqlFail, (cmdID, ERR_MAX_STATIONS))
             return False
         else:
             logger.info('Turning on %s(%s) -> n=%s of %s', name, addr, nOn+1, self.maxStations)
         msg = self.msgOn.buildMessage((addr, 0)) # 0AXXYY
         for i in range(2): # Try turning it on twice if need be
             self.serial.put(msg, self) # Send to controller
-            (t, reply) = self.queue.get() # Get the reply
+            try:
+                (t, reply) = self.queue.get(timeout=REPLY_TIMEOUT)
+            except queue.Empty:
+                self.logger.warning('Timeout waiting for serial reply to %s', msg)
+                continue
             if t is None: # Bad reply
                 self.logger.warning('Valve on attempt %s failed in sending %s', i, msg)
                 continue
@@ -145,7 +162,7 @@ class ValveOps(MyBaseThread):
             if self.dbExec(cur, sqlOkay, a):
                 return True
 
-        self.dbExec(cur, sqlFail, (cmdID,-2))
+        self.dbExec(cur, sqlFail, (cmdID, ERR_SEND_FAILED))
         return False
 
     def valveOff(self, cmdID:int, addr:int, name:str, cur:psycopg.Cursor) -> bool:
@@ -158,11 +175,17 @@ class ValveOps(MyBaseThread):
             logger.info('Turning off %s(%s) which was turned on %s', name, addr, tOn.isoformat())
         else: # Not turned on
             logger.info('%s(%s) is not turned on, trying to turn off anyway', name, addr)
-        codigo = 0xff if tOn and (nOn <= 1) else addr # Turn off all if only addr is on
+        # 0xFF is a TDI protocol command to turn off ALL valves; use it when this is
+        # the only valve on, so the controller state is fully cleared.
+        codigo = 0xff if tOn and (nOn <= 1) else addr
         msg = self.msgOff.buildMessage((codigo,)) # 0DXX
         for i in range(2): # Try turning it off twice if need be
             self.serial.put(msg, self) # Send to controller
-            (t, reply) = self.queue.get() # Get the reply
+            try:
+                (t, reply) = self.queue.get(timeout=REPLY_TIMEOUT)
+            except queue.Empty:
+                self.logger.warning('Timeout waiting for serial reply to %s', msg)
+                continue
             if t is None: # Bad reply
                 self.logger.warning('Valve off attempt %s failed in sending %s', i, msg)
                 continue
@@ -178,7 +201,8 @@ class ValveOps(MyBaseThread):
             if self.dbExec(cur, sqlOkay, [cmdID, t, args[1]]):
                 return True
         self.logger.info('Failed to turn off %s(%s) cmdID=%s', name, addr, cmdID)
-        self.dbExec(cur, sqlFail, (cmdID,-3))
+        self.dbExec(cur, sqlFail, (cmdID, ERR_OFF_FAILED))
+        return False
 
     def valveTest(self, cmdID:int, addr:int, name:str, cur:psycopg.Cursor) -> bool:
         """ Run a valve test """
@@ -189,33 +213,38 @@ class ValveOps(MyBaseThread):
         if tOn:
             logger.info('Can not test %s(%s) since it has been on since %s',
                     name, addr, tOn.isoformat())
-            self.dbExec(cur, sqlFail, (cmdID,-4))
+            self.dbExec(cur, sqlFail, (cmdID, ERR_TEST_ALREADY_ON))
             return False
         if nOn >= self.maxStations:  # Not on but over limit
             logger.info('Can not test %s(%s) since maximum number of stations, %s <= %s',
                     name, addr, self.maxStations, nOn)
-            self.dbExec(cur, sqlFail, (cmdID,-5))
+            self.dbExec(cur, sqlFail, (cmdID, ERR_TEST_MAX_STNS))
             return False
         msg = self.msgTest.buildMessage((addr,)) # 0TXX
         self.serial.put(msg, self) # Send to controller
-        (t, reply) = self.queue.get() # Get the reply
+        try:
+            (t, reply) = self.queue.get(timeout=REPLY_TIMEOUT)
+        except queue.Empty:
+            logger.warning('Timeout waiting for serial reply to %s', msg)
+            self.dbExec(cur, sqlFail, (cmdID, ERR_TEST_SEND))
+            return False
         if t is None: # Bad reply
             logger.warning('Valve test failed in sending %s', msg)
-            self.dbExec(cur, sqlFail, (cmdID,-6))
+            self.dbExec(cur, sqlFail, (cmdID, ERR_TEST_SEND))
             return False
         t = datetime.datetime.fromtimestamp(t).astimezone()
         if self.chkZee(cur, msg, t, reply):
             self.logger.warning('Valve off recieved a Zee message, %s, in reply to %s', reply, msg)
-            self.dbExec(cur, sqlFail, (cmdID,-7))
+            self.dbExec(cur, sqlFail, (cmdID, ERR_TEST_ZEE))
             return False
         args = self.msgTest.procReplyArgs(reply)
         if args is None:
             logger.warning('No reply to %s', msg)
-            self.dbExec(cur, sqlFail, (cmdID,-8))
+            self.dbExec(cur, sqlFail, (cmdID, ERR_TEST_NO_REPLY))
             return False
         if not self.dbExec(cur, sqlOkay, (cmdID, t, 0, args[1], args[2], args[3])):
             logger.info('ValveTest Failed')
-            self.dbExec(cur, sqlFail, (cmdID,-9))
+            self.dbExec(cur, sqlFail, (cmdID, ERR_TEST_DB_FAIL))
             return False
         logger.info('ValveTest passed %s(%s), pre=%s peak=%s post=%s',
                 name, addr, args[1], args[2], args[3])

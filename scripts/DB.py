@@ -63,10 +63,6 @@ class DB:
             self.db = None
             self.connectCount += 1
             return True
-        except psycopg.Warning:
-            self.logger.exception('Unable to close connection to %s', self.dbName)
-        except psycopg.Error:
-            self.logger.exception('Unable to close connection to %s', self.dbName)
         except Exception:
             self.logger.exception('Unable to close connection to %s', self.dbName)
         self.db = None
@@ -82,10 +78,6 @@ class DB:
                 self.db = psycopg.connect(dbname=self.dbName)
                 self.connectCount += 1
                 return self.db
-            except psycopg.Warning:
-                self.logger.exception('Unable to open connection to %s', self.dbName)
-            except psycopg.Error:
-                self.logger.exception('Unable to open connection to %s', self.dbName)
             except Exception:
                 self.logger.exception('Unable to open connection to %s', self.dbName)
             self.close() # Drop the connection and try again
@@ -101,10 +93,6 @@ class DB:
                 if qDict: # Create a cursor with a dictionary like cursor
                     return db.cursor(row_factory=dict_row)
                 return db.cursor() # Create a non-dictionary cursor
-            except psycopg.Warning:
-                self.logger.exception('Unable to create a cursor for %s', self.dbName)
-            except psycopg.Error:
-                self.logger.exception('Unable to create a cursor for %s', self.dbName)
             except Exception:
                 self.logger.exception('Unable to create a cursor for %s', self.dbName)
             self.close() # Drop the connection and try again
@@ -117,12 +105,8 @@ class DB:
         try:
             db.commit() # Commit any changes that are pending
             return True
-        except psycopg.Warning:
-            self.logger.exception('Unable to commit to %s', self.dbName)
-        except psycopg.Error:
-            self.logger.exception('Unable to commit to %s', self.dbName)
         except Exception:
-            self.logger.exception('Unable to commit updates for %s', self.dbName)
+            self.logger.exception('Unable to commit to %s', self.dbName)
         return False
 
     def rollback(self) -> bool:
@@ -132,12 +116,8 @@ class DB:
         try:
             db.rollback() # Commit any changes that are pending
             return True
-        except psycopg.Warning:
-            self.logger.exception('Unable to rollback to %s', self.dbName)
-        except psycopg.Error:
-            self.logger.exception('Unable to rollback to %s', self.dbName)
         except Exception:
-            self.logger.exception('Unable to rollback updates for %s', self.dbName)
+            self.logger.exception('Unable to rollback to %s', self.dbName)
         return False
 
     def execute(self, sql: str, args: list = None) -> bool:
@@ -149,10 +129,6 @@ class DB:
         try:
             cur.execute(sql, args)
             return True
-        except psycopg.Warning:
-            self.logger.exception('Unable to execute to %s, sql=%s args=%s', self.dbName, sql, args)
-        except psycopg.Error:
-            self.logger.exception('Unable to execute to %s, sql=%s args=%s', self.dbName, sql, args)
         except Exception:
             self.logger.exception('Unable to execute to %s, sql=%s args=%s', self.dbName, sql, args)
         finally:
@@ -262,14 +238,10 @@ class Listen:
             while (n := self.conn.pgconn.notifies()) is not None:
                 notifications.append(n.extra.decode('utf-8') if n.extra else '')
             return notifications if notifications else None
-        except psycopg.Warning:
-            self.logger.exception('Unable to listen to channel %s in %s', self.channel, self.dbName)
-        except psycopg.Error:
+        except Exception:
             self.logger.exception('Unable to listen to channel %s in %s', self.channel, self.dbName)
             # Force reconnect on next call
             try: self.conn.close()
             except Exception: pass
             self.conn = None
-        except Exception:
-            self.logger.exception('Unable to listen to channel %s in %s', self.channel, self.dbName)
         return None
