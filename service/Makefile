@@ -5,11 +5,19 @@
 
 include ../Makefile.params
 
-# Where to install the .service files
-SRC = OITDI.service
-SRC+= OIAgriMet.service
-SRC+= OISched.service
-SRC+= OIDailyReport.service
+# Services (oneshot units triggered by timers, plus long-running daemons)
+SERVICES = OITDI.service
+SERVICES+= OIAgriMet.service
+SERVICES+= OIAgriMetStats.service
+SERVICES+= OISched.service
+SERVICES+= OIDailyReport.service
+
+# Timers
+TIMERS = OIAgriMet.timer
+TIMERS+= OIAgriMetStats.timer
+TIMERS+= OIDailyReport.timer
+
+SRC = $(SERVICES) $(TIMERS)
 
 DEST = $(SRC:%=$(SERVICEDIR)/%)
 
@@ -47,5 +55,17 @@ reload:
 restart: reload
 	systemctl --no-pager restart $(SRC)
 
-enable disable start stop status:
-	systemctl --no-pager $@ $(SRC)
+enable:
+	systemctl --no-pager enable $(TIMERS) OITDI.service OISched.service
+
+disable:
+	systemctl --no-pager disable $(TIMERS) OITDI.service OISched.service
+
+start:
+	systemctl --no-pager start $(TIMERS) OITDI.service OISched.service
+
+stop:
+	systemctl --no-pager stop $(TIMERS) $(SERVICES)
+
+status:
+	systemctl --no-pager status $(SRC)

@@ -15,13 +15,8 @@ After=postfix.service
 After=network.target
 
 [Service]
-# Type=simple # Default
+Type=oneshot
 User=__USER__
 Group=__GROUP__
 WorkingDirectory=__LOGDIR__
 ExecStart=__BINDIR__/dailyReport.py --db=__DBNAME__ --log=__LOGDIR__/DailyReport.log
-RestartSec=1day
-Restart=always
-
-[Install]
-WantedBy=multi-user.target

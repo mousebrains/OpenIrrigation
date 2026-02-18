@@ -1,0 +1,9 @@
+[Unit]
+Description=OpenIrrigation Agrimet Stats Timer
+
+[Timer]
+OnCalendar=*-01-01 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

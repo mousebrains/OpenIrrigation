@@ -11,7 +11,6 @@ import Notify
 import DB
 import argparse
 import datetime
-import time
 import getpass
 import socket
 from smtplib import SMTP
@@ -173,16 +172,8 @@ try:
 
     logger.info('Args=%s', args)
     t0 = datetime.time.fromisoformat(args.refTime)
-    while True:
-        d0 = datetime.date.today()
-        t = datetime.datetime.combine(d0, t0)
-        doit(t, args, logger)
-        now = datetime.datetime.now()
-        while t <= now:
-            t += datetime.timedelta(days=1)
-        dt = t - now + datetime.timedelta(seconds=60) # 1 minute after cutoff time
-        logger.info('Sleeping until %s', now + dt)
-        time.sleep(dt.total_seconds())
+    t = datetime.datetime.combine(datetime.date.today(), t0)
+    doit(t, args, logger)
 
 except Exception:
     logger.exception('Unexpected exception')
