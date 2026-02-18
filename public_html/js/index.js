@@ -49,7 +49,7 @@ function mkTime(dt) { // Convert dt seconds to h:mm:ss
 	const hours = Math.floor(dt / 3600);
 	const mins = ("00" + Math.floor(dt / 60) % 60).slice(-2);
 	const secs = ("00" + Math.floor(dt % 60)).slice(-2);
-	return `${hours}:${mins}:${secs}`;
+	return hours + ":" + mins + ":" + secs;
 }
 
 function mkToolTip(key, data) {

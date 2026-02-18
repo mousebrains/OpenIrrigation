@@ -95,11 +95,11 @@ function buildTable(info, earliest, today, latest) {
 function mkTime(dt) {
 	const hours = Math.floor(dt / 3600);
 	const minutes = Math.floor(dt / 60) % 60;
-	return `${hours}:${("00" + minutes).slice(-2)}`;
+	return hours + ":" + ("00" + minutes).slice(-2);
 }
 
 function mkKey(id, d, key) {
-	return `#R${id}C${((key in myInfo) && (d in myInfo[key])) ? myInfo[key][d] : 'XX'}`;
+	return `#R${id}C${(((key in myInfo) && (d in myInfo[key])) ? myInfo[key][d] : 'XX')}`;
 }
 
 function displayTimes(data) {

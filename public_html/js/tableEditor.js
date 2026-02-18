@@ -45,8 +45,7 @@ function mkRefTable(a, x, form) {
 	});
 	msg += "</select>";
 	if (x !== null) {
-		msg += `<input type='hidden' name='${col}Prev'`
-			+ ` value='${escapeHTML(val)}'${form}`;
+		msg += `<input type='hidden' name='${col}Prev' value='${escapeHTML(val)}'${form}`;
 	}
 	return msg;
 }
@@ -60,8 +59,7 @@ function mkTextArea(a, x, form) {
 	msg += escapeHTML(val);
 	msg += "</textarea>";
 	if (x !== null) {
-		msg += `<input type='hidden' name='${col}Prev'`
-			+ ` value='${escapeHTML(val)}'${form}`;
+		msg += `<input type='hidden' name='${col}Prev' value='${escapeHTML(val)}'${form}`;
 	}
 	return msg;
 }
@@ -253,7 +251,7 @@ function receivedStatus(event) {
 if (typeof EventSource !== "undefined") {
 	const base = 'tableStatus.php';
 	const parts = window.location.href.split('?'); // Get parameters
-	const url = parts.length > 1 ? (`${base}?${parts.slice(-1)}`) : base;
+	const url = parts.length > 1 ? `${base}?${parts.slice(-1)}` : base;
 	statusSource = OI_connectSSE(url, receivedStatus);
 	$('title').html(`Table Editor ${escapeHTML(myTableName)}`);
 

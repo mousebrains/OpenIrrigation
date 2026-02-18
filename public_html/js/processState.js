@@ -3,11 +3,7 @@ function receivedStatus(event) {
 	if ('burp' in data) { return; } // Nothing to do on burp messages
 	data.forEach((x) => {
 		const t = new Date(x[1] * 1000);
-		$('#messages').prepend('<tr>'
-			+ `<th>${escapeHTML(x[0])}</th>`
-			+ `<td>${t.toLocaleString()}</td>`
-			+ `<td>${escapeHTML(x[2])}</td>`
-			+ '</tr>');
+		$('#messages').prepend(`<tr><th>${escapeHTML(x[0])}</th><td>${t.toLocaleString()}</td><td>${escapeHTML(x[2])}</td></tr>`);
 	});
 }
 
