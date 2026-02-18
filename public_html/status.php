@@ -145,11 +145,11 @@ class DB {
 	} // fetchPending
 
 	function fetchSystemctl() {
-		$output = shell_exec("/bin/systemctl is-active OITDI OISched OIAgriMet");
+		$output = shell_exec("/bin/systemctl is-active OITDI OISched");
 		if (empty($output)) return [];
 		$output = explode("\n", $output);
-		if (count($output) < 3) return [];
-		return array_slice($output, 0, 3);
+		if (count($output) < 2) return [];
+		return array_slice($output, 0, 2);
 	}
 } // DB
 

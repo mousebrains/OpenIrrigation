@@ -15,7 +15,7 @@
 <?php
 require_once 'php/navBar.php';
 echo "<pre>\n";
-$output = shell_exec("/bin/systemctl --full --no-pager status OITDI OISched OIAgriMet");
+$output = shell_exec("/bin/systemctl --full --no-pager status OITDI OISched");
 echo htmlspecialchars($output, ENT_QUOTES, 'UTF-8');
 echo "</pre>\n";
 echo "<hr>\n";

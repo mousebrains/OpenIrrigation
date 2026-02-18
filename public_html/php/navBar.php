@@ -46,7 +46,6 @@
  <span onclick='javascript:location.href="systemctl.php"'>
   <span id=statusOITDI></span>
   <span id=statusOISched></span>
-  <span id=statusOIAgriMet></span>
  </span>
 </span>
 </div>
