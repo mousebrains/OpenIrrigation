@@ -65,12 +65,12 @@ I have Apple devices on my network so I install zeroconf/bonjour:
   - Change the username that nginx runs as in /etc/nginx/nginx.conf. www-data will need to be changed to your user. I use a username of irrigation. Here is my [example.](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/nginx/nginx.conf)
   - Check for typos using the command
     - sudo nginx -t
-- php-fpm configuration involves modifying the /etc/php/8.2/fpm/pool.d/www.conf file. Here is my [example](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/php-fpm/www.conf)
+- php-fpm configuration involves modifying the /etc/php/8.4/fpm/pool.d/www.conf file. Here is my [example](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/php-fpm/www.conf)
     - Change user and group to the same user nginx is running as. There are four locations, (user|group) and listen.(owner|group). I use irrigation for both.
     - Change "pm =" line to "pm = ondemand"
     - Change the pm.max_children line to 20"
 - Restart the webserver and php-fpm.
-  - sudo systemctl restart nginx php8.2-fpm
+  - sudo systemctl restart nginx php8.4-fpm
 ---
 ## PostgreSQL installation
 Install PostgreSQL
