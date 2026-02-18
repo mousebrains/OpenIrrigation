@@ -1,2 +1,2 @@
 <?php
-define('OI_ASSET_VERSION', '3');
+define('OI_ASSET_VERSION', '4');

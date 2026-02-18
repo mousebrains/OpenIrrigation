@@ -21,7 +21,7 @@ function buildTable(info, tblID, runLabel, stopLabel) {
 		}
 		msg += `<tr id='${key}'>`;
 		msg += "<td class='tooltip' onclick=''>"; // onclick for ios/safari hover to work
-		msg += `<span class='tooltiptext tooltip-left' id='tt${key}'>Nada</span>`;
+		msg += `<span class='tooltiptext tooltip-right' id='tt${key}'>Nada</span>`;
 		msg += `${escapeHTML(name)}</td>`;
 		msg += "<td style='text-align:right;'>";
 		msg += `<span id='a${key}' style='display:inline;'>`;
