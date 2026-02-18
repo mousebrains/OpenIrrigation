@@ -7,6 +7,8 @@ header('X-Accel-Buffering: no');
 
 class DB {
 	private $errors = array(); // Error stack
+	private PDO $db;
+	private PDOStatement $getRecords;
 
 	function __construct(string $dbName) {
 		$db = new PDO("pgsql:dbname=$dbName;");
@@ -28,7 +30,7 @@ class DB {
 
 	function fetchInfo(float $t) { # Get the most current records for each process
 		$stmt = $this->getRecords;
-		if ($stmt->execute([$t]) == false) return ['error' => $stmt->errorInfo()];
+		if ($stmt->execute([$t]) === false) return ['error' => $stmt->errorInfo()];
 		return $stmt->fetchAll(PDO::FETCH_NUM);
 	}
 } // DB

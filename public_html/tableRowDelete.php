@@ -10,7 +10,7 @@ $id = $_POST['id'];
 
 if (!$db->tableExists($tbl)) exit($db->dbMsg("Table, $tbl, does not exist"));
 
-$sql = "DELETE FROM $tbl WHERE id=?;";
+$sql = "DELETE FROM " . $db->quoteIdent($tbl) . " WHERE id=?;";
 if (!$db->query($sql, [$id])) exit($db->dbMsg("Deletion of id=$id failed"));
 echo $db->mkMsg(true, "Deleted from $tbl id=$id okay");
 ?>

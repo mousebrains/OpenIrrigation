@@ -16,8 +16,8 @@ if (empty($_GET['tbl'])) {exit("<h1>tbl parameter not supplied</h1>\n</body>\n</
 
 require_once 'php/DB1.php';
 $tbl = $_GET['tbl'];
-if (!$db->tableExists($tbl)) {exit("<h1>Table, $tbl, does not exist</h1>\n</body>\n</html>\n");}
-echo '<script>var myTableName="' . $tbl . '";</script>';
+if (!$db->tableExists($tbl)) {exit("<h1>Table, " . htmlspecialchars($tbl, ENT_QUOTES, 'UTF-8') . ", does not exist</h1>\n</body>\n</html>\n");}
+echo '<script>let myTableName=' . json_encode($tbl) . ';</script>';
 
 require_once 'php/navBar.php';
 ?>

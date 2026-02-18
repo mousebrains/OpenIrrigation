@@ -13,9 +13,9 @@ function tableInfo($db, $name) {
 }
 
 function tableRows($db, $name, $orderBy, $where, $args) {
-	$sql = "SELECT * FROM " . $name;
-	if ($where != Null) $sql .= ' WHERE ' . $where;
-	if ($orderBy != NULL) $sql .= $orderBy;
+	$sql = "SELECT * FROM " . $db->quoteIdent($name);
+	if ($where !== null) $sql .= ' WHERE ' . $where;
+	if ($orderBy !== null) $sql .= $orderBy;
 	$sql .= ";";
 	return $db->loadRows($sql, $args);
 }
@@ -27,7 +27,7 @@ function tablePgmStn($db, $where, $args) {
 		. " FROM pgmStn"
 		. " INNER JOIN station ON pgmstn.station=station.id"
 		. " INNER JOIN program ON pgmstn.program=program.id";
-	if ($where != Null) $sql .= ' WHERE ' . $where;
+	if ($where !== null) $sql .= ' WHERE ' . $where;
 	$sql .= " ORDER BY station.name,program.name;";
 
 	return $db->loadRows($sql, $args);
@@ -39,13 +39,13 @@ function tableReference($db, $name) {
 		. " WHERE tbl=? AND refTable IS NOT NULL;";
 	$info = array();
 	foreach ($db->loadRows($sql, [$name]) as $row) {
-		$tbl = $row['reftable'];
+		$tbl = $db->quoteIdent($row['reftable']);
 		$col = $row['col'];
-		$sql = "SELECT " . $row['refkey'] . " AS id,"
-			. $row['reflabel'] . " AS name"
+		$sql = "SELECT " . $db->quoteIdent($row['refkey']) . " AS id,"
+			. $db->quoteIdent($row['reflabel']) . " AS name"
 			. " FROM " . $tbl;
-		if ($row['refcriteria'] != null) $sql .= " WHERE " . $row['refcriteria'];
-		if ($row['reforderby'] != null) $sql .= " ORDER BY " . $row['reforderby'];
+		if ($row['refcriteria'] !== null) $sql .= " WHERE " . $row['refcriteria'];
+		if ($row['reforderby'] !== null) $sql .= " ORDER BY " . $row['reforderby'];
 		$sql .= ";";
 		$info[$col] = $db->loadRows($sql, []);
 	}
@@ -57,9 +57,9 @@ function tableSecondary($db, $name) {
 		. " WHERE tbl=? AND secondaryKey IS NOT NULL;";
 	$info = array();
 	foreach ($db->loadRows($sql, [$name]) as $row) {
-		$col = $row['col'];
-		$key0 = $row['key0'];
-		$key1 = $row['key1'];
+		$col = $db->quoteIdent($row['col']);
+		$key0 = $db->quoteIdent($row['key0']);
+		$key1 = $db->quoteIdent($row['key1']);
 		$sql = "SELECT $key0,$key1 FROM $col;";
 		$info[$col] = [];
 		foreach ($db->loadRows($sql, []) as $a) {
@@ -130,7 +130,7 @@ while (True) { # Wait forever
 	flush();
 	// Connections time out at ~60 seconds, so send a burp every ~55 seconds
 	$notifications = $db->notifications(55000);
-	if ($notifications == false) { // no notifications
+	if ($notifications === false) { // no notifications
 		$info = ['burp' => 0];
 		continue;
 	} // if notifications

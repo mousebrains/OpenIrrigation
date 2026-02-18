@@ -1,4 +1,4 @@
-.phony: all install clean start stop restart status enable disable reload cleanlogs
+.PHONY: all install clean start stop restart status enable disable reload cleanlogs php_lint
 
 all:
 
@@ -18,3 +18,6 @@ cleanlogs: Makefile.params
 	$(MAKE) stop
 	$(RM) $(LOGDIR)/*.log
 	$(MAKE) start
+
+php_lint:
+	$(MAKE) -C public_html $@

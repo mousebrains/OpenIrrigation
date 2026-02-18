@@ -10,7 +10,7 @@ SRC+= navBar.php
 
 DEST = $(SRC:%=$(PHPDIR)/%)
 
-.PHONY: all install clean
+.PHONY: all install clean php_lint
 
 all: $(SRC)
 
@@ -20,3 +20,6 @@ install: $(SRC)
 
 clean:
 	$(RM) $(PRE:%.pre=%) $(DEST)
+
+php_lint:
+	@fail=0; for f in $(SRC); do php -l $$f || fail=1; done; exit $$fail

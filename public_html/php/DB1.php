@@ -9,14 +9,14 @@ class DB {
 	}
 
 	private function getDB() {
-		if ($this->db == null) {
+		if ($this->db === null) {
 			$this->db = new PDO("pgsql:dbname=" . $this->dbName . ";");
 		}
 		return $this->db;
 	}
 
 	function getError() {
-		return $this->lastError == null ? "" : $this->lastError[2];
+		return $this->lastError === null ? "" : $this->lastError[2];
 	}
 
 	function close() { $this->db = null; }
@@ -24,15 +24,15 @@ class DB {
 	function prepare(string $sql) {
 		$db = $this->getDB();
 		$a = $db->prepare($sql);
-		if ($a != false) return $a;
+		if ($a !== false) return $a;
 		$this->lastError = $db->errorInfo();
 		return false;
 	}
 
 	function query(string $sql, array $args = array()) {
 		$a = $this->prepare($sql);
-		if ($a == false) return false;
-		if ($a->execute($args) != false) return $a; // worked
+		if ($a === false) return false;
+		if ($a->execute($args) !== false) return $a; // worked
 		$this->lastError = $a->errorInfo();
 		return false;
 	}
@@ -43,17 +43,31 @@ class DB {
 
 	function loadRows(string $sql, array $args) {
 		$a = $this->query($sql, $args);
-		if ($a == false) return [];
+		if ($a === false) return [];
 		return $a->fetchAll(PDO::FETCH_ASSOC);
 	}
 
 	function loadRowsNum(string $sql, array $args) {
 		$a = $this->query($sql, $args);
-		if ($a == false) return [];
+		if ($a === false) return [];
 		return $a->fetchAll(PDO::FETCH_NUM);
 	}
 
-	function listen(string $channel) {return $this->query("LISTEN $channel;");}
+	function quoteIdent(string $name): string {
+		if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $name)) {
+			throw new InvalidArgumentException("Invalid SQL identifier: $name");
+		}
+		return $name;
+	}
+
+	function quote(string $value): string {
+		return $this->getDB()->quote($value);
+	}
+
+	function listen(string $channel) {
+		$channel = $this->quoteIdent($channel);
+		return $this->query("LISTEN $channel;");
+	}
 
 	function notifications(int $delay) {
 		$db = $this->getDB();
@@ -64,7 +78,7 @@ class DB {
 		$sql = "SELECT count(*) AS cnt FROM information_schema.tables"
 			. " WHERE table_name=LOWER(?);";
 		$a = $this->query($sql, [$tbl]);
-		if ($a == false) return false;
+		if ($a === false) return false;
 		$result = $a->fetch(PDO::FETCH_ASSOC); // Should only be one row
 		return array_key_exists('cnt', $result) && $result['cnt'];
 	}
@@ -73,7 +87,7 @@ class DB {
 		$sql = "SELECT column_name AS col FROM information_schema.columns"
 			. " WHERE table_name=LOWER(?);";
 		$a = $this->query($sql, [$tbl]);
-		if ($a == false) return [];
+		if ($a === false) return [];
 		$rows = [];
 		foreach ($a as $row) { array_push($rows, $row['col']); }
 		return $rows;

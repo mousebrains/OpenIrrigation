@@ -13,6 +13,13 @@ class DB {
 	private $errors = array(); // Error stack
 	private $daysFwd = 3; # Days from current date to look forwards
 	private $tPast = 0;
+	private PDO $db;
+	private PDOStatement $getActive;
+	private PDOStatement $getPending;
+	private PDOStatement $getPast;
+	private PDOStatement $getStations;
+	private PDOStatement $getPrograms;
+	private PDOStatement $getPOCs;
 
 	function __construct(string $dbName) {
 		$this->tPast = time() - 3 * 86400; # 3 days back
@@ -97,7 +104,7 @@ class DB {
 	}
 
 	function exec($stmt, $args = []) {
-		if ($stmt->execute($args) == false) {
+		if ($stmt->execute($args) === false) {
 			array_push($this->errors, $stmt->errorInfo());
 			return false;
 		}

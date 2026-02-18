@@ -19,8 +19,8 @@ foreach ($cols as $key) {
 	$prevKey = $key . "Prev";
 	if (array_key_exists($key, $_POST) 
 		&& array_key_exists($prevKey, $_POST)
-		&& ($_POST[$key] != $_POST[$prevKey])) {
-		array_push($keys, "$key=?");
+		&& ($_POST[$key] !== $_POST[$prevKey])) {
+		array_push($keys, $db->quoteIdent($key) . "=?");
 		array_push($vals, $_POST[$key]);
 		array_push($comment, 
 			"In $tbl changed $key from " . $_POST[$prevKey] . " to " . $_POST[$key]);
@@ -33,7 +33,7 @@ $qSecondary = false;
 $db->beginTransaction();
 
 if ($qPrimary) {
-	$sql = "UPDATE $tbl SET " . implode(',', $keys) . " WHERE id=?;";
+	$sql = "UPDATE " . $db->quoteIdent($tbl) . " SET " . implode(',', $keys) . " WHERE id=?;";
 	array_push($vals, $id); // For WHERE id=?
 	if (!$db->query($sql, $vals)) {
 		exit($db->dbMsg('Insertion failed')); // Update failed, so don't do anything else
@@ -44,13 +44,13 @@ if ($qPrimary) {
 $sql = "SELECT col,secondaryKey,secondaryValue FROM tableInfo"
 	. " WHERE tbl=? AND secondaryKey IS NOT NULL;";
 foreach ($db->loadRows($sql, [$tbl]) as $row) { // Walk through any secondary tables
-	$stbl = $row['col'];
-	$key0 = $row['secondarykey'];
-	$key1 = $row['secondaryvalue'];
+	$stbl = $db->quoteIdent($row['col']);
+	$key0 = $db->quoteIdent($row['secondarykey']);
+	$key1 = $db->quoteIdent($row['secondaryvalue']);
 	$sql = "DELETE FROM $stbl WHERE $key0=?;"; // Remove current entries
 	if (!$db->query($sql, [$id])) exit($db->dbMsg('Delete secondary'));
 	array_push($comment, "Deleted $key0=$id row from $stbl");
-	if (!empty($_POST[$stbl])) { // Something to be stored
+	if (!empty($_POST[$row['col']])) { // Something to be stored
 		$qSecondary = true;
 		$sql = "INSERT INTO $stbl ($key0, $key1) VALUES(?,?);";
 		foreach ($_POST[$stbl] as $sid) {
@@ -67,7 +67,8 @@ $db->commit();
 if (!$qPrimary && $qSecondary) {
 	// The secondary was updated the but primary was not,
 	// so send a notification for the primary
-	$sql = "NOTIFY $tbl" . "_update,'$tbl UPDATE $id';";
+	$channel = $db->quoteIdent($tbl) . "_update";
+	$sql = "NOTIFY " . $channel . ", " . $db->quote("$tbl UPDATE $id") . ";";
 	$db->query($sql);
 }
 
