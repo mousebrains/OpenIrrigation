@@ -137,7 +137,6 @@ function displayTimes(data) {
 		const d = x[1];
 		const t0 = parseFloat(x[2]);
 		const t1 = parseFloat(x[3]);
-		const now = Date.now() / 1000;
 		const pre0 = (id in past) && (d in past[id]) ? past[id][d] : 0;
 		const pre1 = (id in pending) && (d in pending[id]) ? pending[id][d] : 0;
 		const key0 = mkKey(id, d, 'past2col');

@@ -147,7 +147,6 @@ function updateActions(obj) {
 }
 
 function inputChanged(ev) {
-	const name = $(this).attr('name');
 	const td = $(this).parent(); // TD element above me
 	const prev = td.children('input:hidden');
 	const prevVal = (prev === undefined) ? undefined : prev.val();
