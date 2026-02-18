@@ -1,6 +1,6 @@
 # Installation of OpenIrrigation
 
-## For detailed instructions of how to setup a [Raspbian system](https://github.com/mousebrains/OpenIrrigation/blob/master/INSTALL.raspbian.md#git-installation)
+## For detailed instructions of how to setup a [Debian system](https://github.com/mousebrains/OpenIrrigation/blob/master/INSTALL.debian.md#git-installation)
 ---
 ## Get The OpenIrrigation package
 I do this as my non-irrigation user, i.e. foo above or whatever you call it. It does need to be a sudoer user.

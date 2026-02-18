@@ -53,8 +53,6 @@ class Info:
         self.pgmStn2program = KeyValue(db, 'SELECT id,program FROM pgmStn;')
         self.pgmStn2station = KeyValue(db, 'SELECT id,station FROM pgmStn;')
         self.stations = KeyValue(db, 'SELECT id,sensor FROM station;')
-        self.events = KeyValue(db, 'SELECT id,name FROM event;')
-        self.groups = KeyValue(db, 'SELECT id,name FROM groups;')
 
     def list(self, id):
         return "(SELECT id FROM webList WHERE grp={} AND key={})".format(
@@ -103,13 +101,6 @@ class Info:
     def station(self, id):
         return "(SELECT id FROM station WHERE sensor={})".format(
                 self.sensor(self.stations[id].id()))
-
-    def event(self, id):
-        return "(SELECT id FROM event WHERE name={})".format(self.events[id])
-
-    def group(self, id):
-        return "(SELECT id FROM groups WHERE name={})".format(self.groups[id])
-
 
 def outputEntries(comment, tbl, entries):
     if entries:
@@ -247,18 +238,6 @@ def getProgramStation(db, info):
     getSpecial(db, fields, sFields, 'SELECT * FROM pgmStn ORDER BY program,station;',
             'program/station information', 'pgmStn')
 
-def getEvent(db, info):
-    sFields = OrderedDict([('site', info.site), ('onoff', info.list),
-        ('action', info.list), ('startmode', info.list), ('stopmode', info.list)])
-    fields = ['name', 'ndays', 'refdate', 'starttime', 'endtime', 'nrepeat', 'notes']
-    getSpecial(db, fields, sFields, 'SELECT * FROM event ORDER BY name;',
-            'event information', 'event')
-
-def getEventDOW(db, info):
-    sFields = OrderedDict([('event', info.event), ('dow', info.list)])
-    getSpecial(db, [], sFields, 'SELECT * FROM eventDOW ORDER BY event,dow;',
-            'event/day-of-week information', 'eventDOW')
-
 def getETStation(db, info):
     sFields = OrderedDict([('station', info.station), ('crop', info.crop), ('soil', info.soil)])
     fields = ['sdate', 'edate', 'userrootnorm', 'userinfiltrationrate', 'usermad',
@@ -266,18 +245,6 @@ def getETStation(db, info):
               'depletion', 'cycletime', 'soaktime', 'fracadjust']
     getSpecial(db, fields, sFields, 'SELECT * FROM ETStation ORDER BY station;',
             'ET/station information', 'ETStation')
-
-def getGroup(db, info):
-    sFields = OrderedDict([('site', info.site)])
-    fields = ['name']
-    getSpecial(db, fields, sFields, 'SELECT * FROM groups ORDER BY name;',
-            'group information', 'groups')
-
-def getGroupStation(db, info):
-    sFields = OrderedDict([('groups', info.group), ('station', info.station)])
-    fields = ['sortorder']
-    getSpecial(db, fields, sFields, 'SELECT * FROM groupStation ORDER BY groups,station;',
-            'group/station information', 'groupStation')
 
 def getHistorical(db, info):
     sFields = OrderedDict([('sensor', info.sensor), ('program', info.program)])
@@ -315,11 +282,7 @@ with psycopg.connect(dbname=args.db) as db:
     getProgram(db, info)
     getProgramDOW(db, info)
     getProgramStation(db, info)
-    getEvent(db, info)
-    getEventDOW(db, info)
     getETStation(db, info)
-    getGroup(db, info)
-    getGroupStation(db, info)
 
     getHistorical(db, info)
     # logBasic(db, info, 'onLog', ['timestamp', 'code', 'pre', 'peak', 'post'],

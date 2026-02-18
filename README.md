@@ -3,7 +3,7 @@
 ---
 * The feature set includes:
   - Multiple sites
-  - Multiple controlers per site (Currently only a Tucor TDI 2 wire board is implemented.)
+  - Multiple controllers per site (Currently only a Tucor TDI 2 wire board is implemented.)
     + Maximum number of stations per controller.
     + Maximum current per controller.
   - Multiple points of connect, POCs, which can span controllers.
@@ -18,11 +18,10 @@
     + Each email can have multiple report types, i.e. critical to SMS and others to email
   - Unlimited number of valves or sensors per controller.
     + Device active and passive currents.
-    + Device active and passive currents.
     + Each sensor can be associated with an irrigation station.
   - An Irrigation station will be associated with a sensor.
     + Each station has a priority for scheduling.
-    + Each station has a maximum number of contemporanous valves that can be running while it is one.
+    + Each station has a maximum number of contemporaneous valves that can be running while it is one.
     + Each station has a delay after turning on and before turning off for estimating flows.
     + Each station has an associated POC.
     + Each station has soak time.
@@ -47,25 +46,25 @@
   - There is a start at evapo-transpiration, ET, but it is not fully implemented.
 
 * This software is written in a mix of:
-  - Pyton 3.x for the backend processing, 
-  - PostgresSQL 11 for the database, and
-  - PHP 7.x, HTML, and Javascript for the HTML 5 interface.
+  - Python >= 3.11 for the backend processing,
+  - PostgreSQL 17 for the database, and
+  - PHP 8.x, HTML, and Javascript for the HTML 5 interface.
 
 ---
 * Backend software needed:
-  - A webserver such as NGINX or Apache software supporting PHP 7.x
-  - Python 3.x,
-  - PostgreSQL 11
-  - Some form of service/crontab process managment
+  - A webserver such as NGINX or Apache software supporting PHP 8.x
+  - Python >= 3.11
+  - PostgreSQL 17
+  - Some form of service/crontab process management
 
 * The non-standard Python modules installed are:
   - serial
-  - psycopg2
+  - psycopg (v3)
   - astral
 
 ---
 * It is tested on the following system:
-  - A Raspberry Pi 3 running Raspbian Buster Lite and a MacOS 10.15 system,
+  - A Raspberry Pi 3 running Raspberry Pi OS (Debian Trixie),
   - a USB-Serial connection to a Tucor TDI board,
   - 50+ valves, and
   - Agrimet for evapotranspiration, ET, information.
