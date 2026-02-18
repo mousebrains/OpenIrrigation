@@ -20,15 +20,15 @@ $flow = $db->loadRowsNum(
 	. " ROUND(EXTRACT(EPOCH FROM MIN(timestamp))) AS t,"
 	. " ROUND(AVG(flow)::numeric, 2) AS flow"
 	. " FROM sensorLog"
-	. " WHERE timestamp >= NOW() - INTERVAL '1 hour' * $1"
+	. " WHERE timestamp >= NOW() - INTERVAL '1 hour' * ?"
 	. " GROUP BY width_bucket("
 	. "   EXTRACT(EPOCH FROM timestamp),"
-	. "   EXTRACT(EPOCH FROM NOW() - INTERVAL '1 hour' * $1),"
+	. "   EXTRACT(EPOCH FROM NOW() - INTERVAL '1 hour' * ?),"
 	. "   EXTRACT(EPOCH FROM NOW()),"
-	. "   $2"
+	. "   ?"
 	. " )"
 	. " ORDER BY t",
-	[$hours, $buckets]
+	[$hours, $hours, $buckets]
 );
 
 $stations = $db->loadRowsNum(
@@ -38,7 +38,7 @@ $stations = $db->loadRowsNum(
 	. " FROM action a"
 	. "  JOIN sensor sen ON a.sensor = sen.id"
 	. "  JOIN station s ON s.sensor = sen.id"
-	. " WHERE a.tOff >= NOW() - INTERVAL '1 hour' * $1 AND a.tOn <= NOW()"
+	. " WHERE a.tOff >= NOW() - INTERVAL '1 hour' * ? AND a.tOn <= NOW()"
 	. " UNION ALL"
 	. " SELECT s.name,"
 	. " ROUND(EXTRACT(EPOCH FROM tOn)) AS tOn,"
@@ -46,9 +46,9 @@ $stations = $db->loadRowsNum(
 	. " FROM historical h"
 	. "  JOIN sensor sen ON h.sensor = sen.id"
 	. "  JOIN station s ON s.sensor = sen.id"
-	. " WHERE h.tOff >= NOW() - INTERVAL '1 hour' * $1 AND h.tOn <= NOW()"
+	. " WHERE h.tOff >= NOW() - INTERVAL '1 hour' * ? AND h.tOn <= NOW()"
 	. " ORDER BY tOn",
-	[$hours]
+	[$hours, $hours]
 );
 
 echo json_encode(['flow' => $flow, 'stations' => $stations]);
