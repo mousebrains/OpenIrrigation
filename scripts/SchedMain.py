@@ -78,19 +78,29 @@ def doit(cur:psycopg.Cursor,
     # Insert new scheduled actions into action table
     logger.info('Going to insert %s new actions', len(timeline.actions))
     sql = 'SELECT action_onOff_insert(%s,%s,%s,%s,%s,%s);'
+    nFailed = 0
     for act in timeline.actions: # Save the new actions to the database
         logger.info('%s', act)
+        cur.execute('SAVEPOINT sp_insert;')
         try: # In case pgmstn was deleted for a manual station
             cur.execute(sql, (act.tOn, act.tOff, act.sensor.id, act.pgm, act.pgmStn, act.pgmDate))
+            cur.execute('RELEASE SAVEPOINT sp_insert;')
         except Exception:
+            nFailed += 1
             logger.warning('Unable to insert %s', act)
-            cur.execute('SELECT program,pgmstn,tOn,tOff FROM action WHERE sensor=%s ORDER BY tOn;',
-                    (act.sensor.id,))
-            for row in cur:
-                logger.info('Action row pgm=%s stn=%s tOn=%s tOff=%s',
-                        row[0], row[1], row[2], row[3])
+            cur.execute('ROLLBACK TO SAVEPOINT sp_insert;')
+            try:
+                cur.execute(
+                        'SELECT program,pgmstn,tOn,tOff FROM action WHERE sensor=%s ORDER BY tOn;',
+                        (act.sensor.id,))
+                for row in cur:
+                    logger.info('Action row pgm=%s stn=%s tOn=%s tOff=%s',
+                            row[0], row[1], row[2], row[3])
+            except Exception:
+                logger.warning('Unable to query existing actions for sensor %s', act.sensor.id)
 
-
+    if nFailed:
+        logger.warning('Failed to insert %s of %s actions', nFailed, len(timeline.actions))
 
     return True
 

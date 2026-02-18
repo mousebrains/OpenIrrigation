@@ -6,6 +6,7 @@
 import psycopg
 import logging
 import datetime
+from zoneinfo import ZoneInfo
 from astral import Observer
 from astral.sun import sun as astral_sun
 from SchedProgramStation import ProgramStations
@@ -102,9 +103,8 @@ class PgmDateTime:
         return None if d is None else self.time.mkTime(d)
 
     def __mkTime(self, mode:str, t:str, siteInfo:dict):
-        """ Choose which time class to """
-        # Local timezone
-        tzinfo = datetime.datetime.now(datetime.timezone.utc).astimezone().tzinfo
+        """ Choose which time class to use """
+        tzinfo = ZoneInfo(siteInfo['tz'])
         if mode == 'clock': return TimeClock(t, tzinfo)
         return TimeAstral(mode, t, siteInfo, tzinfo)
 
@@ -169,8 +169,8 @@ class TimeAstral:
         self.mode = mode
         self.tz = tz
         self.dt = datetime.timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
-        if t > datetime.time(12,0,0): # After noon, so treat as a negative time from 1 day
-            self.dt -= datetime.timedelta(days=1)
+        if t > datetime.time(12,0,0): # Times past noon encode a negative offset from the
+            self.dt -= datetime.timedelta(days=1) # astral event, e.g. 23:30 → −30 minutes
         self.observer = Observer(latitude=site['lat'], longitude=site['lon'], elevation=site['elev'])
 
     def __repr__(self):

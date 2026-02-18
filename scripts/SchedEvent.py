@@ -162,7 +162,7 @@ class Event:
             stn.logger.debug('qPGM flow %s max %s %s', flow, stn.pgmMaxFlow, stn.name)
             return False
 
-        for key in self.pgm[pgm]:
+        for key in items:
             item = items[key]
             if (item.pgmMaxStations is not None) and (cnt > item.pgmMaxStations):
                 stn.logger.debug('qPGM cnt %s item max %s %s', cnt, item.pgmMaxStations, item.name)

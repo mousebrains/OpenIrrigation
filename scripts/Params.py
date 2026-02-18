@@ -37,9 +37,8 @@ def __decode(val: str):
 
 def load(dbName:str, grp:str, logger) -> dict:
     """ Load parameters for group grp from database dbName """
-    db = DB(dbName, logger)
     info = {}
-    with db.cursor() as cur:
+    with DB(dbName, logger) as db, db.cursor() as cur:
         cur.execute('SELECT name,val FROM params WHERE grp=%s;', (grp,))
         for row in cur:
             info[row[0]] = __decode(row[1])

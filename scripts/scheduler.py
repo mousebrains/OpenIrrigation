@@ -110,6 +110,13 @@ try:
 
 except Exception as e:
     logger.exception('Unexpected exception')
-    db = DB.DB(args.db, logger)
-    db.updateState(myName, repr(e))
-    Notify.onException(args, logger)
+    try:
+        db = DB.DB(args.db, logger)
+        db.updateState(myName, repr(e))
+        db.close()
+    except Exception:
+        logger.exception('Failed to record error state in database')
+    try:
+        Notify.onException(args, logger)
+    except Exception:
+        logger.exception('Failed to send exception notification')
