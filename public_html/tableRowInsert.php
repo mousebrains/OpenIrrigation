@@ -8,16 +8,16 @@ $tbl = $_POST['tableName'];
 if (!$db->tableExists($tbl)) exit($db->mkMsg(false, "Table, $tbl, does not exist"));
 
 $cols = $db->tableColumns($tbl);
-$keys = array();
-$markers = array();
-$vals = array();
+$keys = [];
+$markers = [];
+$vals = [];
 
 foreach ($cols as $key) {
 	if (array_key_exists($key, $_POST)) {
 		$val = $_POST[$key] === '' ? NULL : $_POST[$key];
-		array_push($keys, $db->quoteIdent($key));
-		array_push($markers, '?');
-		array_push($vals, $val);
+		$keys[] = $db->quoteIdent($key);
+		$markers[] = '?';
+		$vals[] = $val;
 	}
 }
 
@@ -51,7 +51,7 @@ if (!empty($sec)) {
 				if (!$db->query($sql, [$id, $sid])) {
 					exit($db->dbMsg("Failed to insert secondary"));
 				}
-				array_push($comment, "Inserted into $stbl $key0=$id $key1=$sid");
+				$comment[] = "Inserted into $stbl $key0=$id $key1=$sid";
 			}
 		}
 	}
@@ -71,4 +71,3 @@ foreach ($comment as $row) {
 		exit($db->dbMsg("Error executing $sql"));
 }
 $db->commit();
-?>

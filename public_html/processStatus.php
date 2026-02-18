@@ -6,7 +6,7 @@ header('X-Accel-Buffering: no');
 // Send process state records in JSON format
 
 class DB {
-	private $errors = array(); // Error stack
+	private $errors = []; // Error stack
 	private PDO $db;
 	private PDOStatement $getRecords;
 
@@ -24,7 +24,7 @@ class DB {
 
 	function notifications(int $dt) {
 		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
-		if (!$a) return array();
+		if (!$a) return [];
 		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	} // notifications
 
@@ -56,4 +56,3 @@ while (!connection_aborted()) { # Wait until client disconnects
 	}
 	echo "data: " . json_encode($info) . "\n\n";
 }
-?>

@@ -10,7 +10,7 @@ header('X-Accel-Buffering: no');
 //   the number of stations pending within the next 50-60 minutes
 
 class DB {
-	private $errors = array(); // Error stack
+	private $errors = []; // Error stack
 	private PDO $db;
 	private PDOStatement $getController;
 	private PDOStatement $getPOC;
@@ -45,7 +45,7 @@ class DB {
 
 	function notifications(int $dt) {
 		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
-		if (!$a) return array();
+		if (!$a) return [];
 		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	}
 
@@ -69,14 +69,14 @@ class DB {
 
 		if (!empty($this->errors)) {
 			$a['errors'] = $this->errors;
-			$this->errors = array();
+			$this->errors = [];
 		}
 		return json_encode($a);
 	} // fetchInitial
 
 	function exec($stmt) {
 		if ($stmt->execute([]) === false) {
-			array_push($this->errors, $stmt->errorInfo());
+			$this->errors[] = $stmt->errorInfo();
 			return false;
 		}
 		return true;
@@ -84,24 +84,24 @@ class DB {
 
 	function fetchControllers() {
 		$stmt = $this->getController;
-		if (!$this->exec($stmt)) return array();
-		$a = array();
+		if (!$this->exec($stmt)) return [];
+		$a = [];
 		while ($row = $stmt->fetch(PDO::FETCH_NUM)) $a[$row[0]] = $row[1];
 		return $a;
 	} // fetchControllers
 
 	function fetchPOCs() {
 		$stmt = $this->getPOC;
-		if (!$this->exec($stmt)) return array();
-		$a = array();
+		if (!$this->exec($stmt)) return [];
+		$a = [];
 		while ($row = $stmt->fetch(PDO::FETCH_NUM)) $a[$row[0]] = $row[1];
 		return $a;
 	} // fetchPOCs
 
 	function fetchSimulation() {
 		$stmt = $this->getSimulation;
-		if (!$this->exec($stmt)) return array();
-		$info = array();
+		if (!$this->exec($stmt)) return [];
+		$info = [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 			return $row['qsimulate'];
 		}
@@ -110,45 +110,45 @@ class DB {
 
 	function fetchCurrent() {
 		$stmt = $this->getCurrent;
-		if (!$this->exec($stmt)) return array();
+		if (!$this->exec($stmt)) return [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 			$row['volts'] = round($row['volts'] * 0.1, 1);
 			$row['tcurrent'] = round($row['tcurrent']);
 			return $row;
 		}
-		return array();
+		return [];
 	} // fetchCurrent
 
 	function fetchFlow() {
 		$stmt = $this->getFlow;
-		if (!$this->exec($stmt)) return array();
+		if (!$this->exec($stmt)) return [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 			$row['flow'] = round($row['flow'], 1);
 			$row['tflow'] = round($row['tflow']);
 			return $row;
 		}
-		return array();
+		return [];
 	} // fetchFlow
 
 	function fetchNumberOn() {
 		$stmt = $this->getNumberOn;
-		if (!$this->exec($stmt)) return array();
+		if (!$this->exec($stmt)) return [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) return $row;
-		return array();
+		return [];
 	} // fetchNumberOn
 
 	function fetchPending() {
 		$stmt = $this->getPending;
-		if (!$this->exec($stmt)) return array();
+		if (!$this->exec($stmt)) return [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) return $row;
-		return array();
+		return [];
 	} // fetchPending
 
 	function fetchSystemctl() {
 		$output = shell_exec("/bin/systemctl is-active OITDI OISched OIAgriMet");
-		if (empty($output)) return array();
+		if (empty($output)) return [];
 		$output = explode("\n", $output);
-		if (count($output) < 3) return array();
+		if (count($output) < 3) return [];
 		return array_slice($output, 0, 3);
 	}
 } // DB
@@ -175,4 +175,3 @@ while (!connection_aborted()) { # Wait until client disconnects
 	}
 	echo "data: " . json_encode($info) . "\n\n";
 }
-?>

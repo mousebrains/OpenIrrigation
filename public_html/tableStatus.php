@@ -37,7 +37,7 @@ function tableReference($db, $name) {
 	$sql = "SELECT col,refTable,refKey,refLabel,refCriteria,refOrderBy"
 		. " FROM tableInfo"
 		. " WHERE tbl=? AND refTable IS NOT NULL;";
-	$info = array();
+	$info = [];
 	foreach ($db->loadRows($sql, [$name]) as $row) {
 		$tbl = $db->quoteIdent($row['reftable']);
 		$col = $row['col'];
@@ -55,7 +55,7 @@ function tableReference($db, $name) {
 function tableSecondary($db, $name) {
 	$sql = "SELECT col,secondaryKey AS key0,secondaryValue AS key1 FROM tableInfo"
 		. " WHERE tbl=? AND secondaryKey IS NOT NULL;";
-	$info = array();
+	$info = [];
 	foreach ($db->loadRows($sql, [$name]) as $row) {
 		$col = $db->quoteIdent($row['col']);
 		$key0 = $db->quoteIdent($row['key0']);
@@ -64,8 +64,8 @@ function tableSecondary($db, $name) {
 		$info[$col] = [];
 		foreach ($db->loadRows($sql, []) as $a) {
 			$id = $a[$key0];
-			if (!array_key_exists($id, $info[$col])) $info[$col][$id] = array();
-			array_push($info[$col][$id], $a[$key1]);
+			if (!array_key_exists($id, $info[$col])) $info[$col][$id] = [];
+			$info[$col][$id][] = $a[$key1];
 		}
 	}
 	return $info;
@@ -79,7 +79,7 @@ function tableData($db, $tbl, $orderBy, $where, $args) {
 
 
 function fetchInfo($db, $tbl, $orderBy, $where, $args) {
-	$info = array();
+	$info = [];
 	$info['tbl'] = $tbl;
 	$info['orderBy'] = $orderBy;
 	$a = tableData($db, $tbl, $orderBy, $where, $args);
@@ -143,4 +143,3 @@ while (!connection_aborted()) { # Wait until client disconnects
 	$id = $items[2];
 	$info = fetchRow($db, $tbl, $action, $id);
 }
-?>

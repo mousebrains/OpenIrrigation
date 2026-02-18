@@ -8,7 +8,7 @@ header('X-Accel-Buffering: no');
 //  For use by index.php and index.js
 
 class DB {
-	private $errors = array(); // Error stack
+	private $errors = []; // Error stack
 	private PDO $db;
 	private int $hoursPast;
 	private int $hoursFuture;
@@ -71,12 +71,12 @@ class DB {
 
 	function notifications(int $dt) {
 		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
-		if (!$a) return array();
+		if (!$a) return [];
 		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	} // notifications
 
 	function fetchInfo() { # Get all the pending and active actions
-		$this->errors = array();
+		$this->errors = [];
 		$a = $this->loadInfo($this->getActive);
 		$b = $this->loadInfo($this->getPending);
 		$c = $this->loadInfo($this->getPast);
@@ -93,46 +93,46 @@ class DB {
 		$a['hoursFuture'] = $this->hoursFuture;
 		if (!empty($this->errors)) {
 			$a['errors'] = $this->errors;
-			$this->errors = array();
+			$this->errors = [];
 		}
 		return json_encode($a);
 	} // fetchInitial
 
 	function exec($stmt) {
 		if ($stmt->execute([]) === false) {
-			array_push($this->errors, $stmt->errorInfo());
+			$this->errors[] = $stmt->errorInfo();
 			return false;
 		}
 		return true;
 	} // exec
 
 	function loadInfo($stmt) { # Read all the rows from a result and return an array
-		if (!$this->exec($stmt)) return array();
+		if (!$this->exec($stmt)) return [];
 		$a = [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 			$id = $row['sensor'];
 			$tOn = $row['ton'];
 			$tOff = $row['toff'];
 			if (!array_key_exists($id, $a)) {$a[$id] = [];}
-			array_push($a[$id], [$tOn, $tOff]);
+			$a[$id][] = [$tOn, $tOff];
 		}
 		return $a;
 	} // loadInfo
 
 	function fetchStations() { # Get sensor/name relationships for all stations
 		$stmt = $this->getStations;
-		if (!$this->exec($stmt)) return array();
+		if (!$this->exec($stmt)) return [];
 		return $stmt->fetchAll(PDO::FETCH_NUM);
 	}
 	
 	function fetchPOCs() { 
 		// Get the point-of-connect/name map for all POCs with master valves
 		$stmt = $this->getPOCs;
-		if (!$this->exec($stmt)) return array();
-		$a = array();
+		if (!$this->exec($stmt)) return [];
+		$a = [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-			array_push($a, [$row['key'], $row['poc'] . '::' . $row['name'],
-				$row['id']]);
+			$a[] = [$row['key'], $row['poc'] . '::' . $row['name'],
+				$row['id']];
 		}
 		return $a;
 	}
@@ -154,4 +154,3 @@ while (!connection_aborted()) { # Wait until client disconnects
 	);
 	echo "data: " . json_encode($info) . "\n\n";
 }
-?>

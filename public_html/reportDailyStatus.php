@@ -8,7 +8,7 @@ header('X-Accel-Buffering: no');
 // daily run times
 
 class DB {
-	private $errors = array(); // Error stack
+	private $errors = []; // Error stack
 	private $daysBack = 9; # Days from current date to look backwards
 	private $daysFwd =  9; # Days from current date to look forwards
 	private PDO $db;
@@ -66,7 +66,7 @@ class DB {
 
 	function notifications(int $dt) {
 		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
-		if (!$a) return array();
+		if (!$a) return [];
 		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	} // notifications
 
@@ -84,51 +84,51 @@ class DB {
 		$a['info'] = $this->fetchStations();
 		if (!empty($this->errors)) {
 			$a['errors'] = $this->errors;
-			$this->errors = array();
+			$this->errors = [];
 		}
 		return json_encode($a);
 	} // fetchInitial
 	
 	function exec($stmt) {
 		if ($stmt->execute([]) === false) {
-			array_push($this->errors, $stmt->errorInfo());
+			$this->errors[] = $stmt->errorInfo();
 			return false;
 		}
 		return true;
 	} // exec
 
 	function loadInfo($stmt) { # Read all the rows from a result and return an array
-		if (!$this->exec($stmt)) return array();
+		if (!$this->exec($stmt)) return [];
 		return $stmt->fetchAll(PDO::FETCH_NUM);
 	} // loadInfo
 
 	function getDates() { # Get start/end date range
 		$stmt = $this->getDates;
-		if (!$this->exec($stmt)) return array();
+		if (!$this->exec($stmt)) return [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) return $row;
-		return array(); // This should never be reached
+		return []; // This should never be reached
 	} // getDates
 
 	function fetchStations() { # Get sensor/name and program/label 
 		$stmt = $this->getPgmStn;
-		if (!$this->exec($stmt)) return array();
-		$s2p = array();
+		if (!$this->exec($stmt)) return [];
+		$s2p = [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 			$stn = $row['station'];
 			if (!array_key_exists($stn, $s2p)) {
-				$s2p[$stn] = array();
+				$s2p[$stn] = [];
 			}
-			array_push($s2p[$stn], $row['label']);
+			$s2p[$stn][] = $row['label'];
 		}
 
 		$stmt = $this->getStations;
-		if (!$this->exec($stmt)) return array();
-		$a = array();
+		if (!$this->exec($stmt)) return [];
+		$a = [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 			$id = $row['id'];
 			$b = [$row['sensor'], $row['name'],
 				array_key_exists($id, $s2p) ? implode(', ', $s2p[$id]) : ''];
-			array_push($a, $b);
+			$a[] = $b;
 		}
 
 		return $a;
@@ -152,4 +152,3 @@ while (!connection_aborted()) { # Wait until client disconnects
 		echo "data: " . json_encode($db->fetchInfo()) . "\n\n";
 	}
 }
-?>

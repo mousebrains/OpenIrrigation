@@ -11,19 +11,18 @@ $id = $_POST['id'];
 if (!$db->tableExists($tbl)) exit($db->dbMsg("Table, $tbl, does not exist"));
 
 $cols = $db->tableColumns($tbl);
-$keys = array();
-$vals = array();
-$comment = array();
+$keys = [];
+$vals = [];
+$comment = [];
 
 foreach ($cols as $key) {
 	$prevKey = $key . "Prev";
 	if (array_key_exists($key, $_POST) 
 		&& array_key_exists($prevKey, $_POST)
 		&& ($_POST[$key] !== $_POST[$prevKey])) {
-		array_push($keys, $db->quoteIdent($key) . "=?");
-		array_push($vals, $_POST[$key]);
-		array_push($comment, 
-			"In $tbl changed $key from " . $_POST[$prevKey] . " to " . $_POST[$key]);
+		$keys[] = $db->quoteIdent($key) . "=?";
+		$vals[] = $_POST[$key];
+		$comment[] = "In $tbl changed $key from " . $_POST[$prevKey] . " to " . $_POST[$key];
 	}
 }
 
@@ -34,7 +33,7 @@ $db->beginTransaction();
 
 if ($qPrimary) {
 	$sql = "UPDATE " . $db->quoteIdent($tbl) . " SET " . implode(',', $keys) . " WHERE id=?;";
-	array_push($vals, $id); // For WHERE id=?
+	$vals[] = $id; // For WHERE id=?
 	if (!$db->query($sql, $vals)) {
 		exit($db->dbMsg('Insertion failed')); // Update failed, so don't do anything else
 	}
@@ -49,7 +48,7 @@ foreach ($db->loadRows($sql, [$tbl]) as $row) { // Walk through any secondary ta
 	$key1 = $db->quoteIdent($row['secondaryvalue']);
 	$sql = "DELETE FROM $stbl WHERE $key0=?;"; // Remove current entries
 	if (!$db->query($sql, [$id])) exit($db->dbMsg('Delete secondary'));
-	array_push($comment, "Deleted $key0=$id row from $stbl");
+	$comment[] = "Deleted $key0=$id row from $stbl";
 	if (!empty($_POST[$row['col']])) { // Something to be stored
 		$qSecondary = true;
 		$sql = "INSERT INTO $stbl ($key0, $key1) VALUES(?,?);";
@@ -57,7 +56,7 @@ foreach ($db->loadRows($sql, [$tbl]) as $row) { // Walk through any secondary ta
 			if (!$db->query($sql, [$id, $sid])) {
 				exit($db->dbMsg("Failed to insert secondary"));
 			}
-			array_push($comment, "Insert into $stbl $key0=$id $key1=$sid");
+			$comment[] = "Insert into $stbl $key0=$id $key1=$sid";
 		}
 	}
 }
@@ -86,4 +85,3 @@ foreach ($comment as $row) {
 		exit($db->dbMsg("Error executing $sql"));
 }
 $db->commit();
-?>

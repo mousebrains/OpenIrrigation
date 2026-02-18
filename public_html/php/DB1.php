@@ -29,7 +29,7 @@ class DB {
 		return false;
 	}
 
-	function query(string $sql, array $args = array()) {
+	function query(string $sql, array $args = []) {
 		$a = $this->prepare($sql);
 		if ($a === false) return false;
 		if ($a->execute($args) !== false) return $a; // worked
@@ -89,7 +89,7 @@ class DB {
 		$a = $this->query($sql, [$tbl]);
 		if ($a === false) return [];
 		$rows = [];
-		foreach ($a as $row) { array_push($rows, $row['col']); }
+		foreach ($a as $row) { $rows[] = $row['col']; }
 		return $rows;
 	}
 
@@ -117,4 +117,3 @@ class DB {
 
 $dbName = 'irrigation'; // Database name
 $db = new DB($dbName);
-?>

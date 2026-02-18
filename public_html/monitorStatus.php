@@ -10,7 +10,7 @@ header('X-Accel-Buffering: no');
 //   the number of stations pending within the next 50-60 minutes
 
 class DB {
-	private $errors = array(); // Error stack
+	private $errors = []; // Error stack
 	private $daysFwd = 3; # Days from current date to look forwards
 	private $tPast = 0;
 	private PDO $db;
@@ -72,13 +72,13 @@ class DB {
 
 	function notifications(int $dt) {
 		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
-		if (!$a) return array();
+		if (!$a) return [];
 		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	}
 
 	function fetchInfo() { # Get all the historical, pending, and active actions
 		$this->errors = [];
-		$a = array();
+		$a = [];
 		$a['active'] = $this->loadInfo($this->getActive, [],
 			['sensor', 'program', 'pre', 'peak', 'post', 'oncode', 'ton', 'toff']);
 		$a['pending'] = $this->loadInfo($this->getPending, [],
@@ -98,34 +98,34 @@ class DB {
 		$a['pocs'] = $this->fetchPOCs();
 		if (!empty($this->errors)) {
 			$a['errors'] = $this->errors;
-			$this->errors = array();
+			$this->errors = [];
 		}
 		return json_encode($a);
 	}
 
 	function exec($stmt, $args = []) {
 		if ($stmt->execute($args) === false) {
-			array_push($this->errors, $stmt->errorInfo());
+			$this->errors[] = $stmt->errorInfo();
 			return false;
 		}
 		return true;
 	} // exec
 
 	function loadInfo($stmt, $args, $toSave) {
-		if (!$this->exec($stmt, $args)) return array();
-		$a = array();
+		if (!$this->exec($stmt, $args)) return [];
+		$a = [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { // Walk through rows
-			$b = array();
-			foreach($toSave as $key) {array_push($b, $row[$key]);}
-			array_push($a, $b);
+			$b = [];
+			foreach($toSave as $key) {$b[] = $row[$key];}
+			$a[] = $b;
 		}
 		return $a;
 	}
 
 	function fetchStations() { # Get sensor/name and program/label 
 		$stmt = $this->getStations;
-		if (!$this->exec($stmt)) return array();
-		$a = array();
+		if (!$this->exec($stmt)) return [];
+		$a = [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 			$a[$row['id']] = $row['stn'] == '' ? $row['name'] : $row['stn'];
 		}
@@ -134,8 +134,8 @@ class DB {
 
 	function fetchPrograms() {
 		$stmt = $this->getPrograms;
-		if (!$this->exec($stmt)) return array();
-		$a = array();
+		if (!$this->exec($stmt)) return [];
+		$a = [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 			$a[$row['id']] = $row['name'];
 		}
@@ -144,8 +144,8 @@ class DB {
 
 	function fetchPOCs() {
 		$stmt = $this->getPOCs;
-		if (!$this->exec($stmt)) return array();
-		$a = array();
+		if (!$this->exec($stmt)) return [];
+		$a = [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 			$a[$row['id']] = $row['name'];
 		}
@@ -170,4 +170,3 @@ while (!connection_aborted()) { # Wait until client disconnects
 		echo "data: " . json_encode($db->fetchInfo()) . "\n\n";
 	}
 }
-?>
