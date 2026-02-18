@@ -12,6 +12,5 @@ function receivedStatus(event) {
 }
 
 if (typeof(EventSource) !== "undefined") {
-	const statusSource = new EventSource("processStatus.php");
-	statusSource.onmessage = receivedStatus;
+	const statusSource = OI_connectSSE("processStatus.php", receivedStatus);
 }

@@ -31,6 +31,7 @@
   </li>
  </ul>
  <span id='statusSimulation'></span>
+ <span id='sse-status'></span>
  <span id='statusCurrent'></span>
  <span id='statusFlow'></span>
  <span id='statusActive'></span>
@@ -49,4 +50,4 @@
  </span>
 </span>
 </div>
-<script src='js/status.js'></script>
+<script defer src="js/status.js?v=<?php echo OI_ASSET_VERSION; ?>"></script>

@@ -214,7 +214,7 @@ function receivedStatus(event) {
 	const data = JSON.parse(event.data);
 	if ('burp' in data) { return; } // Nothing to do on burp messages
 	if ('message' in data) {
-		alert(data['message']);
+		OI_toast(data['message'], true);
 		statusSource.close();
 		return;
 	}
@@ -254,8 +254,7 @@ if (typeof(EventSource) !== "undefined") {
 	const base = 'tableStatus.php';
 	const parts = window.location.href.split('?'); // Get parameters
 	const url = parts.length > 1 ? (base + '?' + parts.slice(-1)) : base;
-	statusSource = new EventSource(url);
-	statusSource.onmessage = receivedStatus;
+	statusSource = OI_connectSSE(url, receivedStatus);
 	$('title').html('Table Editor ' + escapeHTML(myTableName));
 
 	$('#batchUpdate').click(batchUpdate);

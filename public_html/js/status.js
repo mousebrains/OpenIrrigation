@@ -19,9 +19,25 @@ function updateSystemctl(info) {
 
 $('#runScheduler').submit({'url': 'runScheduler.php'}, OI_processForm);
 
+// Hamburger menu: click/touch toggle (replaces hover-only)
+$('#topdropbtn').on('click', function(e) {
+	e.preventDefault();
+	$('#top-dropdown-content').toggleClass('open');
+	$('#topdropdown').toggleClass('open');
+});
+$(document).on('click', function(e) {
+	if (!$(e.target).closest('#topdropdown').length) {
+		$('#top-dropdown-content').removeClass('open');
+		$('#topdropdown').removeClass('open');
+	}
+});
+$('#top-dropdown-content a').on('click', function() {
+	$('#top-dropdown-content').removeClass('open');
+	$('#topdropdown').removeClass('open');
+});
+
 if (typeof(EventSource) !== "undefined") {
-	const statusSource = new EventSource("status.php");
-	statusSource.onmessage = function(event) {
+	const statusSource = OI_connectSSE("status.php", function(event) {
 		const data = JSON.parse(event.data);
 		if ('controllers' in data) {statusControllers = data['controllers'];}
 		if ('pocs' in data) {statusPOCs = data['pocs'];}
@@ -53,5 +69,5 @@ if (typeof(EventSource) !== "undefined") {
 		if ('system' in data) { // systemctl
 			updateSystemctl(data['system']);
 		}
-	};
+	});
 }

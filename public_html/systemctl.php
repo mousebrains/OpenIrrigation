@@ -1,3 +1,4 @@
+<?php require_once 'php/version.php'; ?>
 <!DOCTYPE html>
 <html lang='en'>
 <head>
@@ -5,9 +6,9 @@
 <meta http-equiv='Content-Language' content='en'>
 <meta name='viewport' content='width=device-width, initial-scale=1'>
 <link rel='icon' href='/favicon.png' sizes="32x32">
-<link rel='stylesheet' type='text/css' href='css/irrigation.css'>
-<script src="js/jquery.min.js"></script>
-<script src="js/irrigation.js"></script>
+<link rel='stylesheet' type='text/css' href='css/irrigation.css?v=<?php echo OI_ASSET_VERSION; ?>'>
+<script defer src="js/jquery.min.js?v=<?php echo OI_ASSET_VERSION; ?>"></script>
+<script defer src="js/irrigation.js?v=<?php echo OI_ASSET_VERSION; ?>"></script>
 <title>System status</title>
 </head>
 <body>
@@ -20,4 +21,4 @@ echo "</pre>\n";
 echo "<hr>\n";
 ?>
 </body>
-</html> 
+</html>

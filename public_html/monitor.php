@@ -1,3 +1,4 @@
+<?php require_once 'php/version.php'; ?>
 <!DOCTYPE html>
 <html lang='en'>
 <head>
@@ -5,9 +6,9 @@
 <meta http-equiv='Content-Language' content='en'>
 <meta name='viewport' content='width=device-width, initial-scale=1'>
 <link rel='icon' href='/favicon.png' sizes="32x32">
-<link rel='stylesheet' type='text/css' href='css/irrigation.css'>
-<script src="js/jquery.min.js"></script>
-<script src="js/irrigation.js"></script>
+<link rel='stylesheet' type='text/css' href='css/irrigation.css?v=<?php echo OI_ASSET_VERSION; ?>'>
+<script defer src="js/jquery.min.js?v=<?php echo OI_ASSET_VERSION; ?>"></script>
+<script defer src="js/irrigation.js?v=<?php echo OI_ASSET_VERSION; ?>"></script>
 <title>Wild Iris Irrigation</title>
 </head>
 <body>
@@ -23,7 +24,7 @@ require_once 'php/navBar.php';
 </table>
 </div>
 <div id='activeDiv' style='display:none;'>
-<center>
+<div class='table-wrap'>
 <table id='activeTable'>
 <caption>Active stations</caption>
 <thead><tr><th></th><th>Station</th><th>Start</th><th>Run Time</th><th>Time Left</th>
@@ -32,22 +33,22 @@ require_once 'php/navBar.php';
 <tfoot><tr><th></th><th>Station</th><th>Start</th><th>Run Time</th><th>Time Left</th>
 <th>Program</th><th>Pre</th><th>Peak</th><th>Post</th><th>On Code</th></tr></tfoot>
 </table>
-</center>
+</div>
 <hr>
 </div>
 <div id='pendingDiv' style='display:none;'>
-<center>
+<div class='table-wrap'>
 <table id='pendingTable'>
 <caption>Pending stations</caption>
 <thead><tr><th></th><th>Station</th><th>Start</th><th>Run Time</th><th>Program</th></tr></thead>
 <tbody></tbody>
 <tfoot><tr><th></th><th>Station</th><th>Start</th><th>Run Time</th><th>Program</th></tr></tfoot>
 </table>
-</center>
+</div>
 <hr>
 </div>
 <div id='pastDiv' style='display:none;'>
-<center>
+<div class='table-wrap'>
 <table id='pastTable'>
 <caption>Historical stations</caption>
 <thead><tr><th>Station</th><th>Start</th><th>Run Time</th><th>Time Left</th>
@@ -56,8 +57,8 @@ require_once 'php/navBar.php';
 <tfoot><tr><th>Station</th><th>Start</th><th>Run Time</th><th>Time Left</th>
 <th>Program</th><th>Pre</th><th>Peak</th><th>Post</th><th>On Code</th></tr></tfoot>
 </table>
-</center>
 </div>
-<script src=js/monitor.js></script>
+</div>
+<script defer src="js/monitor.js?v=<?php echo OI_ASSET_VERSION; ?>"></script>
 </body>
-</html> 
+</html>

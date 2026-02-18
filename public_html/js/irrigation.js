@@ -67,6 +67,36 @@ function OI_timeUpDown(key0, key1, sTime, eTime, offset0, offset1, prevNow) {
 	}
 } // OI_timeUpDown
 
+function OI_toast(message, isError) {
+	const toast = document.createElement('div');
+	toast.className = 'oi-toast' + (isError ? ' oi-toast-error' : '');
+	toast.textContent = message;
+	document.body.appendChild(toast);
+	toast.offsetHeight; // Trigger reflow for animation
+	toast.classList.add('oi-toast-show');
+	setTimeout(function() {
+		toast.classList.remove('oi-toast-show');
+		setTimeout(function() { toast.remove(); }, 300);
+	}, 4000);
+}
+
+function OI_connectSSE(url, onMessage) {
+	const source = new EventSource(url);
+	const statusEl = document.getElementById('sse-status');
+	source.onopen = function() {
+		if (statusEl) {
+			statusEl.textContent = '';
+		}
+	};
+	source.onmessage = onMessage;
+	source.onerror = function() {
+		if (statusEl) {
+			statusEl.textContent = 'Connection lost';
+		}
+	};
+	return source;
+}
+
 function OI_processSubmit(event, url, formData) { // Submission of form data to url
 	// Form submission and alert on failure
 	console.log(url);
@@ -80,8 +110,10 @@ function OI_processSubmit(event, url, formData) { // Submission of form data to 
 	}).done(function(data){
 		console.log(data);
 		if (('success' in data) && !data['success']) {
-			alert(data['message']);
+			OI_toast(data['message'], true);
 		}
+	}).fail(function(jqXHR, textStatus) {
+		OI_toast('Request failed: ' + textStatus, true);
 	});
 	event.preventDefault();
 }

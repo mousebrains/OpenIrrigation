@@ -1,5 +1,271 @@
-@import url("table.css");
-@import url("topnav.css");
-@import url("tooltip.css");
+/* === Base === */
+body { margin: 0; }
 
-body {margin:0;}
+/* === Tables === */
+table { border-collapse: collapse; }
+table, th, td { border: 1px solid black; }
+th, td { text-align: center; vertical-align: center; }
+
+tbody tr:nth-of-type(odd) { background-color: #cccccc; }
+tbody tr:nth-of-type(even) { background-color: #ffffff; }
+tbody tr:hover:nth-of-type(odd) { background-color: #3366ff; }
+tbody tr:hover:nth-of-type(even) { background-color: #33cc33; }
+
+tbody tr.haschanged:nth-of-type(odd) { background-color: #ccff99; }
+tbody tr.haschanged:nth-of-type(even) { background-color: #cc99ff; }
+
+tbody tr.rowchanged:nth-of-type(odd) { background-color: #cc00cc; }
+tbody tr.rowchanged:nth-of-type(even) { background-color: #ff9900; }
+
+/* Loading indicator — disappears when SSE populates rows */
+tbody:empty::after {
+	content: "Loading\2026";
+	display: block;
+	text-align: center;
+	padding: 2em;
+	color: #666;
+	font-style: italic;
+}
+
+/* Responsive table wrapper */
+.table-wrap {
+	overflow-x: auto;
+	-webkit-overflow-scrolling: touch;
+}
+.table-wrap > table {
+	margin: 0 auto;
+}
+
+/* === Top Navigation === */
+#topnav {
+	overflow: hidden;
+	background-color: #AAA;
+}
+
+#statusLeft {
+	float: left;
+}
+
+#statusRight {
+	float: right;
+}
+
+#topnav ul {
+	float: left;
+	list-style-type: none;
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	background-color: #555;
+}
+
+#statusBlock, #topdropbtn {
+	display: inline-block;
+	color: white;
+	text-align: center;
+	padding: 12px 16px;
+	text-decoration: none;
+}
+
+#topdropbtn:hover,
+#topdropdown.open #topdropbtn {
+	background-color: red;
+}
+
+#topdropdown {
+	display: inline-block;
+}
+
+#top-dropdown-content {
+	display: none;
+	position: absolute;
+	background-color: #f9f9f9;
+	min-width: 160px;
+	box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+	z-index: 1;
+}
+
+#top-dropdown-content a {
+	color: black;
+	padding: 12px 16px;
+	text-decoration: none;
+	display: block;
+	text-align: left;
+	min-height: 44px;
+	box-sizing: border-box;
+}
+
+#top-dropdown-content a:hover { background-color: #f1f1f1; }
+
+#top-dropdown-content.open { display: block; }
+
+/* === SSE Connection Status === */
+#sse-status {
+	color: #ff4444;
+	font-weight: bold;
+	padding: 0 8px;
+}
+
+/* === Toast Notifications === */
+.oi-toast {
+	position: fixed;
+	bottom: 20px;
+	left: 50%;
+	transform: translateX(-50%);
+	background-color: #333;
+	color: #fff;
+	padding: 12px 24px;
+	border-radius: 4px;
+	z-index: 10000;
+	opacity: 0;
+	transition: opacity 0.3s;
+	max-width: 90vw;
+	text-align: center;
+}
+.oi-toast-show { opacity: 1; }
+.oi-toast-error { background-color: #c62828; }
+
+/* === Tooltips === */
+.tooltip {
+	position: relative;
+	cursor: pointer;
+}
+
+.tooltip .tooltiptext {
+	white-space: nowrap;
+	visibility: hidden;
+	width: 100%;
+	background-color: black;
+	color: #fff;
+	text-align: center;
+	padding: 5px 15px 5px 5px;
+	border-radius: 6px;
+	position: absolute;
+	z-index: 1;
+}
+
+.tooltip:hover .tooltiptext,
+.tooltip:focus-within .tooltiptext {
+	visibility: visible;
+}
+
+.tooltip .tooltip-top {
+	width: 120px;
+	bottom: 100%;
+	left: 50%;
+	margin-left: -60px;
+}
+
+.tooltip .tooltip-bottom {
+	width: 120px;
+	top: 100%;
+	left: 50%;
+	margin-left: -60px;
+}
+
+.tooltip .tooltip-right {
+	top: -5px;
+	left: 105%;
+}
+
+.tooltip .tooltip-left {
+	top: -5px;
+	right: 105%;
+}
+
+.tooltip .tooltip-top::after {
+	content: " ";
+	position: absolute;
+	bottom: 100%;
+	left: 50%;
+	margin-left: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: transparent transparent black transparent;
+}
+
+.tooltip .tooltip-bottom::after {
+	content: " ";
+	position: absolute;
+	top: 100%;
+	left: 50%;
+	margin-left: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: black transparent transparent transparent;
+}
+
+.tooltip .tooltip-right::after {
+	content: " ";
+	position: absolute;
+	top: 50%;
+	right: 100%;
+	margin-top: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: transparent black transparent transparent;
+}
+
+.tooltip .tooltip-left::after {
+	content: " ";
+	position: absolute;
+	top: 35%;
+	left: 100%;
+	margin-top: -5px;
+	border-width: 5px;
+	border-style: solid;
+	border-color: transparent transparent transparent black;
+}
+
+/* === Form Input Touch Targets === */
+input[type='submit'], input[type='button'] {
+	min-height: 44px;
+}
+
+input, select, textarea {
+	font-size: 16px;
+}
+
+input[type='number'] {
+	min-width: 80px;
+}
+
+/* === Responsive: Small Screens === */
+@media (max-width: 600px) {
+	#statusLeft { float: none; }
+	#statusRight { float: none; display: flex; flex-wrap: wrap; align-items: center; }
+	#topnav ul { float: none; }
+	#statusCurrent, #statusFlow { font-size: 0.85em; }
+}
+
+/* === Dark Mode === */
+@media (prefers-color-scheme: dark) {
+	body { background-color: #1a1a1a; color: #e0e0e0; }
+	#topnav { background-color: #333; }
+	#topnav ul { background-color: #222; }
+	#top-dropdown-content { background-color: #2a2a2a; }
+	#top-dropdown-content a { color: #e0e0e0; }
+	#top-dropdown-content a:hover { background-color: #3a3a3a; }
+	table, th, td { border-color: #555; }
+	tbody tr:nth-of-type(odd) { background-color: #2a2a2a; }
+	tbody tr:nth-of-type(even) { background-color: #1e1e1e; }
+	tbody tr:hover:nth-of-type(odd) { background-color: #1a3366; }
+	tbody tr:hover:nth-of-type(even) { background-color: #1a6633; }
+	tbody tr.haschanged:nth-of-type(odd) { background-color: #4a6600; }
+	tbody tr.haschanged:nth-of-type(even) { background-color: #4a0066; }
+	tbody tr.rowchanged:nth-of-type(odd) { background-color: #660066; }
+	tbody tr.rowchanged:nth-of-type(even) { background-color: #804d00; }
+	.tooltip .tooltiptext { background-color: #444; }
+	.tooltip .tooltip-top::after { border-color: transparent transparent #444 transparent; }
+	.tooltip .tooltip-bottom::after { border-color: #444 transparent transparent transparent; }
+	.tooltip .tooltip-right::after { border-color: transparent #444 transparent transparent; }
+	.tooltip .tooltip-left::after { border-color: transparent transparent transparent #444; }
+	#sse-status { color: #ff6666; }
+	tbody:empty::after { color: #999; }
+	.oi-toast { background-color: #555; }
+	input, select, textarea {
+		background-color: #2a2a2a;
+		color: #e0e0e0;
+		border: 1px solid #555;
+	}
+}

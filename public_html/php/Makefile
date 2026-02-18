@@ -7,6 +7,7 @@ include ../../Makefile.params
 
 SRC= DB1.php
 SRC+= navBar.php
+SRC+= version.php
 
 DEST = $(SRC:%=$(PHPDIR)/%)
 

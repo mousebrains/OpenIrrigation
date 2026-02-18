@@ -130,8 +130,7 @@ function receivedStatus(event) {
 }
 
 if (typeof(EventSource) !== "undefined") {
-	const statusSource = new EventSource("monitorStatus.php");
-	statusSource.onmessage = receivedStatus;
+	const statusSource = OI_connectSSE("monitorStatus.php", receivedStatus);
 	$('#clearAll').submit({'url': 'monitorClearAll.php'}, OI_processForm);
 	$('#allOff').submit({'url': 'monitorAllOff.php'}, OI_processForm);
 }
