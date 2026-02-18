@@ -6,6 +6,7 @@
     <div id='top-dropdown-content'>
       <a href='index.php'>Manual Operations</a>
       <a href='reportDaily.php'>Daily Summary</a>
+      <a href='flowGraph.php'>Flow Graph</a>
       <a href='monitor.php'>Monitor Operations</a>
       <a href='tableEditor.php?tbl=program&orderby=name'>Program</a>
       <a href='tableEditor.php?tbl=site&orderby=name'>Site</a>
