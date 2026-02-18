@@ -69,4 +69,4 @@ stop:
 	systemctl --no-pager stop $(TIMERS) $(SERVICES)
 
 status:
-	systemctl --no-pager status $(SRC)
+	-systemctl --no-pager status $(SRC)
