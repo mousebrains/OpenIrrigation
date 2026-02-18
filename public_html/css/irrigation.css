@@ -246,21 +246,24 @@ input[type='number'] {
 	#top-dropdown-content { background-color: #2a2a2a; }
 	#top-dropdown-content a { color: #e0e0e0; }
 	#top-dropdown-content a:hover { background-color: #3a3a3a; }
-	table, th, td { border-color: #555; }
+	table, th, td { border-color: #555; color: #e0e0e0; }
+	th { background-color: #2f2f2f; }
 	tbody tr:nth-of-type(odd) { background-color: #2a2a2a; }
-	tbody tr:nth-of-type(even) { background-color: #1e1e1e; }
-	tbody tr:hover:nth-of-type(odd) { background-color: #1a3366; }
-	tbody tr:hover:nth-of-type(even) { background-color: #1a6633; }
-	tbody tr.haschanged:nth-of-type(odd) { background-color: #4a6600; }
-	tbody tr.haschanged:nth-of-type(even) { background-color: #4a0066; }
-	tbody tr.rowchanged:nth-of-type(odd) { background-color: #660066; }
-	tbody tr.rowchanged:nth-of-type(even) { background-color: #804d00; }
+	tbody tr:nth-of-type(even) { background-color: #333; }
+	tbody tr:hover:nth-of-type(odd) { background-color: #2a4a8a; color: #fff; }
+	tbody tr:hover:nth-of-type(even) { background-color: #2a7a3a; color: #fff; }
+	tbody tr.haschanged:nth-of-type(odd) { background-color: #6a8a30; color: #fff; }
+	tbody tr.haschanged:nth-of-type(even) { background-color: #7a50aa; color: #fff; }
+	tbody tr.rowchanged:nth-of-type(odd) { background-color: #aa30aa; color: #fff; }
+	tbody tr.rowchanged:nth-of-type(even) { background-color: #cc8820; color: #fff; }
+	caption { color: #e0e0e0; }
 	.tooltip .tooltiptext { background-color: #444; }
 	.tooltip .tooltip-top::after { border-color: transparent transparent #444 transparent; }
 	.tooltip .tooltip-bottom::after { border-color: #444 transparent transparent transparent; }
 	.tooltip .tooltip-right::after { border-color: transparent #444 transparent transparent; }
 	.tooltip .tooltip-left::after { border-color: transparent transparent transparent #444; }
 	#sse-status { color: #ff6666; }
+	#statusCurrent, #statusFlow, #statusActive, #statusPending { color: #e0e0e0; }
 	tbody:empty::after { color: #999; }
 	.oi-toast { background-color: #555; }
 	input, select, textarea {
@@ -268,4 +271,10 @@ input[type='number'] {
 		color: #e0e0e0;
 		border: 1px solid #555;
 	}
+	input[type='submit'], input[type='button'] {
+		background-color: #444;
+		color: #e0e0e0;
+		border: 1px solid #666;
+	}
+	pre { color: #e0e0e0; }
 }
