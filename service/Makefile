@@ -28,6 +28,7 @@ all:
 install: install-services install-logs
 
 install-services: $(DEST)
+	systemctl --no-pager daemon-reload
 
 install-logs:
 	$(INSTALL) --directory $(LOGDIR)
