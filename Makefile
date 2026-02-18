@@ -10,6 +10,7 @@ all install clean: Makefile.params
 	$(MAKE) -C scripts $@
 	$(MAKE) -C public_html $@
 	$(MAKE) -C service $@
+	$(MAKE) -C webserver $@
 
 enable disable start stop restart status reload: Makefile.params
 	$(MAKE) -C service $@
