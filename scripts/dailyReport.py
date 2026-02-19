@@ -17,8 +17,8 @@ from smtplib import SMTP
 from email.mime.text import MIMEText
 import logging # For typing
 
-def loadRows(db:DB.DB, sql:str, args:tuple) -> dict:
-    a = {}
+def loadRows(db:DB.DB, sql:str, args:tuple) -> dict[str, list]:
+    a: dict[str, list] = {}
     with db.cursor() as cur:
         cur.execute(sql, args)
         for row in cur:
@@ -27,7 +27,7 @@ def loadRows(db:DB.DB, sql:str, args:tuple) -> dict:
             a[stn].append((pgm, dt))
     return a
 
-def getHistorical(db:DB.DB, t0:datetime.datetime, args:argparse.ArgumentParser) -> dict:
+def getHistorical(db:DB.DB, t0:datetime.datetime, args:argparse.Namespace) -> dict:
     sql = "SELECT"
     sql+= " station.name AS stn"
     sql+= ",program.name AS pgm"
@@ -41,7 +41,7 @@ def getHistorical(db:DB.DB, t0:datetime.datetime, args:argparse.ArgumentParser) 
     sql+= ";"
     return loadRows(db, sql, (t0, str(args.hoursBack) + ' hours'))
 
-def getPending(db:DB.DB, t0:datetime.datetime, args:argparse.ArgumentParser) -> dict:
+def getPending(db:DB.DB, t0:datetime.datetime, args:argparse.Namespace) -> dict:
     sql = "SELECT"
     sql+= " station.name AS stn"
     sql+= ",program.name AS pgm"
@@ -119,7 +119,7 @@ def mkTable(rows:list) -> str:
     tbl.append('</html>')
     return '\n'.join(tbl)
 
-def sendTable(tbl:str, nPast:int, nFut:int, args:argparse.ArgumentParser) -> None:
+def sendTable(tbl:str, nPast:int, nFut:int, args:argparse.Namespace) -> None:
     msg = MIMEText(tbl, 'html')
     msg['Subject'] = 'Daily Summary yesterday={} today={}'.format(nPast, nFut)
     msg['From'] = args.mailFrom
@@ -140,7 +140,7 @@ def getEmailTo(db:DB.DB) -> list:
             a.append(row[0])
     return a if len(a) else None
 
-def doit(t0:datetime.datetime, args:argparse.ArgumentParser, logger:logging.Logger) -> None:
+def doit(t0:datetime.datetime, args:argparse.Namespace, logger:logging.Logger) -> None:
     db = DB.DB(args.db, logger)
 
     if args.mailTo is None:

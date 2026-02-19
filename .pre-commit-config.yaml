@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.9.0
+    rev: v0.15.1
     hooks:
       - id: ruff
         args: [--fix]
@@ -18,3 +18,14 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+      - id: phpstan
+        name: phpstan
+        entry: phpstan analyse --no-progress
+        language: system
+        files: \.php$
+        pass_filenames: false
+      - id: bandit
+        name: bandit
+        entry: bandit -r scripts/ -q
+        language: system
+        pass_filenames: false

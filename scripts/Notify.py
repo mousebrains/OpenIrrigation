@@ -11,7 +11,7 @@ import socket
 import smtplib
 from email.mime.text import MIMEText
 
-def onException(args:argparse.ArgumentParser, logger:logging.Logger) -> None:
+def onException(args:argparse.Namespace, logger:logging.Logger) -> None:
     try:
         email = []
         sql = 'SELECT email.email FROM email' \

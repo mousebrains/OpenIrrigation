@@ -16,7 +16,7 @@ from SchedInterval import Interval
 from SchedResource import ResourceRegistry, Reservation
 from SchedPlacer import build_schedule
 
-def runScheduler(args:argparse.ArgumentParser, logger:logging.Logger) -> bool:
+def runScheduler(args:argparse.Namespace, logger:logging.Logger) -> bool:
     with DB.DB(args.db, logger) as db, db.cursor() as cur:
         if doit(cur, args, logger):
             if args.dryrun:
@@ -31,7 +31,7 @@ def runScheduler(args:argparse.ArgumentParser, logger:logging.Logger) -> bool:
     return False
 
 def doit(cur:psycopg.Cursor,
-        args:argparse.ArgumentParser, logger:logging.Logger) -> bool:
+        args:argparse.Namespace, logger:logging.Logger) -> bool:
     if args.minCleanTime is None:
         minTime = datetime.datetime.now().astimezone() \
                 + datetime.timedelta(seconds=args.minCleanSeconds)

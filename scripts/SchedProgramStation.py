@@ -16,7 +16,7 @@ class ProgramStations(dict):
     """ Dictionary of program stations indexed by pgmstn.id """
     def __init__(self, cur:psycopg.Cursor, sensors:Sensors,
             logger:logging.Logger) -> None:
-        self.pgm2stn = {} # program.id -> list of stations
+        self.pgm2stn: dict[int, list[ProgramStation]] = {} # program.id -> list of stations
         sql = "SELECT "
         sql+= "pgmstn.id,pgmstn.program,pgmstn.station,pgmstn.runTime,pgmstn.qSingle"
         sql+= ",webList.key"

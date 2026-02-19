@@ -2,6 +2,7 @@
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('X-Accel-Buffering: no');
+echo "retry: 10000\n\n";
 
 // Send to JSON formatted data representing
 //   the controller's current,
@@ -9,7 +10,7 @@ header('X-Accel-Buffering: no');
 //   the number of stations turned on, and
 //   the number of stations pending within the next 50-60 minutes
 
-class DB {
+class MonitorDB {
 	private $errors = []; // Error stack
 	private $daysFwd = 3; # Days from current date to look forwards
 	private $tPast = 0;
@@ -162,7 +163,7 @@ require_once 'php/config.php';
 $dbName = OI_DBNAME;
 
 try {
-	$db = new DB($dbName);
+	$db = new MonitorDB($dbName);
 } catch (\PDOException $e) {
 	echo "data: " . json_encode(["error" => "Database connection failed"]) . "\n\n";
 	exit;

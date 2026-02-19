@@ -18,7 +18,7 @@ class Programs(list):
         # First grab the day-of-week to program association
         sql = "SELECT program,key FROM pgmDOW INNER JOIN webList ON dow=id;"
         cur.execute(sql)
-        pgm2dow = {}
+        pgm2dow: dict[int, list[str]] = {}
         for row in cur:
             (pgm, dow) = row
             if pgm not in pgm2dow: pgm2dow[pgm] = []
@@ -96,11 +96,11 @@ class PgmDateTime:
 
     def __repr__(self): return "date=" + str(self.date) + " time=" + str(self.time)
 
-    def mkTime(self, pgmDate:datetime.date) -> datetime.datetime:
+    def mkTime(self, pgmDate:datetime.date) -> datetime.datetime | None:
         d = self.date.mkDate(pgmDate)
         return None if d is None else self.time.mkTime(d)
 
-    def __mkTime(self, mode:str, t:str, siteInfo:dict):
+    def __mkTime(self, mode:str, t:datetime.time, siteInfo:dict) -> 'TimeClock | TimeAstral':
         """ Choose which time class to use """
         try:
             tzinfo = ZoneInfo(siteInfo['tz'])
@@ -111,7 +111,7 @@ class PgmDateTime:
         if mode == 'clock': return TimeClock(t, tzinfo)
         return TimeAstral(mode, t, siteInfo, tzinfo)
 
-    def __mkDate(self, action:str, nDays:int, refDate:datetime.date, dows:list):
+    def __mkDate(self, action:str, nDays:int, refDate:datetime.date, dows:list) -> 'DateDOW | DateDays':
         """ Choose which date close to use """
         if action == 'dow': return DateDOW(dows)
         if action == 'nDays': return DateDays(nDays, refDate)
@@ -119,8 +119,8 @@ class PgmDateTime:
 
 class DateDOW:
     """ Return a date if it is in the set of day-of-weeks """
-    def __init__(self, dows):
-        self.dows = set()
+    def __init__(self, dows: list | None):
+        self.dows: set[int] = set()
         if dows is None: return
         dow2num = {'mon': 0, 'tue': 1, 'wed': 2, 'thur': 3, 'fri': 4, 'sat': 5, 'sun': 6}
         for dow in dows:
@@ -129,13 +129,13 @@ class DateDOW:
             else:
                 raise Exception('Unrecognized day of week {}'.format(dow))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'dows=' + str(self.dows)
 
-    def mkDate(self, d:datetime.date) -> datetime.date:
+    def mkDate(self, d:datetime.date) -> datetime.date | None:
         return d if d.weekday() in self.dows else None
 
-    def mkRefDate(self, d:datetime.date) -> datetime.date:
+    def mkRefDate(self, d:datetime.date) -> datetime.date | None:
         return None
 
 class DateDays:
@@ -149,7 +149,7 @@ class DateDays:
     def __repr__(self):
         return 'nDays={} ref={}'.format(self.nDays, self.ref.isoformat())
 
-    def mkDate(self, d:datetime.date) -> datetime.date:
+    def mkDate(self, d:datetime.date) -> datetime.date | None:
         dt = (d - self.ref).days # Days between d and ref
         return None if (dt % self.nDays) else d # If zero remainder then good
 
@@ -159,7 +159,7 @@ class DateDays:
 
 class TimeClock:
     """ the time field is an actuall walk clock time """
-    def __init__(self, t:datetime.time, tz:datetime.timezone) -> None:
+    def __init__(self, t:datetime.time, tz:ZoneInfo) -> None:
         self.t = t.replace(tzinfo=tz)
 
     def __repr__(self):
@@ -170,7 +170,7 @@ class TimeClock:
 
 class TimeAstral:
     """ the time field is relative to the earth/sun position """
-    def __init__(self, mode:str, t:datetime.time, site:dict, tz:datetime.timezone):
+    def __init__(self, mode:str, t:datetime.time, site:dict, tz:ZoneInfo):
         self.mode = mode
         self.tz = tz
         self.dt = datetime.timedelta(hours=t.hour, minutes=t.minute, seconds=t.second)
@@ -187,5 +187,5 @@ class TimeAstral:
         sun = astral_sun(self.observer, date=pgmDate, tzinfo=self.tz)
         if self.mode not in sun:
             raise Exception('Mode, {}, is not an astral sun position'.format(self.mode))
-        t = sun[self.mode] + self.dt
+        t: datetime.datetime = sun[self.mode] + self.dt
         return t.replace(tzinfo=self.tz)

@@ -26,7 +26,7 @@ REPLY_TIMEOUT = 30  # seconds to wait for a serial reply
 
 class ValveOps(MyBaseThread):
     """ Interface to database to drive valve related operations """
-    def __init__(self, args:argparse.ArgumentParser, params:dict,
+    def __init__(self, args:argparse.Namespace, params:dict,
             logger:logging.Logger, qExcept:queue.Queue, serial:serial.Serial):
         MyBaseThread.__init__(self, 'ValveOps', logger, qExcept)
         self.args = args # Command line arguments
@@ -35,7 +35,7 @@ class ValveOps(MyBaseThread):
         self.listenName = params['listenChannel']
         self.dbName = args.db
         self.listen = DB.Listen(self.dbName, self.listenName, logger)
-        self.queue = queue.Queue() # Reply queue from serial
+        self.queue: queue.Queue = queue.Queue() # Reply queue from serial
         self.msgOn   = MessageHandler(logger, '0A', (1,1), (1,1,2,2,2), None)
         self.msgOff  = MessageHandler(logger, '0D', (1,), (1,1), None)
         self.msgTest = MessageHandler(logger, '0T', (1,), (1,2,2,2), None)
@@ -105,11 +105,11 @@ class ValveOps(MyBaseThread):
                     + " ORDER BY timestamp LIMIT 1;"
             cur.execute(sql, (self.controller,))
             for row in cur:
-                return row[0].timestamp()
+                return float(row[0].timestamp())
         return time.time() + 3600 # We should be woken up by a notification on changes sooner
 
 
-    def chkZee(self, cur:psycopg.Cursor, msg:str, t:float, reply:str) -> bool:
+    def chkZee(self, cur:psycopg.Cursor, msg:str, t:datetime.datetime, reply:str) -> bool:
         if reply and (len(reply) > 1) and (reply[1:2] == b'Z'):
             args = parseZee(reply, self.logger)
             if args:
@@ -278,7 +278,7 @@ class ValveOps(MyBaseThread):
         except Exception:
             self.logger.exception('Error executing %s (%s,)', sql, (self.controller,))
 
-    def dbExec(self, cur:psycopg.Cursor, sql:str, args:list) -> bool:
+    def dbExec(self, cur:psycopg.Cursor, sql:str, args:list | tuple) -> bool:
         try:
             self.logger.debug('dbExec %s %s', sql, args)
             cur.execute(sql, args)

@@ -14,7 +14,7 @@ import Notify
 import re
 from SchedMain import runScheduler
 
-def prettyWoke(reply:str, db:DB.DB) -> str:
+def prettyWoke(reply:list, db:DB.DB) -> str:
     a = []
     for item in reply:
         b = re.fullmatch(r"Manual insertion\((\d+)\)", item)

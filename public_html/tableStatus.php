@@ -2,6 +2,7 @@
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('X-Accel-Buffering: no');
+echo "retry: 10000\n\n";
 
 function mkMsg(bool $q, string $msg) {
 	return "data: " .  json_encode(["success" => $q, "message" => $msg]) . "\n\n";
@@ -104,6 +105,7 @@ function fetchRow($db, $tbl, $action, $id) { // Fetch a single row
 if (empty($_GET['tbl'])) {exit(mkMsg(false, 'No tbl parameter supplied'));}
 
 require_once 'php/DB1.php';
+$db = DB::getInstance();
 
 if (!$db->isConnected()) {exit(mkMsg(false, 'Database connection failed'));}
 

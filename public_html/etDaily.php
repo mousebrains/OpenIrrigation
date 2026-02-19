@@ -6,6 +6,7 @@ function mkMsg(bool $flag, string $msg) {
 }
 
 require_once 'php/DB1.php';
+$db = DB::getInstance();
 
 if (empty($_POST['codigo'])) exit(mkMsg(false, "No codigo supplied"));
 if (!is_numeric($_POST['codigo'])) exit(mkMsg(false, "Invalid codigo"));

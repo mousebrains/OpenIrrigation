@@ -2,12 +2,13 @@
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('X-Accel-Buffering: no');
+echo "retry: 10000\n\n";
 
 // Send to JSON formatted data representing
 //  All the stations, and changes to their states.
 //  For use by index.php and index.js
 
-class DB {
+class IndexDB {
 	private $errors = []; // Error stack
 	private PDO $db;
 	private int $hoursPast;
@@ -147,7 +148,7 @@ require_once 'php/config.php';
 $dbName = OI_DBNAME;
 
 try {
-	$db = new DB($dbName);
+	$db = new IndexDB($dbName);
 } catch (\PDOException $e) {
 	echo "data: " . json_encode(["error" => "Database connection failed"]) . "\n\n";
 	exit;

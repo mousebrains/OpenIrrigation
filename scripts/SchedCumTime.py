@@ -12,7 +12,7 @@ import datetime
 class CumTime:
     """ Cumulative runtime per programstation and program date """
     def __init__(self) -> None:
-        self.cumTime = {}
+        self.cumTime: dict[int, dict[datetime.date, datetime.timedelta]] = {}
 
     def __repr__(self) -> str:
         msg = ['Cumulative Time']

@@ -280,7 +280,7 @@ class ResourceRegistry:
         self.pgm_flow: dict[int, ResourceTracker] = {}
         self.sensor: dict[int, ResourceTracker] = {}
 
-    def _get_tracker(self, collection: dict, key: int,
+    def _get_tracker(self, collection: dict[int, ResourceTracker], key: int,
                      capacity: Optional[float] = None) -> ResourceTracker:
         if key not in collection:
             collection[key] = ResourceTracker(capacity)

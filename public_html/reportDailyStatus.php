@@ -2,12 +2,13 @@
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('X-Accel-Buffering: no');
+echo "retry: 10000\n\n";
 
 // Send to JSON formatted data representing
 // the previous 10 days and next 10 days
 // daily run times
 
-class DB {
+class ReportDB {
 	private $errors = []; // Error stack
 	private $daysBack = 9; # Days from current date to look backwards
 	private $daysFwd =  9; # Days from current date to look forwards
@@ -144,7 +145,7 @@ require_once 'php/config.php';
 $dbName = OI_DBNAME;
 
 try {
-	$db = new DB($dbName);
+	$db = new ReportDB($dbName);
 } catch (\PDOException $e) {
 	echo "data: " . json_encode(["error" => "Database connection failed"]) . "\n\n";
 	exit;

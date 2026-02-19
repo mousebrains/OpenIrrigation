@@ -12,23 +12,23 @@ class Serial(MyBaseThread):
     def __init__(self, s:serial.Serial, logger:logging.Logger, qExcept:queue.Queue):
         MyBaseThread.__init__(self, 'Serial', logger, qExcept)
         self.s = s
-        self.queue = queue.Queue()
+        self.queue: queue.Queue = queue.Queue()
 
     def put(self, msg:bytes, queue:queue.Queue) -> None:
         """ Send a message """
         self.queue.put((msg, queue))
 
-    def readVariable(self, dt:float, n:int) -> bytes:
+    def readVariable(self, dt:float, n:int) -> bytes | None:
         """ Read serial port with a timeout via the select mechanism up to n bytes """
         s = self.s
         if select.select([s], [], [], dt) == ([],[],[]): # Timed out
             return None
-        msg = s.read(max(1,min(n, s.in_waiting)))
+        msg: bytes = s.read(max(1,min(n, s.in_waiting)))
         if msg: return msg # Not an EOF
         raise Exception('EOF while reading from serial port n={} in_waiting={}'.format(
             n, s.in_waiting))
 
-    def readFixed(self, dt:float, n:int) -> bytes:
+    def readFixed(self, dt:float, n:int) -> bytes | None:
         """ Read serial port with a timeout via the select mechanism a message of n bytes """
         s = self.s
         now = time.time()
@@ -50,7 +50,7 @@ class Serial(MyBaseThread):
         logger = self.logger
         s = self.s
         logger.info('Starting %s', s)
-        timeout = 1 # initially wait this time to clear the buffer
+        timeout: float = 1 # initially wait this time to clear the buffer
         while True:
             msg = self.readVariable(timeout, 4096)
             if msg and (msg != b'\r'):
@@ -153,8 +153,8 @@ class Serial(MyBaseThread):
             self.logger.exception('src=%s Unable to convert %s to a number', src, chkSum)
             return (None, None) # Error converting hex
         asum = 0
-        for c in msg: asum += c
-        for c in body: asum += c
+        for b in msg: asum += b
+        for b in body: asum += b
         if (asum & 0xff) != csum:
             self.s.write(NAK) # Failure for this message
             self.s.flush()

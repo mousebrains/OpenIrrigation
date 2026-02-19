@@ -7,6 +7,20 @@ on:
     branches: [ master ]
 
 jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - run: npm install
+    - run: pip install pre-commit
+    - run: pre-commit run --all-files
+
   php-lint:
     runs-on: ubuntu-latest
     steps:
@@ -30,6 +44,8 @@ jobs:
       run: npm install --no-save eslint@9 @eslint/js
     - name: Run ESLint
       run: npx eslint public_html/js/
+    - name: npm audit
+      run: npm audit --audit-level=critical
 
   ruff:
     runs-on: ubuntu-latest
@@ -38,8 +54,8 @@ jobs:
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-    - name: Install ruff
-      run: pip install ruff
+    - name: Install dependencies
+      run: pip install -r requirements-dev.txt
     - name: Run ruff
       run: ruff check scripts/
 
@@ -50,10 +66,10 @@ jobs:
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-    - name: Install pytest
-      run: pip install pytest
+    - name: Install dependencies
+      run: pip install -r requirements-dev.txt
     - name: Run tests
-      run: python -m pytest tests/ -x -q
+      run: python -m pytest tests/ -x -q --cov=scripts --cov-report=term-missing --cov-fail-under=25
 
   phpstan:
     runs-on: ubuntu-latest
@@ -62,4 +78,45 @@ jobs:
     - name: Install PHPStan
       run: composer global require phpstan/phpstan
     - name: Run PHPStan
-      run: ~/.composer/vendor/bin/phpstan analyse --level 5 --configuration phpstan.neon
+      run: ~/.composer/vendor/bin/phpstan analyse --configuration phpstan.neon
+
+  bandit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install bandit
+      run: pip install bandit
+    - name: Run bandit
+      run: bandit -r scripts/ -c pyproject.toml
+
+  mypy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: pip install mypy psycopg[binary]
+    - name: Run mypy
+      run: mypy scripts/ --ignore-missing-imports --no-strict-optional
+
+  migration-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Check migration numbering
+      run: |
+        nums=$(ls database/migrate_*.py 2>/dev/null | sed 's/.*migrate_0*\([0-9]*\)\.py/\1/' | sort -n)
+        expected=1
+        for n in $nums; do
+          if [ "$n" -ne "$expected" ]; then
+            echo "Gap: expected migrate_$(printf '%03d' $expected).py, found migrate_$(printf '%03d' $n).py"
+            exit 1
+          fi
+          expected=$((expected + 1))
+        done
+        echo "All $((expected - 1)) migrations sequential"

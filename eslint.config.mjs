@@ -38,6 +38,9 @@ export default [
       "no-undef": "error",
       "eqeqeq": ["warn", "smart"],
       "no-redeclare": "error",
+      "no-var": "warn",
+      "prefer-const": "warn",
+      "curly": "warn",
     },
   },
   {
@@ -53,6 +56,9 @@ export default [
       "no-undef": "error",
       "eqeqeq": ["warn", "smart"],
       "no-redeclare": "error",
+      "no-var": "warn",
+      "prefer-const": "warn",
+      "curly": "warn",
     },
   },
 ];

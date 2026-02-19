@@ -21,3 +21,22 @@ ignore = [
 testpaths = ["tests"]
 pythonpath = ["scripts", "tests"]
 addopts = "--tb=short"
+
+[tool.bandit]
+exclude_dirs = ["tests"]
+skips = [
+    "B101",  # assert usage is fine in non-web code
+    "B110",  # try/except/pass is intentional for cleanup
+    "B310",  # urlopen URLs are from config, not user input
+    "B311",  # random is not used for crypto
+    "B404",  # subprocess import is necessary
+    "B603",  # subprocess calls use hardcoded commands
+    "B608",  # SQL string concatenation uses parameterized queries
+]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+no_strict_optional = true
+warn_return_any = true
+warn_unused_configs = true

@@ -11,6 +11,8 @@ from typing import Optional
 class Interval:
     """ Immutable half-open time interval [start, end) """
     __slots__ = ('start', 'end')
+    start: datetime.datetime
+    end: datetime.datetime
 
     def __init__(self, start: datetime.datetime, end: datetime.datetime) -> None:
         if end < start:

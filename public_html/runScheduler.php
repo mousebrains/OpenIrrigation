@@ -2,6 +2,7 @@
 // form submission from index.php
 
 require_once 'php/DB1.php';
+$db = DB::getInstance();
 
 if ($db->query("SELECT scheduler_notify('Web action');", []))
 	exit($db->mkMsg(true, "Ran scheduler"));

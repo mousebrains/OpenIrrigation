@@ -1,6 +1,7 @@
 <?php
 // update a row in a table
 require_once 'php/DB1.php';
+$db = DB::getInstance();
 
 if (empty($_POST['tableName'])) exit($db->mkMsg(false, 'No table name supplied'));
 if (empty($_POST['id'])) exit($db->mkMsg(false, 'No table row id supplied'));

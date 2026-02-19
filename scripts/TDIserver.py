@@ -60,7 +60,7 @@ try:
     missing = [k for k in required if k not in params]
     if missing:
         raise ValueError('Missing required parameters: {}'.format(missing))
-    qExcept = queue.Queue() # Exceptions from threads
+    qExcept: queue.Queue = queue.Queue() # Exceptions from threads
     s = TDISimulate.mkSerial(args, params, logger, qExcept)
     thrSerial = TDIserial.Serial(s, logger, qExcept) # Interface to serial port
     thrValve = TDIvalve.ValveOps(args, params, logger, qExcept, thrSerial)

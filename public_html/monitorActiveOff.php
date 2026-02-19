@@ -2,6 +2,7 @@
 // Turn off an active valve from monitor.php
 
 require_once 'php/DB1.php';
+$db = DB::getInstance();
 
 if (empty($_POST['id'])) exit($db->mkMsg(false, "No ID supplied."));
 

@@ -12,14 +12,14 @@ def mkList(items:list) -> list:
 class Error(Base):
     """ Get errors 0E -> 1EXX """
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply:queue.Queue):
+            serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'ERR', params['errorPeriod'],
                 '0E', None, (1,), params['errorSQL'], params['zeeSQL'])
 
 class Current(Base):
     """ Get current 0U -> 1UXXXXYYYY """
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply:queue.Queue):
+            serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Current', params['currentPeriod'],
                 '0U', None, (2,2), params['currentSQL'], params['zeeSQL'])
 
@@ -29,7 +29,7 @@ class Pee(Base):
         I don't know how this is different than 02
     """
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply:queue.Queue):
+            serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Pee', params['peePeriod'],
                 '0P', (1,1), (1,2), params['peeSQL'], params['zeeSQL'])
         self.previous = {}
@@ -46,7 +46,7 @@ class Pound(Base):
         Number of stations in controller
     """
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply:queue.Queue):
+            serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Pound', params['numberPeriod'],
                 '0#', (1,), (1,), params['numberSQL'], params['zeeSQL'])
         self.addArgs((params['numberStations'], ))
@@ -54,7 +54,7 @@ class Pound(Base):
 class Sensor(Base):
     """ 0SXX -> 1SXXYYZZZZ """
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply:queue.Queue):
+            serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Sensor', params['sensorPeriod'],
                 '0S', (1,), (1,1,2), params['sensorSQL'], params['zeeSQL'])
         self.previous = {}
@@ -74,7 +74,7 @@ class Sensor(Base):
 
 class Two(Base): # 02XXYY -> 12XXZZ
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply:queue.Queue):
+            serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Two', params['twoPeriod'],
                 '02', (1,1), (1,1), params['twoSQL'], params['zeeSQL'])
         self.previous = {}
@@ -88,7 +88,7 @@ class Two(Base): # 02XXYY -> 12XXZZ
 
 class Version(Base): # 0V -> 1EZ...Z
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply:queue.Queue):
+            serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Version', params['versionPeriod'],
                 '0V', None, None, params['versionSQL'], params['zeeSQL'])
         self.msgHandler.qString = True # A string argument

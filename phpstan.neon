@@ -1,5 +1,5 @@
 parameters:
-  level: 5
+  level: 6
   paths:
     - public_html
   excludePaths:
@@ -12,10 +12,3 @@ parameters:
     - identifier: requireOnce.fileNotFound
     # OI_DBNAME is defined in the generated config.php
     - identifier: constant.notFound
-    # SSE endpoints define their own local DB class (separate from DB1.php's DB);
-    # PHPStan conflates the two and reports methods/properties as missing
-    - identifier: method.notFound
-    - identifier: staticMethod.notFound
-    - identifier: property.onlyWritten
-    # $db is created in DB1.php via require_once; PHPStan can't trace cross-file globals
-    - identifier: variable.undefined

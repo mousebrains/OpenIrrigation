@@ -144,7 +144,14 @@ class DB {
 		}
 		return true;
 	}
-} // DB
 
-require_once __DIR__ . '/config.php';
-$db = new DB(OI_DBNAME);
+	private static ?DB $instance = null;
+
+	static function getInstance(): DB {
+		if (self::$instance === null) {
+			require_once __DIR__ . '/config.php';
+			self::$instance = new DB(OI_DBNAME);
+		}
+		return self::$instance;
+	}
+} // DB

@@ -1,10 +1,10 @@
 $(function() {
-	var etChart = null;
+	let etChart = null;
 
 	$('#et-select').on('change', function() {
-		var sel = $(this);
-		var id = sel.val();
-		var desc = sel.find('option:selected').text();
+		const sel = $(this);
+		const id = sel.val();
+		const desc = sel.find('option:selected').text();
 
 		$.ajax({
 			type: 'POST',
@@ -24,13 +24,13 @@ $(function() {
 
 	// 7-day centered moving average for an array of {x, y} points
 	function movingAvg(pts, halfWin) {
-		var out = [];
-		var n = pts.length;
-		for (var i = 0; i < n; i++) {
-			var lo = Math.max(0, i - halfWin);
-			var hi = Math.min(n - 1, i + halfWin);
-			var sum = 0;
-			for (var j = lo; j <= hi; j++) {
+		const out = [];
+		const n = pts.length;
+		for (let i = 0; i < n; i++) {
+			const lo = Math.max(0, i - halfWin);
+			const hi = Math.min(n - 1, i + halfWin);
+			let sum = 0;
+			for (let j = lo; j <= hi; j++) {
 				sum += pts[j].y;
 			}
 			out.push({ x: pts[i].x, y: sum / (hi - lo + 1) });
@@ -44,19 +44,19 @@ $(function() {
 			etChart = null;
 		}
 
-		var annual = (rows && rows.annual) || [];
-		var ytd = (rows && rows.ytd) || [];
-		var prev = (rows && rows.prev) || [];
+		const annual = (rows && rows.annual) || [];
+		const ytd = (rows && rows.ytd) || [];
+		const prev = (rows && rows.prev) || [];
 
 		// annual: [doy, q10, value, q90]  (FETCH_NUM indices 0-3)
-		var q90Pts = [];
-		var medPts = [];
-		var q10Pts = [];
+		let q90Pts = [];
+		let medPts = [];
+		let q10Pts = [];
 
-		for (var i = 0; i < annual.length; i++) {
-			var doy = Number(annual[i][0]);
-			var d = new Date(2024, 0, doy);
-			var t = d.getTime();
+		for (let i = 0; i < annual.length; i++) {
+			const doy = Number(annual[i][0]);
+			const d = new Date(2024, 0, doy);
+			const t = d.getTime();
 
 			q10Pts.push({ x: t, y: Number(annual[i][1]) });
 			medPts.push({ x: t, y: Number(annual[i][2]) });
@@ -64,18 +64,18 @@ $(function() {
 		}
 
 		// ytd: [doy, value]
-		var ytdPts = [];
-		for (var j = 0; j < ytd.length; j++) {
-			var ytdDoy = Number(ytd[j][0]);
-			var ytdD = new Date(2024, 0, ytdDoy);
+		const ytdPts = [];
+		for (let j = 0; j < ytd.length; j++) {
+			const ytdDoy = Number(ytd[j][0]);
+			const ytdD = new Date(2024, 0, ytdDoy);
 			ytdPts.push({ x: ytdD.getTime(), y: Number(ytd[j][1]) });
 		}
 
 		// prev: [doy, value] — previous year from today's DOY onward
-		var prevPts = [];
-		for (var k = 0; k < prev.length; k++) {
-			var prevDoy = Number(prev[k][0]);
-			var prevD = new Date(2024, 0, prevDoy);
+		const prevPts = [];
+		for (let k = 0; k < prev.length; k++) {
+			const prevDoy = Number(prev[k][0]);
+			const prevD = new Date(2024, 0, prevDoy);
 			prevPts.push({ x: prevD.getTime(), y: Number(prev[k][1]) });
 		}
 
@@ -84,7 +84,7 @@ $(function() {
 		medPts = movingAvg(medPts, 3);
 		q10Pts = movingAvg(q10Pts, 3);
 
-		var ctx = document.getElementById('etChart').getContext('2d');
+		const ctx = document.getElementById('etChart').getContext('2d');
 		etChart = new Chart(ctx, {
 			type: 'line',
 			data: {

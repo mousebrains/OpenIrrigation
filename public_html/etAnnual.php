@@ -2,6 +2,7 @@
 // Return day-of-year annual ET statistics from ETannual
 
 require_once 'php/DB1.php';
+$db = DB::getInstance();
 
 if (empty($_POST['codigo'])) {
 	echo json_encode(['success' => false, 'message' => 'No codigo supplied']);

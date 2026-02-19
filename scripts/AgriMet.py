@@ -24,11 +24,11 @@ def codigoToIndex(db:DB.DB, logger:logging.Logger) -> dict:
             info[row[1]] = row[0]
         return info
 
-def fetchPage(tStart:datetime.datetime, params:dict,
-        args:argparse.ArgumentParser, logger:logging.Logger) -> str:
+def fetchPage(tStart:datetime.timedelta, params:dict,
+        args:argparse.Namespace, logger:logging.Logger) -> str | None:
     if args.input and os.path.exists(args.input):
         with open(args.input, 'r') as fp:
-            page = fp.read()
+            page: str = fp.read()
             logger.info('Loaded %s bytes from %s', len(page), args.input)
             return page
 
@@ -53,9 +53,9 @@ def fetchPage(tStart:datetime.datetime, params:dict,
 def parsePage(page:str, codigoToIndex:dict, logger:logging.Logger) -> list:
     """ break the page into data rows and return them """
     state = 0 # Looking for BEGIN DATA line
-    stations = []
-    codigos = []
-    rows = []
+    stations: list[str] = []
+    codigos: list[int | None] = []
+    rows: list[tuple] = []
     for line in page.splitlines():
         line = line.strip()
         if not line: continue
@@ -117,7 +117,7 @@ def storeRows(db:DB.DB, rows:list, logger:logging.Logger) -> bool:
         logger.exception('Unable to store %s rows', len(rows))
     return False
 
-def doFetch(args:argparse.ArgumentParser, params:dict, logger:logging.Logger) -> None:
+def doFetch(args:argparse.Namespace, params:dict, logger:logging.Logger) -> None:
     if args.earliestDate is None:
         earliestDate = datetime.date.fromisoformat(params['earliestDate'])
     else:
@@ -145,7 +145,7 @@ def doFetch(args:argparse.ArgumentParser, params:dict, logger:logging.Logger) ->
     doStats(args, params, logger)
     db.updateState(myName, 'Fetch complete at {}'.format(datetime.datetime.now()))
 
-def doStats(args:argparse.ArgumentParser, params:dict, logger:logging.Logger) -> None:
+def doStats(args:argparse.Namespace, params:dict, logger:logging.Logger) -> None:
     logger.info('Building statistics')
     db = DB.DB(args.db, logger)
     db.updateState('Stats', 'Building statistics')

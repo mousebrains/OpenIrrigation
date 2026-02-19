@@ -2,6 +2,7 @@
 header('Content-Type: text/event-stream');
 header('Cache-Control: no-cache');
 header('X-Accel-Buffering: no');
+echo "retry: 10000\n\n";
 
 // Send to JSON formatted data representing
 //   the controller's current,
@@ -9,7 +10,7 @@ header('X-Accel-Buffering: no');
 //   the number of stations turned on, and
 //   the number of stations pending within the next 50-60 minutes
 
-class DB {
+class StatusDB {
 	private $errors = []; // Error stack
 	private PDO $db;
 	private PDOStatement $getController;
@@ -157,7 +158,7 @@ $delay = 55 * 1000; // 55 seconds between burps
 require_once 'php/config.php';
 $dbName = OI_DBNAME;
 
-$db = new DB($dbName);
+$db = new StatusDB($dbName);
 
 echo "data: " . $db->fetchInitial() . "\n\n";
 $tPrev = time();

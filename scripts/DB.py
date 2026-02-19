@@ -120,7 +120,7 @@ class DB:
             self.logger.exception('Unable to rollback to %s', self.dbName)
         return False
 
-    def execute(self, sql: str, args: list = None) -> bool:
+    def execute(self, sql: str, args: list | tuple | None = None) -> bool:
         """ Execute the SQL statement with the supplied args, a cursor object will be created """
         cur = self.cursor()
         if cur is None:
@@ -143,18 +143,18 @@ class DB:
 
 class DBout(MyBaseThread):
     """ Read from a queue and execute the SQL/args on the database """
-    def __init__(self, args:argparse.ArgumentParser, logger:logging.Logger, qExcept:queue.Queue):
+    def __init__(self, args:argparse.Namespace, logger:logging.Logger, qExcept:queue.Queue):
         MyBaseThread.__init__(self, 'DBout', logger, qExcept)
         self.db = DB(args.db, logger) # my database object
         self.site = args.site
         self.controller = args.controller
-        self.queue = queue.Queue() # SQL+args to be written to DB
+        self.queue: queue.Queue = queue.Queue() # SQL+args to be written to DB
 
-    def put(self, sql:str , t:float, args:list) -> None:
+    def put(self, sql:str , t:float, args:list | tuple) -> None:
         """ Store data in my queue """
         self.queue.put((sql, t, args))
 
-    def putShort(self, sql:str , args:list) -> None:
+    def putShort(self, sql:str , args:list | tuple) -> None:
         """ Store data in my queue """
         self.queue.put((sql, args))
 
@@ -197,7 +197,7 @@ class Listen:
         self.dbName = dbName
         self.channel = channel
         self.logger = logger
-        self.conn = None # Direct psycopg connection in autocommit mode
+        self.conn: psycopg.Connection | None = None # Direct psycopg connection in autocommit mode
         self.__setup()
 
     def __setup(self) -> bool:

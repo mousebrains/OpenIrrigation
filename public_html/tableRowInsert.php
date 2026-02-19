@@ -1,6 +1,7 @@
 <?php
 // insert a row into a table
 require_once 'php/DB1.php';
+$db = DB::getInstance();
 
 if (empty($_POST['tableName'])) exit($db->mkMsg(false, 'No table name supplied'));
 
