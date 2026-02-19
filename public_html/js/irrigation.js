@@ -88,11 +88,22 @@ function OI_connectSSE(url, onMessage) {
 			statusEl.textContent = '';
 		}
 	};
-	source.onmessage = onMessage;
+	source.onmessage = (event) => {
+		try {
+			const data = JSON.parse(event.data);
+			if (data.error) {
+				OI_toast(data.error, true);
+			}
+		} catch {
+			// Not JSON or parse error — pass through
+		}
+		onMessage(event);
+	};
 	source.onerror = () => {
 		if (statusEl) {
 			statusEl.textContent = 'Connection lost';
 		}
+		OI_toast('SSE connection lost — retrying', true);
 	};
 	return source;
 }

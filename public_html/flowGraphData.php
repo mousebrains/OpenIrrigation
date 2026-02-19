@@ -15,6 +15,11 @@ if (!is_numeric($hours)) {
 $hours = max(1, min(72, (int)$hours));
 $buckets = min($hours * 60, 500);
 
+if (!$db->isConnected()) {
+	echo json_encode(['error' => 'Database connection failed']);
+	exit;
+}
+
 $flow = $db->loadRowsNum(
 	"SELECT"
 	. " ROUND(EXTRACT(EPOCH FROM MIN(timestamp))) AS t,"
@@ -51,4 +56,8 @@ $stations = $db->loadRowsNum(
 	[$hours, $hours]
 );
 
-echo json_encode(['flow' => $flow, 'stations' => $stations]);
+$result = ['flow' => $flow, 'stations' => $stations];
+if ($db->getError()) {
+	$result['error'] = 'Query error: ' . $db->getError();
+}
+echo json_encode($result);

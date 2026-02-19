@@ -1,0 +1,16 @@
+parameters:
+  level: 5
+  paths:
+    - public_html
+  excludePaths:
+    - public_html/packages
+    - public_html/js
+    - public_html/css
+  reportUnmatchedIgnoredErrors: false
+  ignoreErrors:
+    # DB1.php is included via require_once and defines $db in the global scope
+    - '#Variable \$db might not be defined#'
+    # PDO constants are always available with pgsql extension
+    - '#Constant PDO::#'
+    # $_GET, $_POST, $_SERVER are always available
+    - '#Variable \$_(GET|POST|SERVER) might not be defined#'

@@ -10,9 +10,19 @@ class DB {
 
 	private function getDB() {
 		if ($this->db === null) {
-			$this->db = new PDO("pgsql:dbname=" . $this->dbName . ";");
+			try {
+				$this->db = new PDO("pgsql:dbname=" . $this->dbName . ";");
+			} catch (\PDOException $e) {
+				$this->lastError = [0, $e->getCode(), $e->getMessage()];
+				error_log("DB connection failed: " . $e->getMessage());
+				return null;
+			}
 		}
 		return $this->db;
+	}
+
+	function isConnected(): bool {
+		return $this->getDB() !== null;
 	}
 
 	function getError() {
@@ -23,6 +33,7 @@ class DB {
 
 	function prepare(string $sql) {
 		$db = $this->getDB();
+		if ($db === null) return false;
 		$a = $db->prepare($sql);
 		if ($a !== false) return $a;
 		$this->lastError = $db->errorInfo();
@@ -37,9 +48,9 @@ class DB {
 		return false;
 	}
 
-	function beginTransaction() : bool {return $this->db->beginTransaction();}
-	function commit() : bool {return $this->db->commit();}
-	function rollback() : bool {return $this->db->rollback();}
+	function beginTransaction() : bool {return $this->db ? $this->db->beginTransaction() : false;}
+	function commit() : bool {return $this->db ? $this->db->commit() : false;}
+	function rollback() : bool {return $this->db ? $this->db->rollback() : false;}
 
 	function loadRows(string $sql, array $args) {
 		$a = $this->query($sql, $args);
@@ -61,7 +72,9 @@ class DB {
 	}
 
 	function quote(string $value): string {
-		return $this->getDB()->quote($value);
+		$db = $this->getDB();
+		if ($db === null) return "'" . addslashes($value) . "'";
+		return $db->quote($value);
 	}
 
 	function listen(string $channel) {
@@ -71,6 +84,7 @@ class DB {
 
 	function notifications(int $delay) {
 		$db = $this->getDB();
+		if ($db === null) return false;
 		return $db->pgsqlGetNotify(PDO::FETCH_ASSOC, $delay);
 	}
 
@@ -96,7 +110,9 @@ class DB {
 	function chgLog(string $addr, string $msg) {
 		$sql = "INSERT INTO changeLog (ipAddr,description) VALUES(?,?);";
 		$stmt = $this->prepare($sql);
-		$stmt->execute([$addr, $msg]);
+		if ($stmt === false || $stmt->execute([$addr, $msg]) === false) {
+			error_log("chgLog failed: " . $this->getError());
+		}
 	}
 
 	function mkMsg(bool $flag, string $msg) {
@@ -106,7 +122,9 @@ class DB {
 			basename($_SERVER["SCRIPT_NAME"]) : "GotMe";
 		$sql = "INSERT INTO changeLog (ipAddr,description) VALUES(?,?);";
 		$stmt = $this->prepare($sql);
-		$stmt->execute([$addr, "$msg, $fn"]);
+		if ($stmt === false || $stmt->execute([$addr, "$msg, $fn"]) === false) {
+			error_log("mkMsg chgLog failed: " . $this->getError());
+		}
 		return json_encode(["success" => $flag, "message" => $msg]);
 	}
 

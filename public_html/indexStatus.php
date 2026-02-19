@@ -19,7 +19,11 @@ class DB {
 	private PDOStatement $getPOCs;
 
 	function __construct(string $dbName) {
-		$db = new PDO("pgsql:dbname=$dbName;");
+		try {
+			$db = new PDO("pgsql:dbname=$dbName;");
+		} catch (\PDOException $e) {
+			throw $e;
+		}
 		$this->db = $db;
 		$this->hoursPast = 24; # How many hours into the past to look for events
 		$this->hoursFuture = 24; # How many hours into the future to look for pending
@@ -142,16 +146,25 @@ $delay = 55 * 1000; // 55 seconds between burps
 require_once 'php/config.php';
 $dbName = OI_DBNAME;
 
-$db = new DB($dbName);
+try {
+	$db = new DB($dbName);
+} catch (\PDOException $e) {
+	echo "data: " . json_encode(["error" => "Database connection failed"]) . "\n\n";
+	exit;
+}
 
 echo "data: " . $db->fetchInitial() . "\n\n";
 
 while (!connection_aborted()) { # Wait until client disconnects
 	if (ob_get_length()) {ob_flush();} // Flush output buffer
 	flush();
-	$info = array_merge(
-		$db->notifications($delay),
-		$db->fetchInfo()
-	);
-	echo "data: " . json_encode($info) . "\n\n";
+	try {
+		$info = array_merge(
+			$db->notifications($delay),
+			$db->fetchInfo()
+		);
+		echo "data: " . json_encode($info) . "\n\n";
+	} catch (\Exception $e) {
+		echo "data: " . json_encode(["error" => "Database error"]) . "\n\n";
+	}
 }

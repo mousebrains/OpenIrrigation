@@ -42,3 +42,24 @@ jobs:
       run: pip install ruff
     - name: Run ruff
       run: ruff check scripts/
+
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install pytest
+      run: pip install pytest
+    - name: Run tests
+      run: python -m pytest tests/ -x -q
+
+  phpstan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install PHPStan
+      run: composer global require phpstan/phpstan
+    - name: Run PHPStan
+      run: ~/.composer/vendor/bin/phpstan analyse --level 5 --configuration phpstan.neon

@@ -33,16 +33,24 @@
 <select id='et-select'>
 <?php
 require_once 'php/DB1.php';
-$a = $db->loadRows(
-	"SELECT p.id, p.val FROM params p"
-	. " WHERE p.grp='ET'"
-	. " AND EXISTS (SELECT 1 FROM ETannual WHERE code = p.id)"
-	. " ORDER BY p.val;", []);
-foreach ($a as $item) {
-	$id = $item['id'];
-	$val = htmlspecialchars($item['val'], ENT_QUOTES, 'UTF-8');
-	$sel = ($item['val'] === 'ET (in/day)') ? ' selected' : '';
-	echo "<option value='$id'$sel>$val</option>";
+if (!$db->isConnected()) {
+	echo "<option value=''>Database error</option>";
+} else {
+	$a = $db->loadRows(
+		"SELECT p.id, p.val FROM params p"
+		. " WHERE p.grp='ET'"
+		. " AND EXISTS (SELECT 1 FROM ETannual WHERE code = p.id)"
+		. " ORDER BY p.val;", []);
+	if (empty($a) && $db->getError()) {
+		echo "<option value=''>Query error</option>";
+	} else {
+		foreach ($a as $item) {
+			$id = $item['id'];
+			$val = htmlspecialchars($item['val'], ENT_QUOTES, 'UTF-8');
+			$sel = ($item['val'] === 'ET (in/day)') ? ' selected' : '';
+			echo "<option value='$id'$sel>$val</option>";
+		}
+	}
 }
 ?>
 </select>

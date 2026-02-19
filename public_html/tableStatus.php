@@ -105,6 +105,8 @@ if (empty($_GET['tbl'])) {exit(mkMsg(false, 'No tbl parameter supplied'));}
 
 require_once 'php/DB1.php';
 
+if (!$db->isConnected()) {exit(mkMsg(false, 'Database connection failed'));}
+
 $tbl = $_GET['tbl'];
 if (!$db->tableExists($tbl)) {exit(mkMsg(false, "Table, $tbl, does not exist"));}
 

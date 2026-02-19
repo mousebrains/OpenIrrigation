@@ -11,7 +11,11 @@ class DB {
 	private PDOStatement $getRecords;
 
 	function __construct(string $dbName) {
-		$db = new PDO("pgsql:dbname=$dbName;");
+		try {
+			$db = new PDO("pgsql:dbname=$dbName;");
+		} catch (\PDOException $e) {
+			throw $e;
+		}
 		$this->db = $db;
 
 		$this->getRecords = $db->prepare(
@@ -39,7 +43,12 @@ $delay = 55 * 1000; // 55 seconds between burps
 require_once 'php/config.php';
 $dbName = OI_DBNAME;
 
-$db = new DB($dbName);
+try {
+	$db = new DB($dbName);
+} catch (\PDOException $e) {
+	echo "data: " . json_encode(["error" => "Database connection failed"]) . "\n\n";
+	exit;
+}
 
 $tPrev = time();
 echo "data: " . json_encode($db->fetchInfo(0)) . "\n\n";
@@ -47,13 +56,17 @@ echo "data: " . json_encode($db->fetchInfo(0)) . "\n\n";
 while (!connection_aborted()) { # Wait until client disconnects
 	if (ob_get_length()) {ob_flush();} // Flush output buffer
 	flush();
-	$notifications = $db->notifications($delay);
-	if (empty($notifications)) {
-		$info = ['burp'=>0];
-	} else {
-		$now = time();
-		$info = $db->fetchInfo($tPrev);
-		$tPrev = $now;
+	try {
+		$notifications = $db->notifications($delay);
+		if (empty($notifications)) {
+			$info = ['burp'=>0];
+		} else {
+			$now = time();
+			$info = $db->fetchInfo($tPrev);
+			$tPrev = $now;
+		}
+		echo "data: " . json_encode($info) . "\n\n";
+	} catch (\Exception $e) {
+		echo "data: " . json_encode(["error" => "Database error"]) . "\n\n";
 	}
-	echo "data: " . json_encode($info) . "\n\n";
 }

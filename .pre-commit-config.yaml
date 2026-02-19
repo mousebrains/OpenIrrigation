@@ -6,6 +6,12 @@ repos:
         args: [--fix]
   - repo: local
     hooks:
+      - id: eslint
+        name: eslint
+        entry: npx eslint
+        language: system
+        files: ^public_html/js/.*\.js$
+        exclude: ^public_html/packages/
       - id: pytest
         name: pytest
         entry: python -m pytest tests/ -x -q
