@@ -9,7 +9,8 @@ echo "retry: 10000\n\n";
 //  For use by index.php and index.js
 
 class IndexDB {
-	private $errors = []; // Error stack
+	/** @var array<mixed> */
+	private array $errors = [];
 	private PDO $db;
 	private int $hoursPast;
 	private int $hoursFuture;
@@ -74,13 +75,15 @@ class IndexDB {
 		$db->exec("LISTEN action_update;");
 	}
 
-	function notifications(int $dt) {
+	/** @return array<string, mixed> */
+	function notifications(int $dt): array {
 		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
 		if (!$a) return [];
 		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	} // notifications
 
-	function fetchInfo() { # Get all the pending and active actions
+	/** @return array<string, mixed> */
+	function fetchInfo(): array { # Get all the pending and active actions
 		$this->errors = [];
 		$a = $this->loadInfo($this->getActive);
 		$b = $this->loadInfo($this->getPending);
@@ -88,7 +91,7 @@ class IndexDB {
 		return ["active"=>$a, "pending"=>$b, "past"=>$c];
 	} // fetchInfo
 
-	function fetchInitial() {
+	function fetchInitial(): string {
 		$a = $this->fetchInfo();
 		$b = $this->fetchStations();
 		if (!empty($b)) {$a['info'] = $b;}
@@ -103,7 +106,7 @@ class IndexDB {
 		return json_encode($a);
 	} // fetchInitial
 
-	function exec($stmt) {
+	function exec(PDOStatement $stmt): bool {
 		if ($stmt->execute([]) === false) {
 			$this->errors[] = $stmt->errorInfo();
 			return false;
@@ -111,7 +114,8 @@ class IndexDB {
 		return true;
 	} // exec
 
-	function loadInfo($stmt) { # Read all the rows from a result and return an array
+	/** @return array<int|string, mixed> */
+	function loadInfo(PDOStatement $stmt): array { # Read all the rows from a result and return an array
 		if (!$this->exec($stmt)) return [];
 		$a = [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -124,13 +128,15 @@ class IndexDB {
 		return $a;
 	} // loadInfo
 
-	function fetchStations() { # Get sensor/name relationships for all stations
+	/** @return array<int, array<int, mixed>> */
+	function fetchStations(): array { # Get sensor/name relationships for all stations
 		$stmt = $this->getStations;
 		if (!$this->exec($stmt)) return [];
 		return $stmt->fetchAll(PDO::FETCH_NUM);
 	}
 	
-	function fetchPOCs() { 
+	/** @return array<int, array<int, mixed>> */
+	function fetchPOCs(): array { 
 		// Get the point-of-connect/name map for all POCs with master valves
 		$stmt = $this->getPOCs;
 		if (!$this->exec($stmt)) return [];

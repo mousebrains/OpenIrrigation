@@ -1,7 +1,7 @@
 <?php
 // Grab a column of data for et information
 
-function mkMsg(bool $flag, string $msg) {
+function mkMsg(bool $flag, string $msg): string {
 	return json_encode(['success' => $flag, 'message' => $msg]);
 }
 

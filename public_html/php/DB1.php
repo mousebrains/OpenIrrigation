@@ -1,14 +1,15 @@
 <?php
 class DB {
-	private $db = null;
-	private $lastError = null;
+	private ?PDO $db = null;
+	/** @var array<mixed>|null */
+	private ?array $lastError = null;
 	private string $dbName;
 
 	function __construct(string $dbName) {
 		$this->dbName = $dbName;
 	}
 
-	private function getDB() {
+	private function getDB(): ?PDO {
 		if ($this->db === null) {
 			try {
 				$this->db = new PDO("pgsql:dbname=" . $this->dbName . ";");
@@ -25,13 +26,13 @@ class DB {
 		return $this->getDB() !== null;
 	}
 
-	function getError() {
+	function getError(): string {
 		return $this->lastError === null ? "" : $this->lastError[2];
 	}
 
-	function close() { $this->db = null; }
+	function close(): void { $this->db = null; }
 
-	function prepare(string $sql) {
+	function prepare(string $sql): PDOStatement|false {
 		$db = $this->getDB();
 		if ($db === null) return false;
 		$a = $db->prepare($sql);
@@ -40,7 +41,8 @@ class DB {
 		return false;
 	}
 
-	function query(string $sql, array $args = []) {
+	/** @param array<mixed> $args */
+	function query(string $sql, array $args = []): PDOStatement|false {
 		$a = $this->prepare($sql);
 		if ($a === false) return false;
 		if ($a->execute($args) !== false) return $a; // worked
@@ -52,13 +54,17 @@ class DB {
 	function commit() : bool {return $this->db ? $this->db->commit() : false;}
 	function rollback() : bool {return $this->db ? $this->db->rollback() : false;}
 
-	function loadRows(string $sql, array $args) {
+	/** @param array<mixed> $args
+	 * @return array<int, array<string, mixed>> */
+	function loadRows(string $sql, array $args): array {
 		$a = $this->query($sql, $args);
 		if ($a === false) return [];
 		return $a->fetchAll(PDO::FETCH_ASSOC);
 	}
 
-	function loadRowsNum(string $sql, array $args) {
+	/** @param array<mixed> $args
+	 * @return array<int, array<int, mixed>> */
+	function loadRowsNum(string $sql, array $args): array {
 		$a = $this->query($sql, $args);
 		if ($a === false) return [];
 		return $a->fetchAll(PDO::FETCH_NUM);
@@ -77,18 +83,19 @@ class DB {
 		return $db->quote($value);
 	}
 
-	function listen(string $channel) {
+	function listen(string $channel): PDOStatement|false {
 		$channel = $this->quoteIdent($channel);
 		return $this->query("LISTEN $channel;");
 	}
 
-	function notifications(int $delay) {
+	/** @return array<string, mixed>|false */
+	function notifications(int $delay): array|false {
 		$db = $this->getDB();
 		if ($db === null) return false;
 		return $db->pgsqlGetNotify(PDO::FETCH_ASSOC, $delay);
 	}
 
-	function tableExists(string $tbl) {
+	function tableExists(string $tbl): bool {
 		$sql = "SELECT count(*) AS cnt FROM information_schema.tables"
 			. " WHERE table_name=LOWER(?);";
 		$a = $this->query($sql, [$tbl]);
@@ -97,7 +104,8 @@ class DB {
 		return array_key_exists('cnt', $result) && $result['cnt'];
 	}
 
-	function tableColumns(string $tbl) {
+	/** @return array<int, string> */
+	function tableColumns(string $tbl): array {
 		$sql = "SELECT column_name AS col FROM information_schema.columns"
 			. " WHERE table_name=LOWER(?);";
 		$a = $this->query($sql, [$tbl]);
@@ -107,7 +115,7 @@ class DB {
 		return $rows;
 	}
 
-	function chgLog(string $addr, string $msg) {
+	function chgLog(string $addr, string $msg): void {
 		$sql = "INSERT INTO changeLog (ipAddr,description) VALUES(?,?);";
 		$stmt = $this->prepare($sql);
 		if ($stmt === false || $stmt->execute([$addr, $msg]) === false) {
@@ -115,7 +123,7 @@ class DB {
 		}
 	}
 
-	function mkMsg(bool $flag, string $msg) {
+	function mkMsg(bool $flag, string $msg): string {
 		$addr = array_key_exists("REMOTE_ADDR", $_SERVER) ? 
 			$_SERVER["REMOTE_ADDR"] : "GotMe";
 		$fn = array_key_exists("SCRIPT_NAME", $_SERVER) ? 
@@ -128,7 +136,7 @@ class DB {
 		return json_encode(["success" => $flag, "message" => $msg]);
 	}
 
-	function dbMsg(string $msg) {
+	function dbMsg(string $msg): string {
 		return $this->mkMsg(false, $msg . ", " . $this->getError());
 	}
 

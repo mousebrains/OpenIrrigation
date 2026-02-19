@@ -44,7 +44,7 @@ class ProgramStations(dict):
 
 class ProgramStation:
     """ Information about a Program Station """
-    def __init__(self, row:list, sensors:Sensors, logger:logging.Logger) -> None:
+    def __init__(self, row:list | tuple, sensors:Sensors, logger:logging.Logger) -> None:
         (self.id, self.program, stationID, runTime, self.qSingle
                 , onOff
                 , self.pgmMaxStations, self.pgmMaxFlow

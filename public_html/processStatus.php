@@ -7,7 +7,6 @@ echo "retry: 10000\n\n";
 // Send process state records in JSON format
 
 class ProcessDB {
-	private $errors = []; // Error stack
 	private PDO $db;
 	private PDOStatement $getRecords;
 
@@ -27,13 +26,15 @@ class ProcessDB {
 		$db->exec("LISTEN processstate_update;");
 	}
 
-	function notifications(int $dt) {
+	/** @return array<string, mixed> */
+	function notifications(int $dt): array {
 		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
 		if (!$a) return [];
 		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	} // notifications
 
-	function fetchInfo(float $t) { # Get the most current records for each process
+	/** @return array<int|string, mixed> */
+	function fetchInfo(float $t): array { # Get the most current records for each process
 		$stmt = $this->getRecords;
 		if ($stmt->execute([$t]) === false) return ['error' => $stmt->errorInfo()];
 		return $stmt->fetchAll(PDO::FETCH_NUM);

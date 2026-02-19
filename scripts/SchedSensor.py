@@ -54,7 +54,7 @@ class Sensors(dict):
 
 class Sensor:
     """ Information about a sensor """
-    def __init__(self, row:list) -> None:
+    def __init__(self, row:list | tuple) -> None:
         (self.station, self.poc, self.id, self.name
                 , minCycleTime, maxCycleTime, soakTime, self.stnMaxStations
                 , measuredFlow, userFlow

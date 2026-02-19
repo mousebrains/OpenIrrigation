@@ -9,9 +9,10 @@ echo "retry: 10000\n\n";
 // daily run times
 
 class ReportDB {
-	private $errors = []; // Error stack
-	private $daysBack = 9; # Days from current date to look backwards
-	private $daysFwd =  9; # Days from current date to look forwards
+	/** @var array<mixed> */
+	private array $errors = [];
+	private int $daysBack = 9; # Days from current date to look backwards
+	private int $daysFwd =  9; # Days from current date to look forwards
 	private PDO $db;
 	private PDOStatement $getPast;
 	private PDOStatement $getPending;
@@ -69,13 +70,15 @@ class ReportDB {
 		$db->exec("LISTEN action_update;");
 	} // __construct
 
-	function notifications(int $dt) {
+	/** @return array<string, mixed> */
+	function notifications(int $dt): array {
 		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
 		if (!$a) return [];
 		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	} // notifications
 
-	function fetchInfo() { # Get all the pending and active actions
+	/** @return array<string, mixed> */
+	function fetchInfo(): array { # Get all the pending and active actions
 		$this->errors = [];
 		$a = $this->getDates();
 		$a['active'] = $this->loadInfo($this->getActive);
@@ -84,7 +87,7 @@ class ReportDB {
 		return $a;
 	} // fetchInfo
 
-	function fetchInitial() {
+	function fetchInitial(): string {
 		$a = $this->fetchInfo();
 		$a['info'] = $this->fetchStations();
 		if (!empty($this->errors)) {
@@ -94,7 +97,7 @@ class ReportDB {
 		return json_encode($a);
 	} // fetchInitial
 	
-	function exec($stmt) {
+	function exec(PDOStatement $stmt): bool {
 		if ($stmt->execute([]) === false) {
 			$this->errors[] = $stmt->errorInfo();
 			return false;
@@ -102,19 +105,22 @@ class ReportDB {
 		return true;
 	} // exec
 
-	function loadInfo($stmt) { # Read all the rows from a result and return an array
+	/** @return array<int, array<int, mixed>> */
+	function loadInfo(PDOStatement $stmt): array { # Read all the rows from a result and return an array
 		if (!$this->exec($stmt)) return [];
 		return $stmt->fetchAll(PDO::FETCH_NUM);
 	} // loadInfo
 
-	function getDates() { # Get start/end date range
+	/** @return array<string, mixed> */
+	function getDates(): array { # Get start/end date range
 		$stmt = $this->getDates;
 		if (!$this->exec($stmt)) return [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) return $row;
 		return []; // This should never be reached
 	} // getDates
 
-	function fetchStations() { # Get sensor/name and program/label 
+	/** @return array<int, array<int|string, mixed>> */
+	function fetchStations(): array { # Get sensor/name and program/label 
 		$stmt = $this->getPgmStn;
 		if (!$this->exec($stmt)) return [];
 		$s2p = [];

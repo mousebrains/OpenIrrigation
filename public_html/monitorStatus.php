@@ -11,9 +11,10 @@ echo "retry: 10000\n\n";
 //   the number of stations pending within the next 50-60 minutes
 
 class MonitorDB {
-	private $errors = []; // Error stack
-	private $daysFwd = 3; # Days from current date to look forwards
-	private $tPast = 0;
+	/** @var array<mixed> */
+	private array $errors = [];
+	private int $daysFwd = 3; # Days from current date to look forwards
+	private float $tPast = 0;
 	private PDO $db;
 	private PDOStatement $getActive;
 	private PDOStatement $getPending;
@@ -75,13 +76,15 @@ class MonitorDB {
 		$db->exec("LISTEN action_update;");
 	}
 
-	function notifications(int $dt) {
+	/** @return array<string, mixed> */
+	function notifications(int $dt): array {
 		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
 		if (!$a) return [];
 		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	}
 
-	function fetchInfo() { # Get all the historical, pending, and active actions
+	/** @return array<string, mixed> */
+	function fetchInfo(): array { # Get all the historical, pending, and active actions
 		$this->errors = [];
 		$a = [];
 		$a['active'] = $this->loadInfo($this->getActive, [],
@@ -96,7 +99,7 @@ class MonitorDB {
 		return $a;
 	}
 
-	function fetchInitial() {
+	function fetchInitial(): string {
 		$a = $this->fetchInfo();
 		$a['stations'] = $this->fetchStations();
 		$a['programs'] = $this->fetchPrograms();
@@ -108,7 +111,8 @@ class MonitorDB {
 		return json_encode($a);
 	}
 
-	function exec($stmt, $args = []) {
+	/** @param array<mixed> $args */
+	function exec(PDOStatement $stmt, array $args = []): bool {
 		if ($stmt->execute($args) === false) {
 			$this->errors[] = $stmt->errorInfo();
 			return false;
@@ -116,7 +120,10 @@ class MonitorDB {
 		return true;
 	} // exec
 
-	function loadInfo($stmt, $args, $toSave) {
+	/** @param array<mixed> $args
+	 * @param array<string> $toSave
+	 * @return array<int, array<int, mixed>> */
+	function loadInfo(PDOStatement $stmt, array $args, array $toSave): array {
 		if (!$this->exec($stmt, $args)) return [];
 		$a = [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) { // Walk through rows
@@ -127,7 +134,8 @@ class MonitorDB {
 		return $a;
 	}
 
-	function fetchStations() { # Get sensor/name and program/label 
+	/** @return array<int|string, string> */
+	function fetchStations(): array { # Get sensor/name and program/label 
 		$stmt = $this->getStations;
 		if (!$this->exec($stmt)) return [];
 		$a = [];
@@ -137,7 +145,8 @@ class MonitorDB {
 		return $a;
 	}
 
-	function fetchPrograms() {
+	/** @return array<int|string, string> */
+	function fetchPrograms(): array {
 		$stmt = $this->getPrograms;
 		if (!$this->exec($stmt)) return [];
 		$a = [];
@@ -147,7 +156,8 @@ class MonitorDB {
 		return $a;
 	}
 
-	function fetchPOCs() {
+	/** @return array<int|string, string> */
+	function fetchPOCs(): array {
 		$stmt = $this->getPOCs;
 		if (!$this->exec($stmt)) return [];
 		$a = [];

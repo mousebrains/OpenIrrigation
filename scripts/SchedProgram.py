@@ -54,7 +54,7 @@ class Programs(list):
 
 class Program:
     """ Information about a Program """
-    def __init__(self, row:list, dows:list, stations:list) -> None:
+    def __init__(self, row:list | tuple, dows:list, stations:list) -> None:
         site = {}
         (self.id, self.name
                 , action

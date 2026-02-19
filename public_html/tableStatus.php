@@ -4,16 +4,19 @@ header('Cache-Control: no-cache');
 header('X-Accel-Buffering: no');
 echo "retry: 10000\n\n";
 
-function mkMsg(bool $q, string $msg) {
+function mkMsg(bool $q, string $msg): string {
 	return "data: " .  json_encode(["success" => $q, "message" => $msg]) . "\n\n";
 }
 
-function tableInfo($db, $name) {
+/** @return array<int, array<string, mixed>> */
+function tableInfo(DB $db, string $name): array {
 	$sql = 'SELECT * FROM tableInfo WHERE tbl=? ORDER BY displayOrder;';
 	return $db->loadRows($sql, [$name]);
 }
 
-function tableRows($db, $name, $orderBy, $where, $args) {
+/** @param array<mixed> $args
+ * @return array<int, array<string, mixed>> */
+function tableRows(DB $db, string $name, ?string $orderBy, ?string $where, array $args): array {
 	$sql = "SELECT * FROM " . $db->quoteIdent($name);
 	if ($where !== null) $sql .= ' WHERE ' . $where;
 	if ($orderBy !== null) $sql .= $orderBy;
@@ -21,7 +24,9 @@ function tableRows($db, $name, $orderBy, $where, $args) {
 	return $db->loadRows($sql, $args);
 }
 
-function tablePgmStn($db, $where, $args) {
+/** @param array<mixed> $args
+ * @return array<int, array<string, mixed>> */
+function tablePgmStn(DB $db, ?string $where, array $args): array {
 	$sql = "SELECT"
 		. " pgmstn.id,pgmstn.program,pgmstn.station,pgmstn.mode,"
 		. "pgmstn.runtime,pgmstn.priority"
@@ -34,7 +39,8 @@ function tablePgmStn($db, $where, $args) {
 	return $db->loadRows($sql, $args);
 }
 
-function tableReference($db, $name) {
+/** @return array<string, array<int, array<string, mixed>>> */
+function tableReference(DB $db, string $name): array {
 	$sql = "SELECT col,refTable,refKey,refLabel,refCriteria,refOrderBy"
 		. " FROM tableInfo"
 		. " WHERE tbl=? AND refTable IS NOT NULL;";
@@ -55,7 +61,8 @@ function tableReference($db, $name) {
 	return $info;
 }
 
-function tableSecondary($db, $name) {
+/** @return array<string, array<int|string, array<int, mixed>>> */
+function tableSecondary(DB $db, string $name): array {
 	$sql = "SELECT col,secondaryKey AS key0,secondaryValue AS key1 FROM tableInfo"
 		. " WHERE tbl=? AND secondaryKey IS NOT NULL;";
 	$info = [];
@@ -74,14 +81,18 @@ function tableSecondary($db, $name) {
 	return $info;
 }
 
-function tableData($db, $tbl, $orderBy, $where, $args) {
+/** @param array<mixed> $args
+ * @return array<int, array<string, mixed>> */
+function tableData(DB $db, string $tbl, ?string $orderBy, ?string $where, array $args): array {
 	return $tbl == 'pgmStn'
 		? tablePgmStn($db, $where, $args)
 		: tableRows($db, $tbl, $orderBy, $where, $args);
 }
 
 
-function fetchInfo($db, $tbl, $orderBy, $where, $args) {
+/** @param array<mixed> $args
+ * @return array<string, mixed> */
+function fetchInfo(DB $db, string $tbl, ?string $orderBy, ?string $where, array $args): array {
 	$info = [];
 	$info['tbl'] = $tbl;
 	$info['orderBy'] = $orderBy;
@@ -94,7 +105,8 @@ function fetchInfo($db, $tbl, $orderBy, $where, $args) {
 	return $info;
 }
 
-function fetchRow($db, $tbl, $action, $id) { // Fetch a single row
+/** @return array<string, mixed> */
+function fetchRow(DB $db, string $tbl, string $action, string $id): array { // Fetch a single row
 	if ($action == 'DELETE') return ['action' => $action, 'id' => $id];
 	$info = fetchInfo($db, $tbl, Null, "$tbl.id=?", [$id]);
 	$info['action'] = $action;

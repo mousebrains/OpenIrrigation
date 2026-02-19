@@ -29,7 +29,7 @@ class DB:
     def __init__(self, dbName: str, logger: logging.Logger) -> None:
         self.dbName = dbName
         self.logger = logger
-        self.db = None
+        self.db: psycopg.Connection | None = None
         self.connectCount:int = 0
 
     def __repr__(self) -> str:
@@ -84,14 +84,14 @@ class DB:
             if (i+1) < nTries: time.sleep(5) # Wait 5 seconds between attempts
         return None # Failed
 
-    def cursor(self, qDict:bool =False) -> psycopg.Cursor:
+    def cursor(self, qDict:bool =False) -> psycopg.Cursor | None:  # type: ignore[type-arg]
         """ Get an cursor object for the database"""
         for _i in range(2): # Try twice
             db = self.open() # get an active database connection
             if not db: return None # Couldn't get an active connection and I've already tried twice
             try:
                 if qDict: # Create a cursor with a dictionary like cursor
-                    return db.cursor(row_factory=dict_row)
+                    return db.cursor(row_factory=dict_row)  # type: ignore[call-overload]
                 return db.cursor() # Create a non-dictionary cursor
             except Exception:
                 self.logger.exception('Unable to create a cursor for %s', self.dbName)

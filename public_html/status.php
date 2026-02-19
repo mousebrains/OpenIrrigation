@@ -11,7 +11,8 @@ echo "retry: 10000\n\n";
 //   the number of stations pending within the next 50-60 minutes
 
 class StatusDB {
-	private $errors = []; // Error stack
+	/** @var array<mixed> */
+	private array $errors = [];
 	private PDO $db;
 	private PDOStatement $getController;
 	private PDOStatement $getPOC;
@@ -44,13 +45,15 @@ class StatusDB {
 		$db->exec("LISTEN action_update;");
 	}
 
-	function notifications(int $dt) {
+	/** @return array<string, mixed> */
+	function notifications(int $dt): array {
 		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
 		if (!$a) return [];
 		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	}
 
-	function fetchData() {
+	/** @return array<string, mixed> */
+	function fetchData(): array {
 		return array_merge(
 			$this->fetchCurrent(),
 			$this->fetchFlow(),
@@ -59,7 +62,7 @@ class StatusDB {
 		);
 	} // fetchData
 
-	function fetchInitial() {
+	function fetchInitial(): string {
 		$this->errors = [];
 		$a = $this->fetchData();
 		$a['controllers'] = $this->fetchControllers();
@@ -75,7 +78,7 @@ class StatusDB {
 		return json_encode($a);
 	} // fetchInitial
 
-	function exec($stmt) {
+	function exec(PDOStatement $stmt): bool {
 		if ($stmt->execute([]) === false) {
 			$this->errors[] = $stmt->errorInfo();
 			return false;
@@ -83,7 +86,8 @@ class StatusDB {
 		return true;
 	} // exec
 
-	function fetchControllers() {
+	/** @return array<int|string, mixed> */
+	function fetchControllers(): array {
 		$stmt = $this->getController;
 		if (!$this->exec($stmt)) return [];
 		$a = [];
@@ -91,7 +95,8 @@ class StatusDB {
 		return $a;
 	} // fetchControllers
 
-	function fetchPOCs() {
+	/** @return array<int|string, mixed> */
+	function fetchPOCs(): array {
 		$stmt = $this->getPOC;
 		if (!$this->exec($stmt)) return [];
 		$a = [];
@@ -99,7 +104,8 @@ class StatusDB {
 		return $a;
 	} // fetchPOCs
 
-	function fetchSimulation() {
+	/** @return array<int|string, mixed>|bool */
+	function fetchSimulation(): array|bool {
 		$stmt = $this->getSimulation;
 		if (!$this->exec($stmt)) return [];
 		$info = [];
@@ -109,7 +115,8 @@ class StatusDB {
 		return $info;
 	} // fetchSimulation
 
-	function fetchCurrent() {
+	/** @return array<string, mixed> */
+	function fetchCurrent(): array {
 		$stmt = $this->getCurrent;
 		if (!$this->exec($stmt)) return [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -120,7 +127,8 @@ class StatusDB {
 		return [];
 	} // fetchCurrent
 
-	function fetchFlow() {
+	/** @return array<string, mixed> */
+	function fetchFlow(): array {
 		$stmt = $this->getFlow;
 		if (!$this->exec($stmt)) return [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
@@ -131,21 +139,24 @@ class StatusDB {
 		return [];
 	} // fetchFlow
 
-	function fetchNumberOn() {
+	/** @return array<string, mixed> */
+	function fetchNumberOn(): array {
 		$stmt = $this->getNumberOn;
 		if (!$this->exec($stmt)) return [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) return $row;
 		return [];
 	} // fetchNumberOn
 
-	function fetchPending() {
+	/** @return array<string, mixed> */
+	function fetchPending(): array {
 		$stmt = $this->getPending;
 		if (!$this->exec($stmt)) return [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) return $row;
 		return [];
 	} // fetchPending
 
-	function fetchSystemctl() {
+	/** @return array<int, string> */
+	function fetchSystemctl(): array {
 		$output = shell_exec("/bin/systemctl is-active OITDI OISched");
 		if (empty($output)) return [];
 		$output = explode("\n", $output);

@@ -18,8 +18,8 @@ jobs:
       with:
         node-version: '22'
     - run: npm install
-    - run: pip install pre-commit
-    - run: pre-commit run --all-files
+    - run: pip install pre-commit -r requirements-dev.txt
+    - run: SKIP=phpstan pre-commit run --all-files
 
   php-lint:
     runs-on: ubuntu-latest
