@@ -18,7 +18,7 @@ $(function() {
 				OI_toast(rows.message, true);
 				return;
 			}
-			renderAnnualChart(rows || [], desc);
+			renderAnnualChart(rows, desc);
 		}).fail(function(jqXHR, textStatus) {
 			OI_toast('Request failed: ' + textStatus, true);
 		});
@@ -46,49 +46,43 @@ $(function() {
 			etChart = null;
 		}
 
-		// rows: [doy, mn, q10, value, q90, mx]  (FETCH_NUM indices 0-5)
-		var mxPts = [];
+		var annual = (rows && rows.annual) || [];
+		var ytd = (rows && rows.ytd) || [];
+
+		// annual: [doy, q10, value, q90]  (FETCH_NUM indices 0-3)
 		var q90Pts = [];
 		var medPts = [];
 		var q10Pts = [];
-		var mnPts = [];
 
-		for (var i = 0; i < rows.length; i++) {
-			var doy = Number(rows[i][0]);
+		for (var i = 0; i < annual.length; i++) {
+			var doy = Number(annual[i][0]);
 			var d = new Date(2024, 0, doy);
 			var t = d.getTime();
 
-			mnPts.push({ x: t, y: Number(rows[i][1]) });
-			q10Pts.push({ x: t, y: Number(rows[i][2]) });
-			medPts.push({ x: t, y: Number(rows[i][3]) });
-			q90Pts.push({ x: t, y: Number(rows[i][4]) });
-			mxPts.push({ x: t, y: Number(rows[i][5]) });
+			q10Pts.push({ x: t, y: Number(annual[i][1]) });
+			medPts.push({ x: t, y: Number(annual[i][2]) });
+			q90Pts.push({ x: t, y: Number(annual[i][3]) });
 		}
 
-		// Apply 7-day centered moving average (halfWin=3 → 7-point window)
-		mxPts = movingAvg(mxPts, 3);
+		// ytd: [doy, value]
+		var ytdPts = [];
+		for (var j = 0; j < ytd.length; j++) {
+			var ytdDoy = Number(ytd[j][0]);
+			var ytdD = new Date(2024, 0, ytdDoy);
+			ytdPts.push({ x: ytdD.getTime(), y: Number(ytd[j][1]) });
+		}
+
+		// Apply 7-day centered moving average (halfWin=3 -> 7-point window)
 		q90Pts = movingAvg(q90Pts, 3);
 		medPts = movingAvg(medPts, 3);
 		q10Pts = movingAvg(q10Pts, 3);
-		mnPts = movingAvg(mnPts, 3);
-
-		var peach = 'rgba(255, 180, 120, 0.3)';
 
 		var ctx = document.getElementById('etChart').getContext('2d');
 		etChart = new Chart(ctx, {
 			type: 'line',
 			data: {
 				datasets: [
-					{ // 0: mx – fill down to q90 (peach)
-						label: 'Max',
-						data: mxPts,
-						borderColor: 'transparent',
-						backgroundColor: peach,
-						fill: '+1',
-						pointRadius: 0,
-						tension: 0.3
-					},
-					{ // 1: q90 – fill down to q10 (green)
+					{ // 0: q90 - fill down to q10 (green band)
 						label: '90th pctl',
 						data: q90Pts,
 						borderColor: 'transparent',
@@ -97,8 +91,8 @@ $(function() {
 						pointRadius: 0,
 						tension: 0.3
 					},
-					{ // 2: median – solid blue line
-						label: 'Median ET',
+					{ // 1: median - solid blue line
+						label: 'Median',
 						data: medPts,
 						borderColor: 'rgba(54, 120, 220, 1)',
 						backgroundColor: 'rgba(54, 120, 220, 1)',
@@ -107,22 +101,23 @@ $(function() {
 						borderWidth: 2,
 						tension: 0.3
 					},
-					{ // 3: q10 – fill down to mn (peach)
+					{ // 2: q10 - invisible bottom boundary
 						label: '10th pctl',
 						data: q10Pts,
-						borderColor: 'transparent',
-						backgroundColor: peach,
-						fill: '+1',
-						pointRadius: 0,
-						tension: 0.3
-					},
-					{ // 4: mn – no fill (bottom boundary)
-						label: 'Min',
-						data: mnPts,
 						borderColor: 'transparent',
 						backgroundColor: 'transparent',
 						fill: false,
 						pointRadius: 0,
+						tension: 0.3
+					},
+					{ // 3: YTD - red/orange line
+						label: new Date().getFullYear() + ' Actual',
+						data: ytdPts,
+						borderColor: 'rgba(220, 80, 40, 1)',
+						backgroundColor: 'rgba(220, 80, 40, 1)',
+						fill: false,
+						pointRadius: 0,
+						borderWidth: 2,
 						tension: 0.3
 					}
 				]
@@ -157,7 +152,7 @@ $(function() {
 				plugins: {
 					tooltip: {
 						filter: function(item) {
-							return item.datasetIndex === 2;
+							return item.datasetIndex === 1 || item.datasetIndex === 3;
 						}
 					},
 					legend: { display: false }

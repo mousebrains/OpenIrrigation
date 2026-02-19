@@ -8,12 +8,13 @@
 <link rel='icon' type='image/png' href='/favicon.png' sizes='32x32'>
 <link rel='stylesheet' type='text/css' href='css/irrigation.css?v=<?php echo OI_ASSET_VERSION; ?>'>
 <style>
-.et-row { display: flex; }
-.et-chart { flex: 70%; padding: 10px; }
-.et-params { flex: 30%; padding: 10px; }
 .chart-container {
 	position: relative;
 	width: 100%;
+}
+.et-controls {
+	text-align: center;
+	padding: 10px;
 }
 </style>
 <script defer src="js/jquery.min.js?v=<?php echo OI_ASSET_VERSION; ?>"></script>
@@ -25,19 +26,16 @@
 </head>
 <body>
 <?php require_once 'php/navBar.php'; ?>
-<div class='et-row'>
-<div class='et-chart'>
- <h3 id='et-title'></h3>
- <div class='chart-container'>
-  <canvas id='etChart'></canvas>
- </div>
-</div>
-<div class='et-params'>
+<div class='et-controls'>
 <label for='et-select'>Parameter:</label>
 <select id='et-select'>
 <?php
 require_once 'php/DB1.php';
-$a = $db->loadRows("SELECT id,val FROM params WHERE grp='ET' ORDER BY val;", []);
+$a = $db->loadRows(
+	"SELECT p.id, p.val FROM params p"
+	. " WHERE p.grp='ET'"
+	. " AND EXISTS (SELECT 1 FROM ETannual WHERE code = p.id)"
+	. " ORDER BY p.val;", []);
 foreach ($a as $item) {
 	$id = $item['id'];
 	$val = htmlspecialchars($item['val'], ENT_QUOTES, 'UTF-8');
@@ -46,7 +44,10 @@ foreach ($a as $item) {
 }
 ?>
 </select>
+<h3 id='et-title'></h3>
 </div>
+<div class='chart-container'>
+ <canvas id='etChart'></canvas>
 </div>
 </body>
 </html>

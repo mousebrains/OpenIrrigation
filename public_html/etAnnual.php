@@ -8,8 +8,15 @@ if (empty($_POST['codigo'])) {
 	exit;
 }
 
-$sql = "SELECT doy, mn, q10, value, q90, mx FROM ETannual"
+$codigo = $_POST['codigo'];
+
+$sql = "SELECT doy, q10, value, q90 FROM ETannual"
 	. " WHERE code = ? ORDER BY doy;";
-$rows = $db->loadRowsNum($sql, [$_POST['codigo']]);
-echo json_encode($rows);
+$annual = $db->loadRowsNum($sql, [$codigo]);
+
+$sql = "SELECT EXTRACT('DOY' FROM t)::integer, value FROM ET"
+	. " WHERE code = ? AND t >= DATE_TRUNC('year', CURRENT_DATE) ORDER BY t;";
+$ytd = $db->loadRowsNum($sql, [$codigo]);
+
+echo json_encode(['annual' => $annual, 'ytd' => $ytd]);
 ?>
