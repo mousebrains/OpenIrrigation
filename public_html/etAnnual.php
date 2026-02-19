@@ -18,5 +18,12 @@ $sql = "SELECT EXTRACT('DOY' FROM t)::integer, value FROM ET"
 	. " WHERE code = ? AND t >= DATE_TRUNC('year', CURRENT_DATE) ORDER BY t;";
 $ytd = $db->loadRowsNum($sql, [$codigo]);
 
-echo json_encode(['annual' => $annual, 'ytd' => $ytd]);
+$sql = "SELECT EXTRACT('DOY' FROM t)::integer, value FROM ET"
+	. " WHERE code = ? AND t >= DATE_TRUNC('year', CURRENT_DATE) - INTERVAL '1 year'"
+	. " AND t < DATE_TRUNC('year', CURRENT_DATE)"
+	. " AND EXTRACT('DOY' FROM t) >= EXTRACT('DOY' FROM CURRENT_DATE)"
+	. " ORDER BY t;";
+$prev = $db->loadRowsNum($sql, [$codigo]);
+
+echo json_encode(['annual' => $annual, 'ytd' => $ytd, 'prev' => $prev]);
 ?>

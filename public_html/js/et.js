@@ -48,6 +48,7 @@ $(function() {
 
 		var annual = (rows && rows.annual) || [];
 		var ytd = (rows && rows.ytd) || [];
+		var prev = (rows && rows.prev) || [];
 
 		// annual: [doy, q10, value, q90]  (FETCH_NUM indices 0-3)
 		var q90Pts = [];
@@ -70,6 +71,14 @@ $(function() {
 			var ytdDoy = Number(ytd[j][0]);
 			var ytdD = new Date(2024, 0, ytdDoy);
 			ytdPts.push({ x: ytdD.getTime(), y: Number(ytd[j][1]) });
+		}
+
+		// prev: [doy, value] — previous year from today's DOY onward
+		var prevPts = [];
+		for (var k = 0; k < prev.length; k++) {
+			var prevDoy = Number(prev[k][0]);
+			var prevD = new Date(2024, 0, prevDoy);
+			prevPts.push({ x: prevD.getTime(), y: Number(prev[k][1]) });
 		}
 
 		// Apply 7-day centered moving average (halfWin=3 -> 7-point window)
@@ -119,11 +128,23 @@ $(function() {
 						pointRadius: 0,
 						borderWidth: 2,
 						tension: 0.3
+					},
+					{ // 4: Previous year - purple line
+						label: (new Date().getFullYear() - 1) + ' Actual',
+						data: prevPts,
+						borderColor: 'rgba(140, 70, 200, 1)',
+						backgroundColor: 'rgba(140, 70, 200, 1)',
+						fill: false,
+						pointRadius: 0,
+						borderWidth: 2,
+						tension: 0.3
 					}
 				]
 			},
 			options: {
 				responsive: true,
+				maintainAspectRatio: true,
+				aspectRatio: 2,
 				interaction: {
 					mode: 'nearest',
 					axis: 'x',
@@ -152,7 +173,7 @@ $(function() {
 				plugins: {
 					tooltip: {
 						filter: function(item) {
-							return item.datasetIndex === 1 || item.datasetIndex === 3;
+							return item.datasetIndex === 1 || item.datasetIndex === 3 || item.datasetIndex === 4;
 						}
 					},
 					legend: { display: false }

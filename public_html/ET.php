@@ -10,7 +10,9 @@
 <style>
 .chart-container {
 	position: relative;
-	width: 100%;
+	max-width: 900px;
+	max-height: 450px;
+	margin: 0 auto;
 }
 .et-controls {
 	text-align: center;
