@@ -11,8 +11,9 @@ import logging
 from SchedSensor import Sensors
 from SchedProgram import Programs
 from SchedProgramStation import ProgramStations
-from SchedTimeline import Timeline
-from SchedUtils import prettyTimes
+from SchedCumTime import CumTime
+from SchedResource import ResourceRegistry
+from SchedPlacer import build_schedule
 
 def runScheduler(args:argparse.ArgumentParser, logger:logging.Logger) -> bool:
     with DB.DB(args.db, logger) as db, db.cursor() as cur:
@@ -43,43 +44,37 @@ def doit(cur:psycopg.Cursor,
         sDate = datetime.date.fromisoformat(args.sDate)
 
     eDate = sDate + datetime.timedelta(days=args.nDays) # Last date to schedule for
-    sDateOrig = sDate + datetime.timedelta(days=0) # Force a copy
 
     logger.info('minTime=%s sDate=%s eDate=%s', minTime, sDate, eDate)
 
     sensors = Sensors(cur, logger)
     stations = ProgramStations(cur, sensors, logger)
     programs = Programs(cur, stations, logger) # Active programs in priority order
-    timeline = Timeline(logger, sensors, stations) # A time ordered list of events
+    registry = ResourceRegistry(logger)
+    cumTime = CumTime()
+
     if not args.noNearPending:
         cleanPending(cur, minTime, logger)
-    loadExisting(cur, timeline, sDate, eDate, logger,
+    loadExisting(cur, registry, cumTime, sensors, stations,
+                 sDate, eDate, logger,
                  args.noLoadHistorical, args.noNearPending)
-    while sDate <= eDate:
-        for pgm in programs: # Walk through programs in priority order
-            (sTime, eTime) = pgm.mkTime(sDate)
-            if sTime is None: continue # Nothing to do for this program on this sDate
-            (sOn, sOff) = prettyTimes(sTime, eTime)
-            logger.info('Program %s %s to %s', pgm.name, sOn, sOff)
-            if (minTime > sTime) and not args.noAdjustStime:
-                logger.info('Raising sTime from %s to %s', sTime, minTime)
-                sTime = minTime
-            if sTime >= eTime:
-                logger.warning('sTime>=eTime, %s >= %s', sTime, eTime)
-                continue
-            for stn in pgm.stations: # Walk through the stations for this program
-                if stn.qSingle and sDate != sDateOrig: continue # Only do manual on first sDate
-                if stn.qSingle: # Extend eTime for single events
-                    timeline.addStation(sDate, stn, sTime, eTime + datetime.timedelta(days=1))
-                else:
-                    timeline.addStation(sDate, stn, sTime, eTime)
-        sDate += datetime.timedelta(days=1)
+
+    actions = build_schedule(registry, programs, cumTime,
+                             sDate, eDate, minTime,
+                             args.noAdjustStime, logger)
 
     # Insert new scheduled actions into action table
-    logger.info('Going to insert %s new actions', len(timeline.actions))
+    logger.info('Going to insert %s new actions', len(actions))
+    insertActions(cur, actions, logger)
+
+    return True
+
+def insertActions(cur:psycopg.Cursor, actions:list,
+        logger:logging.Logger) -> None:
+    """ Insert new scheduled actions into the action table """
     sql = 'SELECT action_onOff_insert(%s,%s,%s,%s,%s,%s);'
     nFailed = 0
-    for act in timeline.actions: # Save the new actions to the database
+    for act in actions: # Save the new actions to the database
         logger.info('%s', act)
         cur.execute('SAVEPOINT sp_insert;')
         try: # In case pgmstn was deleted for a manual station
@@ -100,9 +95,7 @@ def doit(cur:psycopg.Cursor,
                 logger.warning('Unable to query existing actions for sensor %s', act.sensor.id)
 
     if nFailed:
-        logger.warning('Failed to insert %s of %s actions', nFailed, len(timeline.actions))
-
-    return True
+        logger.warning('Failed to insert %s of %s actions', nFailed, len(actions))
 
 def cleanPending(cur:psycopg.Cursor,
         minTime:datetime.datetime, logger:logging.Logger) -> None:
@@ -115,11 +108,12 @@ def cleanPending(cur:psycopg.Cursor,
     cur.execute(sql, (minTime,))
     logger.info('cleanPending %s rows after %s', cur.statusmessage, minTime)
 
-def loadExisting(cur:psycopg.Cursor, timeline:Timeline,
+def loadExisting(cur:psycopg.Cursor, registry:ResourceRegistry, cumTime:CumTime,
+        sensors:Sensors, stations:ProgramStations,
         sDate:datetime.date, eDate:datetime.date,
         logger:logging.Logger,
         noHistorical:bool, noNearPending:bool) -> None:
-    """ Load completed and active actions into the timeline in one atomic query """
+    """ Load completed and active actions into the registry and cumTime """
     parts = []
     params = []
     if not noHistorical:
@@ -139,7 +133,70 @@ def loadExisting(cur:psycopg.Cursor, timeline:Timeline,
     sql = " UNION ALL ".join(parts) + ";"
     cur.execute(sql, params)
     for row in cur:
-        act = timeline.existing(row[0], row[1], row[2], row[3], row[4], row[5])
-        if act is not None:
-            logger.info("existing %s %s to %s pgmDate=%s",
-                        act.sensor.name, row[0], row[1], row[5])
+        (tOn, tOff, sensorId, program, pgmStn, pgmDate) = row
+        if sensorId not in sensors:
+            logger.error('Sensor(%s) not known in loadExisting', sensorId)
+            continue
+        sensor = sensors[sensorId]
+        stn = stations[pgmStn] if pgmStn in stations else None
+        # Record into registry using a lightweight proxy
+        _recordExisting(registry, sensor, stn, program, tOn, tOff)
+        cumTime.add(pgmStn, pgmDate, tOff - tOn)
+        logger.info("existing %s %s to %s pgmDate=%s",
+                    sensor.name, tOn, tOff, pgmDate)
+
+def _recordExisting(registry:ResourceRegistry, sensor, stn, program,
+        tOn:datetime.datetime, tOff:datetime.datetime) -> None:
+    """ Record an existing action into the resource registry """
+    from SchedInterval import Interval
+    from SchedResource import Reservation
+
+    interval = Interval(tOn, tOff)
+    delays = dict(
+        ctl_delay=sensor.ctlDelay,
+        delay_on=sensor.delayOn,
+        delay_off=sensor.delayOff,
+    )
+
+    # Controller stations
+    tracker = registry._get_tracker(registry.ctl_stations, sensor.controller,
+                                    sensor.ctlMaxStations)
+    tracker.add(Reservation(interval, 1, sensor.ctlMaxStations, sensor.id,
+                            **delays))
+
+    # Controller current
+    tracker = registry._get_tracker(registry.ctl_current, sensor.controller,
+                                    sensor.maxCurrent)
+    tracker.add(Reservation(interval, sensor.current, sensor.maxCurrent,
+                            sensor.id, **delays))
+
+    # POC stations (sensor.stnMaxStations maps to pocMaxStations)
+    if sensor.stnMaxStations is not None:
+        tracker = registry._get_tracker(registry.poc_stations, sensor.poc,
+                                        sensor.stnMaxStations)
+        tracker.add(Reservation(interval, 1, sensor.stnMaxStations,
+                                sensor.id, **delays))
+
+    # POC flow
+    if sensor.maxFlow is not None:
+        tracker = registry._get_tracker(registry.poc_flow, sensor.poc,
+                                        sensor.maxFlow)
+        tracker.add(Reservation(interval, sensor.flow, sensor.maxFlow,
+                                sensor.id, **delays))
+
+    # Program stations / flow (only if we have the program station)
+    if stn is not None:
+        if stn.pgmMaxStations is not None:
+            tracker = registry._get_tracker(registry.pgm_stations, program,
+                                            stn.pgmMaxStations)
+            tracker.add(Reservation(interval, 1, stn.pgmMaxStations,
+                                    sensor.id, **delays))
+        if stn.pgmMaxFlow is not None:
+            tracker = registry._get_tracker(registry.pgm_flow, program,
+                                            stn.pgmMaxFlow)
+            tracker.add(Reservation(interval, stn.flow, stn.pgmMaxFlow,
+                                    sensor.id, **delays))
+
+    # Sensor exclusion
+    tracker = registry._get_tracker(registry.sensor, sensor.id, 1)
+    tracker.add(Reservation(interval, 1, 1, sensor.id, **delays))
