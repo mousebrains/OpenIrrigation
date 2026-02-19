@@ -1,21 +1,15 @@
 <?php
-// Grab a column of data for et information
-
-function mkMsg(bool $flag, string $msg) {
-	return json_encode(['success' => $flag, 'message' => $msg]);
-}
+// Return day-of-year annual ET statistics from ETannual
 
 require_once 'php/DB1.php';
 
-if (empty($_POST['codigo'])) exit(mkMsg(false, "No codigo supplied"));
-if (empty($_POST['sdate'])) exit(mkMsg(false, "No sdate supplied"));
-if (empty($_POST['edate'])) $_POST['edate'] = time();
+if (empty($_POST['codigo'])) {
+	echo json_encode(['success' => false, 'message' => 'No codigo supplied']);
+	exit;
+}
 
-$sql = "SELECT t,value FROM ET"
-	. " WHERE code=?"
-	. " AND t>=to_timestamp(?)::date"
-	. " AND t<=to_timestamp(?)::date"
-	. " ORDER BY t DESC;";
-$rows = $db->loadRowsNum($sql, [$_POST['codigo'], $_POST['sdate'], $_POST['edate']]);
+$sql = "SELECT doy, value, stddev FROM ETannual"
+	. " WHERE code = ? ORDER BY doy;";
+$rows = $db->loadRowsNum($sql, [$_POST['codigo']]);
 echo json_encode($rows);
 ?>

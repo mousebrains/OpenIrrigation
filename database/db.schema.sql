@@ -616,6 +616,7 @@ CREATE TABLE ETannual( -- day of year average ET information
 	code INTEGER REFERENCES params(id) ON DELETE CASCADE, -- code for this entry
 	value FLOAT NOT NULL, -- median value this doy/code pair
 	n INTEGER NOT NULL, -- number of entries for this doy/code pair
+	stddev FLOAT, -- population standard deviation for this doy/code pair
 	UNIQUE (station,code,doy)
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable,refLabel,refCriteria,refOrderBy) VALUES
@@ -625,7 +626,8 @@ INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder
 INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
 	('ETannual', 'doy',     1,'Day of year', '123', 0, 366, NULL),
 	('ETannual', 'value',   3,'ET Value (in/day)', '0.23', 0, 20, 0.01),
-	('ETannual', 'n',       4,'# samples', '123', 0, NULL, NULL);
+	('ETannual', 'n',       4,'# samples', '123', 0, NULL, NULL),
+	('ETannual', 'stddev',  5,'Std Dev (in/day)', '0.05', 0, 20, 0.001);
 
 -- Get the controler id given a site and controller name
 DROP FUNCTION IF EXISTS siteID;

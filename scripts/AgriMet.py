@@ -142,6 +142,7 @@ def doFetch(args:argparse.ArgumentParser, params:dict, logger:logging.Logger) ->
         if rows:
             db.updateState(myName, 'Loaded {} rows'.format(len(rows)))
             storeRows(db, rows, logger)
+    doStats(args, params, logger)
     db.updateState(myName, 'Fetch complete at {}'.format(datetime.datetime.now()))
 
 def doStats(args:argparse.ArgumentParser, params:dict, logger:logging.Logger) -> None:
@@ -151,11 +152,14 @@ def doStats(args:argparse.ArgumentParser, params:dict, logger:logging.Logger) ->
     with db.cursor() as cur:
         cur.execute("CREATE TEMPORARY TABLE ETbyDOY AS" \
                 + " SELECT station,code,value,EXTRACT('DOY' from t) AS doy FROM ET;")
-        cur.execute("INSERT INTO ETannual(doy,station,code,value,n)" \
-                + " SELECT doy,station,code,AVG(value) as value,COUNT(*) as n" \
+        cur.execute("INSERT INTO ETannual(doy,station,code,value,n,stddev)" \
+                + " SELECT doy,station,code," \
+                + "AVG(value) as value,COUNT(*) as n," \
+                + "STDDEV_POP(value) as stddev" \
                 + " FROM ETbyDOY GROUP BY station,code,doy" \
                 + " ON CONFLICT (station,code,doy)" \
-                + " DO UPDATE SET value=EXCLUDED.value,n=EXCLUDED.n;")
+                + " DO UPDATE SET value=EXCLUDED.value," \
+                + "n=EXCLUDED.n,stddev=EXCLUDED.stddev;")
         db.commit()
     db.updateState('Stats', 'Stats complete at {}'.format(datetime.datetime.now()))
 

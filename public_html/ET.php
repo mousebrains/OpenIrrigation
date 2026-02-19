@@ -5,39 +5,36 @@
 <meta charset="UTF-8">
 <meta http-equiv='Content-Language' content='en'>
 <meta name='viewport' content='width=device-width, initial-scale=1'>
-<link rel='icon' href='/favicon.png' sizes="32x32">
+<link rel='icon' type='image/png' href='/favicon.png' sizes='32x32'>
 <link rel='stylesheet' type='text/css' href='css/irrigation.css?v=<?php echo OI_ASSET_VERSION; ?>'>
 <style>
-* { box-sizing: border-box; }
-.row {display: flex;}
-.column {
-	padding: 10px;
-	height: 300px; /* For demo only */
+.et-row { display: flex; }
+.et-chart { flex: 70%; padding: 10px; }
+.et-params { flex: 30%; padding: 10px; }
+.chart-container {
+	position: relative;
+	width: 100%;
 }
-.left {flex: 70%;}
-.right {flex: 30%;}
 </style>
 <script defer src="js/jquery.min.js?v=<?php echo OI_ASSET_VERSION; ?>"></script>
 <script defer src="js/irrigation.js?v=<?php echo OI_ASSET_VERSION; ?>"></script>
+<script defer src="js/chart.umd.min.js?v=<?php echo OI_ASSET_VERSION; ?>"></script>
+<script defer src="js/chartjs-adapter-date-fns.bundle.min.js?v=<?php echo OI_ASSET_VERSION; ?>"></script>
 <script defer src="js/et.js?v=<?php echo OI_ASSET_VERSION; ?>"></script>
-<title>probar</title>
+<title>ET Data</title>
 </head>
 <body>
-<div class = 'row'>
-<div class='column left' id='leftCol'>
-<table id='tblData'>
-<colgroup id='colGrp'>
-  <col id='colDate'>
-</colgroup>
-<thead><th>Date</th></thead>
-<tbody></tbody>
-<tfoot><th>Date</th></tfoot>
-</table>
+<?php require_once 'php/navBar.php'; ?>
+<div class='et-row'>
+<div class='et-chart'>
+ <div class='chart-container'>
+  <canvas id='etChart'></canvas>
+ </div>
 </div>
-<div class='column right' id='rightCol'>
+<div class='et-params'>
 <form>
 <table>
-<thead><th>Daily</th><th>Description</th><th>Annual</th></thead>
+<thead><tr><th>Daily</th><th>Description</th><th>Annual</th></tr></thead>
 <tbody>
 <?php
 require_once 'php/DB1.php';
@@ -53,7 +50,7 @@ foreach ($a as $item) {
 }
 ?>
 </tbody>
-<tfoot><th>Daily</th><th>Description</th><th>Annual</th></tfoot>
+<tfoot><tr><th>Daily</th><th>Description</th><th>Annual</th></tr></tfoot>
 </table>
 </form>
 </div>
