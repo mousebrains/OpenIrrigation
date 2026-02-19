@@ -1,7 +1,18 @@
 """Shared mock objects for tests — import as `from helpers import MockSensor, MockProgramStation`."""
 
+import datetime
 import logging
 from datetime import timedelta
+
+
+def dt(hour, minute=0, second=0):
+    """Shorthand for datetimes on 2024-07-01."""
+    return datetime.datetime(2024, 7, 1, hour, minute, second)
+
+
+def td(minutes=0, seconds=0):
+    """Shorthand for timedelta."""
+    return datetime.timedelta(minutes=minutes, seconds=seconds)
 
 
 class MockSensor:
@@ -43,7 +54,7 @@ class MockProgramStation:
                  flow=2.0, pocMaxFlow=10.0, pgmMaxFlow=10.0,
                  ctlMaxStations=4, pocMaxStations=4, pgmMaxStations=4,
                  current=50, maxCurrent=500, baseCurrent=25,
-                 delayOn=None, delayOff=None,
+                 delayOn=None, delayOff=None, ctlDelay=None,
                  pgmName='TestProgram', logger=None):
         self.id = ident
         self.program = program
@@ -68,7 +79,30 @@ class MockProgramStation:
         self.baseCurrent = baseCurrent
         self.delayOn = delayOn or timedelta(seconds=1)
         self.delayOff = delayOff or timedelta(seconds=1)
+        self.ctlDelay = ctlDelay or timedelta(seconds=2)
         self.pgmName = pgmName
         self.logger = logger or logging.getLogger('test')
         self.qOkay = True
         self.qOn = True
+
+
+class MockProgram:
+    """Lightweight mock for SchedProgram.Program."""
+    def __init__(self, name, stations, sTime, eTime):
+        self.name = name
+        self.stations = stations
+        self._sTime = sTime
+        self._eTime = eTime
+
+    def mkTime(self, pgmDate):
+        return (self._sTime, self._eTime)
+
+
+class MockProgramNoRun:
+    """Mock program that returns None for mkTime."""
+    def __init__(self, name='NoRun'):
+        self.name = name
+        self.stations = []
+
+    def mkTime(self, pgmDate):
+        return (None, None)

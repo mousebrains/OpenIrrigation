@@ -1,23 +1,12 @@
 """Tests for SchedResource: ResourceTracker, ResourceSet, ResourceRegistry."""
 
-import datetime
 import logging
 import pytest
 from SchedInterval import Interval
 from SchedResource import (
     Reservation, ResourceTracker, ResourceSet, ResourceRegistry,
 )
-from helpers import MockProgramStation
-
-
-def dt(hour, minute=0, second=0):
-    """Shorthand for datetimes on 2024-07-01."""
-    return datetime.datetime(2024, 7, 1, hour, minute, second)
-
-
-def td(minutes=0, seconds=0):
-    """Shorthand for timedelta."""
-    return datetime.timedelta(minutes=minutes, seconds=seconds)
+from helpers import dt, td, MockProgramStation
 
 
 # ── ResourceTracker ──────────────────────────────────────────────────
@@ -385,6 +374,76 @@ class TestResourceRegistry:
         slots = rs.find_slots(window)
         # flow: 3+3=6 <= 10 → fits
         assert len(slots) > 0
+
+
+class TestResourceRegistryBaseCurrent:
+    """Verify baseCurrent is subtracted from controller current capacity."""
+
+    def test_baseCurrent_subtracted_from_capacity(self, logger):
+        """record_placement sets ctl_current capacity to maxCurrent - baseCurrent."""
+        reg = ResourceRegistry(logger)
+        stn = MockProgramStation(
+            ident=1, program=10, sensor=42, controller=100, poc=200,
+            current=50, maxCurrent=500, baseCurrent=100,
+            pocMaxStations=None, pgmMaxStations=None,
+            pocMaxFlow=None, pgmMaxFlow=None,
+        )
+        reg.record_placement(stn, dt(6), dt(7))
+
+        tracker = reg.ctl_current[100]
+        # Capacity should be 500 - 100 = 400
+        assert tracker.capacity == 400
+        # Reservation limit should also be 400
+        assert tracker.reservations[0].limit == 400
+
+    def test_baseCurrent_blocks_when_near_limit(self, logger):
+        """With baseCurrent, stations that would fit without it are blocked."""
+        reg = ResourceRegistry(logger)
+        # maxCurrent=500, baseCurrent=200, so effective capacity=300
+        stn1 = MockProgramStation(
+            ident=1, program=10, sensor=42, controller=100, poc=200,
+            current=200, maxCurrent=500, baseCurrent=200,
+            ctlMaxStations=10, pocMaxStations=None, pgmMaxStations=None,
+            pocMaxFlow=None, pgmMaxFlow=None,
+            delayOn=td(seconds=0), delayOff=td(seconds=0),
+        )
+        reg.record_placement(stn1, dt(6), dt(7))
+
+        # stn2 draws 200; 200 (existing) + 200 (proposed) = 400 > 300 capacity
+        stn2 = MockProgramStation(
+            ident=2, program=10, sensor=43, controller=100, poc=200,
+            current=200, maxCurrent=500, baseCurrent=200,
+            ctlMaxStations=10, pocMaxStations=None, pgmMaxStations=None,
+            pocMaxFlow=None, pgmMaxFlow=None,
+            delayOn=td(seconds=0), delayOff=td(seconds=0),
+        )
+        rs = reg.build_resource_set(stn2)
+        slots = rs.find_slots(Interval(dt(6), dt(7)))
+        # Blocked: 200+200=400 > 300 effective capacity
+        assert slots == []
+
+
+class TestResourceTrackerMultiOverlap:
+    """Verify find_available handles multiple overlapping reservations correctly."""
+
+    def test_two_overlapping_reservations_jointly_exceed_capacity(self):
+        """Two reservations that individually pass but jointly exceed capacity."""
+        t = ResourceTracker(capacity=10)
+        # Reservation A: amount=4, covers 6:00-7:00
+        t.add(Reservation(Interval(dt(6), dt(7)), 4, 10, sensor_id=1))
+        # Reservation B: amount=4, covers 6:30-7:30
+        t.add(Reservation(Interval(dt(6, 30), dt(7, 30)), 4, 10, sensor_id=2))
+        # At [6:30, 7:00): total usage = 4+4 = 8. Adding 3 → 11 > 10 → blocked
+        # But at [6:00, 6:30): usage = 4, adding 3 → 7 <= 10 → ok
+        # And at [7:00, 7:30): usage = 4, adding 3 → 7 <= 10 → ok
+        window = Interval(dt(6), dt(8))
+        slots = t.find_available(window, 3, limit=10)
+        # The overlap zone [6:30, 7:00) should be excluded
+        assert Interval(dt(6), dt(6, 30)) in slots
+        assert Interval(dt(7), dt(8)) in slots
+        # The blocked zone should NOT be in any slot
+        for s in slots:
+            assert not s.overlaps(Interval(dt(6, 30), dt(7)))
 
 
 class TestResourceRegistryDelays:

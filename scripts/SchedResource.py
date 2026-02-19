@@ -105,6 +105,9 @@ class ResourceTracker:
 
         Returns a list of Intervals (sorted by start time) where the resource
         has sufficient capacity.  Adjacent available regions are merged.
+
+        Uses a sweep-line approach: collect all reservation boundaries within
+        the window, form sub-intervals, and check aggregate usage in each.
         """
         if self.capacity is not None and limit is not None:
             base_limit = min(self.capacity, limit)
@@ -118,24 +121,43 @@ class ResourceTracker:
                 return [window]
             return []
 
-        # Collect transitions: each reservation blocks part of the window
-        # Simple approach: walk through reservations, subtract blocked regions
-        available = [window]
+        # Collect all boundary times within the window from overlapping
+        # reservations, then check aggregate usage in each sub-interval.
+        boundaries = set()
+        boundaries.add(window.start)
+        boundaries.add(window.end)
         for r in self.reservations:
             if not r.interval.overlaps(window):
                 continue
-            # Check if this reservation would push us over the limit
-            # We need to check: existing_usage + amount > effective_limit
-            # where effective_limit = min(base_limit, r.limit if set)
+            if window.contains(r.interval.start):
+                boundaries.add(r.interval.start)
+            if window.contains(r.interval.end):
+                boundaries.add(r.interval.end)
+
+        points = sorted(boundaries)
+
+        # Walk sub-intervals, merging consecutive available ones
+        available = []
+        merge_start = None
+        for i in range(len(points) - 1):
+            sub = Interval(points[i], points[i + 1])
+            # Compute effective limit: base_limit lowered by any
+            # overlapping reservation's declared limit
             eff = base_limit
-            if r.limit is not None:
-                eff = min(eff, r.limit)
-            if r.amount + amount > eff:
-                # This reservation blocks the proposed addition
-                new_available = []
-                for slot in available:
-                    new_available.extend(slot.subtract(r.interval))
-                available = new_available
+            for r in self.reservations:
+                if r.interval.overlaps(sub) and r.limit is not None:
+                    eff = min(eff, r.limit)
+            usage = self.usage_at(sub)
+            if usage + amount <= eff:
+                if merge_start is None:
+                    merge_start = sub.start
+                merge_end = sub.end
+            else:
+                if merge_start is not None:
+                    available.append(Interval(merge_start, merge_end))
+                    merge_start = None
+        if merge_start is not None:
+            available.append(Interval(merge_start, merge_end))
 
         # Filter by min_duration
         if min_duration > ZERO:
@@ -288,10 +310,11 @@ class ResourceRegistry:
         tracker.add(Reservation(interval, 1, stn.ctlMaxStations, stn.sensor,
                                 **delays))
 
-        # Controller current
+        # Controller current (capacity excludes baseCurrent — passive sensor draw)
+        ctl_current_cap = stn.maxCurrent - stn.baseCurrent
         tracker = self._get_tracker(self.ctl_current, stn.controller,
-                                    stn.maxCurrent)
-        tracker.add(Reservation(interval, stn.current, stn.maxCurrent,
+                                    ctl_current_cap)
+        tracker.add(Reservation(interval, stn.current, ctl_current_cap,
                                 stn.sensor, **delays))
 
         # POC stations (optional)

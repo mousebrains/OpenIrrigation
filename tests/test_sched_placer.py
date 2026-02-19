@@ -7,17 +7,7 @@ from SchedCumTime import CumTime
 from SchedInterval import Interval
 from SchedResource import ResourceRegistry
 from SchedPlacer import place_station, place_program, build_schedule
-from helpers import MockProgramStation
-
-
-def dt(hour, minute=0, second=0):
-    """Shorthand for datetimes on 2024-07-01."""
-    return datetime.datetime(2024, 7, 1, hour, minute, second)
-
-
-def td(minutes=0, seconds=0):
-    """Shorthand for timedelta."""
-    return datetime.timedelta(minutes=minutes, seconds=seconds)
+from helpers import dt, td, MockProgramStation, MockProgram, MockProgramNoRun
 
 
 @pytest.fixture
@@ -256,28 +246,6 @@ class TestPlaceStationManual:
 
 
 # ── place_program ───────────────────────────────────────────────────
-
-class MockProgram:
-    """Lightweight mock for SchedProgram.Program."""
-    def __init__(self, name, stations, sTime, eTime):
-        self.name = name
-        self.stations = stations
-        self._sTime = sTime
-        self._eTime = eTime
-
-    def mkTime(self, pgmDate):
-        return (self._sTime, self._eTime)
-
-
-class MockProgramNoRun:
-    """Mock program that returns None for mkTime."""
-    def __init__(self, name='NoRun'):
-        self.name = name
-        self.stations = []
-
-    def mkTime(self, pgmDate):
-        return (None, None)
-
 
 class TestPlaceProgram:
     def test_all_stations_placed(self, registry, cum_time, logger):

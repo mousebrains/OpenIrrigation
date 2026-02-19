@@ -12,7 +12,8 @@ from SchedSensor import Sensors
 from SchedProgram import Programs
 from SchedProgramStation import ProgramStations
 from SchedCumTime import CumTime
-from SchedResource import ResourceRegistry
+from SchedInterval import Interval
+from SchedResource import ResourceRegistry, Reservation
 from SchedPlacer import build_schedule
 
 def runScheduler(args:argparse.ArgumentParser, logger:logging.Logger) -> bool:
@@ -148,9 +149,6 @@ def loadExisting(cur:psycopg.Cursor, registry:ResourceRegistry, cumTime:CumTime,
 def _recordExisting(registry:ResourceRegistry, sensor, stn, program,
         tOn:datetime.datetime, tOff:datetime.datetime) -> None:
     """ Record an existing action into the resource registry """
-    from SchedInterval import Interval
-    from SchedResource import Reservation
-
     interval = Interval(tOn, tOff)
     delays = dict(
         ctl_delay=sensor.ctlDelay,
@@ -164,10 +162,11 @@ def _recordExisting(registry:ResourceRegistry, sensor, stn, program,
     tracker.add(Reservation(interval, 1, sensor.ctlMaxStations, sensor.id,
                             **delays))
 
-    # Controller current
+    # Controller current (capacity excludes baseCurrent — passive sensor draw)
+    ctl_current_cap = sensor.maxCurrent - sensor.baseCurrent
     tracker = registry._get_tracker(registry.ctl_current, sensor.controller,
-                                    sensor.maxCurrent)
-    tracker.add(Reservation(interval, sensor.current, sensor.maxCurrent,
+                                    ctl_current_cap)
+    tracker.add(Reservation(interval, sensor.current, ctl_current_cap,
                             sensor.id, **delays))
 
     # POC stations (sensor.stnMaxStations maps to pocMaxStations)

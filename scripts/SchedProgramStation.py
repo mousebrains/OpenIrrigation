@@ -90,6 +90,7 @@ class ProgramStation:
         self.baseCurrent = sensor.baseCurrent
         self.delayOn = sensor.delayOn
         self.delayOff = sensor.delayOff
+        self.ctlDelay = sensor.ctlDelay
 
     def __repr__(self) -> str:
         msg = 'id={} name={} single={}'.format(self.id, self.name, self.qSingle)

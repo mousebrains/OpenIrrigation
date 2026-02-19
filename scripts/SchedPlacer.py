@@ -13,6 +13,7 @@ from SchedAction import Action
 from SchedCumTime import CumTime
 from SchedInterval import Interval
 from SchedResource import ResourceRegistry
+from SchedUtils import prettyTimes
 
 ZERO = datetime.timedelta(0)
 
@@ -88,7 +89,6 @@ def place_program(registry: ResourceRegistry, pgm, cum_time: CumTime,
     if sTime is None:
         return []
 
-    from SchedUtils import prettyTimes
     (sOn, sOff) = prettyTimes(sTime, eTime)
     logger.info('Program %s %s to %s', pgm.name, sOn, sOff)
 

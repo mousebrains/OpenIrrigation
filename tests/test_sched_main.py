@@ -7,33 +7,12 @@ from SchedCumTime import CumTime
 from SchedResource import ResourceRegistry
 from SchedPlacer import build_schedule
 from SchedMain import _recordExisting
-from helpers import MockSensor, MockProgramStation
-
-
-def dt(hour, minute=0, second=0):
-    """Shorthand for datetimes on 2024-07-01."""
-    return datetime.datetime(2024, 7, 1, hour, minute, second)
-
-
-def td(minutes=0, seconds=0):
-    """Shorthand for timedelta."""
-    return datetime.timedelta(minutes=minutes, seconds=seconds)
+from helpers import dt, td, MockSensor, MockProgramStation, MockProgram
 
 
 @pytest.fixture
 def logger():
     return logging.getLogger('test_main')
-
-
-class MockProgram:
-    def __init__(self, name, stations, sTime, eTime):
-        self.name = name
-        self.stations = stations
-        self._sTime = sTime
-        self._eTime = eTime
-
-    def mkTime(self, pgmDate):
-        return (self._sTime, self._eTime)
 
 
 # ── _recordExisting ─────────────────────────────────────────────────
@@ -60,6 +39,17 @@ class TestRecordExisting:
 
         assert 100 in registry.ctl_stations
         assert 100 in registry.ctl_current
+
+    def test_existing_baseCurrent_subtracted(self, logger):
+        """_recordExisting sets ctl_current capacity to maxCurrent - baseCurrent."""
+        registry = ResourceRegistry(logger)
+        sensor = MockSensor(ident=42, controller=100, poc=200,
+                            current=50, maxCurrent=500, baseCurrent=100)
+        _recordExisting(registry, sensor, None, 10, dt(6), dt(7))
+
+        tracker = registry.ctl_current[100]
+        assert tracker.capacity == 400  # 500 - 100
+        assert tracker.reservations[0].limit == 400
 
 
 # ── Integration: loadExisting + build_schedule ──────────────────────

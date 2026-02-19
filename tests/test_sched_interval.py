@@ -1,18 +1,8 @@
 """Tests for SchedInterval: Interval class."""
 
 import pytest
-import datetime
 from SchedInterval import Interval
-
-
-def dt(hour, minute=0, second=0):
-    """Shorthand for building datetimes on 2024-07-01."""
-    return datetime.datetime(2024, 7, 1, hour, minute, second)
-
-
-def td(minutes=0, seconds=0):
-    """Shorthand for timedelta."""
-    return datetime.timedelta(minutes=minutes, seconds=seconds)
+from helpers import dt, td
 
 
 class TestConstruction:
