@@ -8,7 +8,7 @@ if (empty($_POST['codigo'])) {
 	exit;
 }
 
-$sql = "SELECT doy, value, stddev FROM ETannual"
+$sql = "SELECT doy, mn, q10, value, q90, mx FROM ETannual"
 	. " WHERE code = ? ORDER BY doy;";
 $rows = $db->loadRowsNum($sql, [$_POST['codigo']]);
 echo json_encode($rows);

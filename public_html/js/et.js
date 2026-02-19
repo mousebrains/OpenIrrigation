@@ -36,58 +36,101 @@ $(function() {
 		});
 	});
 
+	// 7-day centered moving average for an array of {x, y} points
+	function movingAvg(pts, halfWin) {
+		var out = [];
+		var n = pts.length;
+		for (var i = 0; i < n; i++) {
+			var lo = Math.max(0, i - halfWin);
+			var hi = Math.min(n - 1, i + halfWin);
+			var sum = 0;
+			for (var j = lo; j <= hi; j++) {
+				sum += pts[j].y;
+			}
+			out.push({ x: pts[i].x, y: sum / (hi - lo + 1) });
+		}
+		return out;
+	}
+
 	function renderAnnualChart(rows) {
 		if (etChart) {
 			etChart.destroy();
 			etChart = null;
 		}
 
-		// Convert DOY to pseudo-dates in leap year 2024 for time axis display
-		var meanPts = [];
-		var upperPts = [];
-		var lowerPts = [];
+		// rows: [doy, mn, q10, value, q90, mx]  (FETCH_NUM indices 0-5)
+		var mxPts = [];
+		var q90Pts = [];
+		var medPts = [];
+		var q10Pts = [];
+		var mnPts = [];
 
 		for (var i = 0; i < rows.length; i++) {
 			var doy = Number(rows[i][0]);
-			var mean = Number(rows[i][1]);
-			var sd = rows[i][2] !== null ? Number(rows[i][2]) : 0;
-
-			// Build a Date from day-of-year in 2024 (leap year)
 			var d = new Date(2024, 0, doy);
 			var t = d.getTime();
 
-			meanPts.push({ x: t, y: mean });
-			upperPts.push({ x: t, y: mean + sd });
-			lowerPts.push({ x: t, y: Math.max(0, mean - sd) });
+			mnPts.push({ x: t, y: Number(rows[i][1]) });
+			q10Pts.push({ x: t, y: Number(rows[i][2]) });
+			medPts.push({ x: t, y: Number(rows[i][3]) });
+			q90Pts.push({ x: t, y: Number(rows[i][4]) });
+			mxPts.push({ x: t, y: Number(rows[i][5]) });
 		}
+
+		// Apply 7-day centered moving average (halfWin=3 → 7-point window)
+		mxPts = movingAvg(mxPts, 3);
+		q90Pts = movingAvg(q90Pts, 3);
+		medPts = movingAvg(medPts, 3);
+		q10Pts = movingAvg(q10Pts, 3);
+		mnPts = movingAvg(mnPts, 3);
+
+		var peach = 'rgba(255, 180, 120, 0.3)';
 
 		var ctx = document.getElementById('etChart').getContext('2d');
 		etChart = new Chart(ctx, {
 			type: 'line',
 			data: {
 				datasets: [
-					{
-						label: '+1\u03c3',
-						data: upperPts,
+					{ // 0: mx – fill down to q90 (peach)
+						label: 'Max',
+						data: mxPts,
 						borderColor: 'transparent',
-						backgroundColor: 'rgba(54, 162, 235, 0.15)',
+						backgroundColor: peach,
 						fill: '+1',
 						pointRadius: 0,
 						tension: 0.3
 					},
-					{
-						label: 'Mean ET',
-						data: meanPts,
-						borderColor: 'rgba(54, 162, 235, 1)',
-						backgroundColor: 'rgba(54, 162, 235, 1)',
+					{ // 1: q90 – fill down to q10 (green)
+						label: '90th pctl',
+						data: q90Pts,
+						borderColor: 'transparent',
+						backgroundColor: 'rgba(100, 190, 100, 0.25)',
+						fill: '+2',
+						pointRadius: 0,
+						tension: 0.3
+					},
+					{ // 2: median – solid blue line
+						label: 'Median ET',
+						data: medPts,
+						borderColor: 'rgba(54, 120, 220, 1)',
+						backgroundColor: 'rgba(54, 120, 220, 1)',
 						fill: false,
 						pointRadius: 0,
 						borderWidth: 2,
 						tension: 0.3
 					},
-					{
-						label: '\u20131\u03c3',
-						data: lowerPts,
+					{ // 3: q10 – fill down to mn (peach)
+						label: '10th pctl',
+						data: q10Pts,
+						borderColor: 'transparent',
+						backgroundColor: peach,
+						fill: '+1',
+						pointRadius: 0,
+						tension: 0.3
+					},
+					{ // 4: mn – no fill (bottom boundary)
+						label: 'Min',
+						data: mnPts,
 						borderColor: 'transparent',
 						backgroundColor: 'transparent',
 						fill: false,
@@ -126,7 +169,7 @@ $(function() {
 				plugins: {
 					tooltip: {
 						filter: function(item) {
-							return item.datasetIndex === 1;
+							return item.datasetIndex === 2;
 						}
 					},
 					legend: { display: false }

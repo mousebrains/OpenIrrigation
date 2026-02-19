@@ -150,16 +150,21 @@ def doStats(args:argparse.ArgumentParser, params:dict, logger:logging.Logger) ->
     db = DB.DB(args.db, logger)
     db.updateState('Stats', 'Building statistics')
     with db.cursor() as cur:
-        cur.execute("CREATE TEMPORARY TABLE ETbyDOY AS" \
+        cur.execute("CREATE TEMPORARY TABLE ETbyDOY AS"
                 + " SELECT station,code,value,EXTRACT('DOY' from t) AS doy FROM ET;")
-        cur.execute("INSERT INTO ETannual(doy,station,code,value,n,stddev)" \
-                + " SELECT doy,station,code," \
-                + "AVG(value) as value,COUNT(*) as n," \
-                + "STDDEV_POP(value) as stddev" \
-                + " FROM ETbyDOY GROUP BY station,code,doy" \
-                + " ON CONFLICT (station,code,doy)" \
-                + " DO UPDATE SET value=EXCLUDED.value," \
-                + "n=EXCLUDED.n,stddev=EXCLUDED.stddev;")
+        cur.execute("INSERT INTO ETannual(doy,station,code,value,n,mn,q10,q90,mx)"
+                + " SELECT doy,station,code,"
+                + "percentile_cont(0.5) WITHIN GROUP (ORDER BY value),"
+                + "COUNT(*),"
+                + "MIN(value),"
+                + "percentile_cont(0.1) WITHIN GROUP (ORDER BY value),"
+                + "percentile_cont(0.9) WITHIN GROUP (ORDER BY value),"
+                + "MAX(value)"
+                + " FROM ETbyDOY GROUP BY station,code,doy"
+                + " ON CONFLICT (station,code,doy)"
+                + " DO UPDATE SET value=EXCLUDED.value,"
+                + "n=EXCLUDED.n,mn=EXCLUDED.mn,q10=EXCLUDED.q10,"
+                + "q90=EXCLUDED.q90,mx=EXCLUDED.mx;")
         db.commit()
     db.updateState('Stats', 'Stats complete at {}'.format(datetime.datetime.now()))
 
