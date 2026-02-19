@@ -30,7 +30,10 @@ if 'astral' not in sys.modules:
 # Provide stub for other missing modules
 for _mod_name in ('serial', 'Notify', 'Params'):
     if _mod_name not in sys.modules:
-        sys.modules[_mod_name] = types.ModuleType(_mod_name)
+        _stub = types.ModuleType(_mod_name)
+        if _mod_name == 'serial':
+            _stub.Serial = type('Serial', (), {})
+        sys.modules[_mod_name] = _stub
 
 # MyLogger stub needs addArgs and mkLogger to support AgriMet module-level code
 if 'MyLogger' not in sys.modules:
