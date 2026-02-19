@@ -7,6 +7,7 @@
 # Feb-2026, Pat Welch
 #
 
+import bisect
 import datetime
 import logging
 from typing import Optional
@@ -50,25 +51,34 @@ class ResourceTracker:
     def __init__(self, capacity: Optional[float] = None) -> None:
         self.capacity = capacity  # global capacity (None = unconstrained)
         self.reservations: list[Reservation] = []
+        self._starts: list[datetime.datetime] = []  # parallel sorted start times
+        self._ends: list[datetime.datetime] = []     # parallel sorted end times (for reverse scan)
 
     def add(self, reservation: Reservation) -> None:
-        self.reservations.append(reservation)
+        idx = bisect.bisect_right(self._starts, reservation.interval.start)
+        self.reservations.insert(idx, reservation)
+        self._starts.insert(idx, reservation.interval.start)
+        bisect.insort(self._ends, reservation.interval.end)
+
+    def _overlapping(self, interval: Interval):
+        """Yield only reservations whose intervals overlap [interval.start, interval.end)."""
+        # A reservation overlaps if r.start < interval.end AND r.end > interval.start
+        # Upper bound: skip reservations whose start >= interval.end
+        hi = bisect.bisect_left(self._starts, interval.end)
+        for i in range(hi):
+            if self.reservations[i].interval.end > interval.start:
+                yield self.reservations[i]
 
     def usage_at(self, interval: Interval) -> float:
         """ Total amount of resource consumed during any part of interval """
         total = 0.0
-        for r in self.reservations:
-            if r.interval.overlaps(interval):
-                total += r.amount
+        for r in self._overlapping(interval):
+            total += r.amount
         return total
 
     def sensors_at(self, interval: Interval) -> set:
         """ Set of sensor_ids active during interval """
-        result = set()
-        for r in self.reservations:
-            if r.interval.overlaps(interval):
-                result.add(r.sensor_id)
-        return result
+        return {r.sensor_id for r in self._overlapping(interval)}
 
     def can_fit(self, interval: Interval, amount: float,
                 limit: Optional[float] = None) -> bool:
@@ -89,11 +99,10 @@ class ResourceTracker:
             return True  # unconstrained
 
         total = amount
-        for r in self.reservations:
-            if r.interval.overlaps(interval):
-                total += r.amount
-                if r.limit is not None:
-                    effective_limit = min(effective_limit, r.limit)
+        for r in self._overlapping(interval):
+            total += r.amount
+            if r.limit is not None:
+                effective_limit = min(effective_limit, r.limit)
 
         return total <= effective_limit
 
@@ -121,14 +130,15 @@ class ResourceTracker:
                 return [window]
             return []
 
+        # Collect overlapping reservations once for the whole sweep
+        overlapping = list(self._overlapping(window))
+
         # Collect all boundary times within the window from overlapping
         # reservations, then check aggregate usage in each sub-interval.
         boundaries = set()
         boundaries.add(window.start)
         boundaries.add(window.end)
-        for r in self.reservations:
-            if not r.interval.overlaps(window):
-                continue
+        for r in overlapping:
             if window.contains(r.interval.start):
                 boundaries.add(r.interval.start)
             if window.contains(r.interval.end):
@@ -141,13 +151,14 @@ class ResourceTracker:
         merge_start = None
         for i in range(len(points) - 1):
             sub = Interval(points[i], points[i + 1])
-            # Compute effective limit: base_limit lowered by any
-            # overlapping reservation's declared limit
+            # Compute effective limit and usage from overlapping reservations
             eff = base_limit
-            for r in self.reservations:
-                if r.interval.overlaps(sub) and r.limit is not None:
-                    eff = min(eff, r.limit)
-            usage = self.usage_at(sub)
+            usage = 0.0
+            for r in overlapping:
+                if r.interval.overlaps(sub):
+                    usage += r.amount
+                    if r.limit is not None:
+                        eff = min(eff, r.limit)
             if usage + amount <= eff:
                 if merge_start is None:
                     merge_start = sub.start
@@ -199,15 +210,13 @@ class ResourceSet:
             if not slots:
                 break
 
-            # Build blocked zones: for each reservation in the tracker,
-            # expand by the delay margins
+            # Build blocked zones: for each overlapping reservation in the
+            # tracker, expand by the delay margins
             blocked = []
-            for r in tracker.reservations:
-                if not r.interval.overlaps(
-                        window.expanded(
-                            before=datetime.timedelta(seconds=300),
-                            after=datetime.timedelta(seconds=300))):
-                    continue
+            expanded_window = window.expanded(
+                before=datetime.timedelta(seconds=300),
+                after=datetime.timedelta(seconds=300))
+            for r in tracker._overlapping(expanded_window):
 
                 # Check if this reservation would actually block us
                 # (capacity check)

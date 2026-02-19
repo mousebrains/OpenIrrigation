@@ -35,9 +35,9 @@ def place_station(registry: ResourceRegistry, stn, cum_time: CumTime,
 
     placed = []
     cursor = window_start
+    resource_set = registry.build_resource_set(stn)
 
     while time_needed > ZERO and cursor < window_end:
-        resource_set = registry.build_resource_set(stn)
         search_window = Interval(cursor, window_end)
         slots = resource_set.find_slots(search_window,
                                         min_duration=stn.minCycleTime)
