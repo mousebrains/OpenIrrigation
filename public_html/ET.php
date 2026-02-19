@@ -27,32 +27,25 @@
 <?php require_once 'php/navBar.php'; ?>
 <div class='et-row'>
 <div class='et-chart'>
+ <h3 id='et-title'></h3>
  <div class='chart-container'>
   <canvas id='etChart'></canvas>
  </div>
 </div>
 <div class='et-params'>
-<form>
-<table>
-<thead><tr><th>Daily</th><th>Description</th><th>Annual</th></tr></thead>
-<tbody>
+<label for='et-select'>Parameter:</label>
+<select id='et-select'>
 <?php
 require_once 'php/DB1.php';
 $a = $db->loadRows("SELECT id,val FROM params WHERE grp='ET' ORDER BY val;", []);
 foreach ($a as $item) {
 	$id = $item['id'];
-	$val = $item['val'];
-	echo "<tr>"
-		. "<td><input type='checkbox' class='et-daily' data-codigo='$id'></td>"
-		. "<th>" . htmlspecialchars($val, ENT_QUOTES, 'UTF-8') . "</th>"
-		. "<td><input type='checkbox' class='et-annual' data-codigo='$id'></td>"
-		. "</tr>";
+	$val = htmlspecialchars($item['val'], ENT_QUOTES, 'UTF-8');
+	$sel = ($item['val'] === 'ET (in/day)') ? ' selected' : '';
+	echo "<option value='$id'$sel>$val</option>";
 }
 ?>
-</tbody>
-<tfoot><tr><th>Daily</th><th>Description</th><th>Annual</th></tr></tfoot>
-</table>
-</form>
+</select>
 </div>
 </div>
 </body>

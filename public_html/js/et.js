@@ -1,24 +1,12 @@
 $(function() {
 	var etChart = null;
 
-	$(document).on('change', '.et-daily', function() {
-		// TODO: implement daily ET chart
-	});
+	$('#et-select').on('change', function() {
+		var sel = $(this);
+		var id = sel.val();
+		var desc = sel.find('option:selected').text();
 
-	$(document).on('change', '.et-annual', function() {
-		var cb = this;
-		var id = $(cb).data('codigo');
-
-		if (!cb.checked) {
-			if (etChart) {
-				etChart.destroy();
-				etChart = null;
-			}
-			return;
-		}
-
-		// Uncheck other Annual checkboxes so only one is active
-		$('.et-annual').not(cb).prop('checked', false);
+		$('#et-title').text(desc);
 
 		$.ajax({
 			type: 'POST',
@@ -30,11 +18,11 @@ $(function() {
 				OI_toast(rows.message, true);
 				return;
 			}
-			renderAnnualChart(rows || []);
+			renderAnnualChart(rows || [], desc);
 		}).fail(function(jqXHR, textStatus) {
 			OI_toast('Request failed: ' + textStatus, true);
 		});
-	});
+	}).trigger('change');
 
 	// 7-day centered moving average for an array of {x, y} points
 	function movingAvg(pts, halfWin) {
@@ -52,7 +40,7 @@ $(function() {
 		return out;
 	}
 
-	function renderAnnualChart(rows) {
+	function renderAnnualChart(rows, desc) {
 		if (etChart) {
 			etChart.destroy();
 			etChart = null;
@@ -162,7 +150,7 @@ $(function() {
 						beginAtZero: true,
 						title: {
 							display: true,
-							text: 'ET (in/day)'
+							text: desc || ''
 						}
 					}
 				},
