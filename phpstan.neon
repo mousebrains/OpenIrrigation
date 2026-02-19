@@ -17,3 +17,5 @@ parameters:
     - identifier: method.notFound
     - identifier: staticMethod.notFound
     - identifier: property.onlyWritten
+    # $db is created in DB1.php via require_once; PHPStan can't trace cross-file globals
+    - identifier: variable.undefined
