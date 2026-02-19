@@ -10,8 +10,8 @@
 <style>
 .chart-container {
 	position: relative;
-	max-width: 900px;
-	max-height: 450px;
+	width: 80%;
+	max-height: 75vh;
 	margin: 0 auto;
 }
 .et-controls {
@@ -46,7 +46,6 @@ foreach ($a as $item) {
 }
 ?>
 </select>
-<h3 id='et-title'></h3>
 </div>
 <div class='chart-container'>
  <canvas id='etChart'></canvas>

@@ -6,8 +6,6 @@ $(function() {
 		var id = sel.val();
 		var desc = sel.find('option:selected').text();
 
-		$('#et-title').text(desc);
-
 		$.ajax({
 			type: 'POST',
 			url: 'etAnnual.php',
