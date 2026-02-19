@@ -26,6 +26,6 @@ repos:
         pass_filenames: false
       - id: bandit
         name: bandit
-        entry: bandit -r scripts/ -q
+        entry: bandit -r scripts/ -q -c pyproject.toml
         language: system
         pass_filenames: false

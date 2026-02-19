@@ -91,7 +91,7 @@ class DB:
             if not db: return None # Couldn't get an active connection and I've already tried twice
             try:
                 if qDict: # Create a cursor with a dictionary like cursor
-                    return db.cursor(row_factory=dict_row)  # type: ignore[call-overload]
+                    return db.cursor(row_factory=dict_row)  # type: ignore[call-overload, no-any-return]
                 return db.cursor() # Create a non-dictionary cursor
             except Exception:
                 self.logger.exception('Unable to create a cursor for %s', self.dbName)
