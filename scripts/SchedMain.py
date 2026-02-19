@@ -51,10 +51,10 @@ def doit(cur:psycopg.Cursor,
     stations = ProgramStations(cur, sensors, logger)
     programs = Programs(cur, stations, logger) # Active programs in priority order
     timeline = Timeline(logger, sensors, stations) # A time ordered list of events
-    if not args.noLoadHistorical:
-        historical(cur, sDate, timeline) # Add historical events to timeline
     if not args.noNearPending:
-        nearPending(cur, timeline, minTime, logger) # Add active and near pending to timeline
+        cleanPending(cur, minTime, logger)
+    loadExisting(cur, timeline, sDate, eDate, logger,
+                 args.noLoadHistorical, args.noNearPending)
     while sDate <= eDate:
         for pgm in programs: # Walk through programs in priority order
             (sTime, eTime) = pgm.mkTime(sDate)
@@ -104,41 +104,42 @@ def doit(cur:psycopg.Cursor,
 
     return True
 
-def historical(cur:psycopg.Cursor, pgmDate:datetime.date, timeline:Timeline) -> None:
-    """ Load actions which have already completed for pgmDate """
-    sql = "SELECT tOn,tOff,sensor,program,pgmStn FROM historical WHERE pgmDate=%s;"
-    cur.execute(sql, (pgmDate,))
-    for row in cur:
-        timeline.existing(row[0], row[1], row[2], row[3], row[4], pgmDate)
-
-def nearPending(cur:psycopg.Cursor, timeline:Timeline,
+def cleanPending(cur:psycopg.Cursor,
         minTime:datetime.datetime, logger:logging.Logger) -> None:
-    """ Delete future actions which will not start before args.minCleanTime """
-    # Delete what is further than args.minCleanTime seconds into the future
+    """ Delete future pending actions that will be re-scheduled """
     sql = "DELETE FROM action"
-    sql+= " WHERE cmd=0"  # On/off commands
-    sql+= " AND (cmdOn is NOT NULL)" # Not already on
-    sql+= " AND (pgmStn is NOT NULL)"  # Associated with a program, i.e. not manual
+    sql+= " WHERE cmd=0"
+    sql+= " AND (cmdOn is NOT NULL)"
+    sql+= " AND (pgmStn is NOT NULL)"
     sql+= " AND (tOn>%s);"
+    cur.execute(sql, (minTime,))
+    logger.info('cleanPending %s rows after %s', cur.statusmessage, minTime)
 
-    cur.execute(sql, (minTime,)) # Remove future rows from action
-    logger.info('nearPending %s rows after %s', cur.statusmessage, minTime)
-
-    # Everything left will be treated as pending
-    # INNER JOIN is only if a match on both side, i.e. intersection
-    # LEFT JOIN is if the LHS is valid but the RHS may or may not be
-    # LEFT JOIN is needed for manual values who have been removed from PgmStn
-    #
-    sql = "SELECT"
-    sql+= " tOn,tOff,action.sensor,action.program,action.pgmStn,action.pgmDate"
-    sql+= ",program.name,station.name"
-    sql+= " FROM action"
-    sql+= " INNER JOIN program ON program.id=action.program"
-    sql+= " LEFT JOIN pgmStn ON pgmStn.id=action.pgmStn"
-    sql+= " LEFT JOIN station ON station.id=pgmStn.station"
-    sql+= " WHERE cmd=0;"
-    cur.execute(sql) # The actions which are running or will before tThreshold
+def loadExisting(cur:psycopg.Cursor, timeline:Timeline,
+        sDate:datetime.date, eDate:datetime.date,
+        logger:logging.Logger,
+        noHistorical:bool, noNearPending:bool) -> None:
+    """ Load completed and active actions into the timeline in one atomic query """
+    parts = []
+    params = []
+    if not noHistorical:
+        parts.append(
+            "SELECT tOn,tOff,sensor,program,pgmStn,pgmDate"
+            " FROM historical WHERE pgmDate BETWEEN %s AND %s")
+        params.extend([sDate, eDate])
+    if not noNearPending:
+        parts.append(
+            "SELECT tOn,tOff,action.sensor,action.program"
+            ",action.pgmStn,action.pgmDate"
+            " FROM action"
+            " INNER JOIN program ON program.id=action.program"
+            " WHERE cmd=0")
+    if not parts:
+        return
+    sql = " UNION ALL ".join(parts) + ";"
+    cur.execute(sql, params)
     for row in cur:
-        timeline.existing(row[0], row[1], row[2], row[3], row[4], row[5])
-        (tOn, tOff) = prettyTimes(row[0], row[1])
-        logger.info("nearPending %s(%s) %s to %s pgmDate=%s", row[7], row[6], tOn, tOff, row[5])
+        act = timeline.existing(row[0], row[1], row[2], row[3], row[4], row[5])
+        if act is not None:
+            logger.info("existing %s %s to %s pgmDate=%s",
+                        act.sensor.name, row[0], row[1], row[5])

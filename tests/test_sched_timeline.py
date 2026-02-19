@@ -171,3 +171,64 @@ class TestExisting:
 
         tl.existing(tOn, tOff, 1, 10, 5, d)
         assert tl.cumTime.get(5, d) == datetime.timedelta(minutes=10)
+
+
+# ── Cross-midnight pgmDate routing ──────────────────────────────────
+
+class TestCrossMidnightHistorical:
+    """Verify existing() routes cumTime by actual pgmDate, not a hardcoded date."""
+
+    def _make_timeline(self, logger, sensors_dict, stations_dict):
+        sensors = dict.__new__(Sensors)
+        dict.__init__(sensors)
+        sensors.update(sensors_dict)
+        sensors.logger = logger
+
+        stations = dict.__new__(ProgramStations)
+        dict.__init__(stations)
+        stations.update(stations_dict)
+        stations.pgm2stn = {}
+
+        return Timeline(logger, sensors, stations)
+
+    def test_pgmdate_routes_to_correct_day(self, logger):
+        """existing() with pgmDate=Tuesday accumulates under cumTime[stn][Tuesday]."""
+        sensor = MockSensor(ident=1)
+        stn = MockProgramStation(ident=5, sensor=1, program=10, logger=logger)
+
+        tl = self._make_timeline(logger, {1: sensor}, {5: stn})
+        monday = datetime.date(2024, 7, 1)
+        tuesday = datetime.date(2024, 7, 2)
+
+        # Valve ran after midnight but pgmDate is Tuesday (cross-midnight program)
+        tOn = datetime.datetime(2024, 7, 3, 0, 10, 0)
+        tOff = datetime.datetime(2024, 7, 3, 0, 20, 0)
+
+        tl.existing(tOn, tOff, 1, 10, 5, tuesday)
+
+        assert tl.cumTime.get(5, tuesday) == datetime.timedelta(minutes=10)
+        assert tl.cumTime.get(5, monday) == datetime.timedelta(0)
+
+    def test_multi_date_accumulates_independently(self, logger):
+        """Records for different pgmDates accumulate independently."""
+        sensor = MockSensor(ident=1)
+        stn = MockProgramStation(ident=5, sensor=1, program=10, logger=logger)
+
+        tl = self._make_timeline(logger, {1: sensor}, {5: stn})
+        monday = datetime.date(2024, 7, 1)
+        tuesday = datetime.date(2024, 7, 2)
+
+        # Monday's cycle: 10 minutes
+        tl.existing(
+            datetime.datetime(2024, 7, 1, 6, 0, 0),
+            datetime.datetime(2024, 7, 1, 6, 10, 0),
+            1, 10, 5, monday)
+
+        # Tuesday's cycle: 7 minutes
+        tl.existing(
+            datetime.datetime(2024, 7, 2, 6, 0, 0),
+            datetime.datetime(2024, 7, 2, 6, 7, 0),
+            1, 10, 5, tuesday)
+
+        assert tl.cumTime.get(5, monday) == datetime.timedelta(minutes=10)
+        assert tl.cumTime.get(5, tuesday) == datetime.timedelta(minutes=7)
