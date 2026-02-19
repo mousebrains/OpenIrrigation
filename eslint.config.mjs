@@ -49,7 +49,7 @@ export default [
       globals: { ...browserGlobals, ...irrigationGlobals },
     },
     rules: {
-      "no-unused-vars": ["warn", { args: "none", varsIgnorePattern: "^(receivedStatus|statusSource|dailyClick|yearlyClick|batchUpdate|batchCancel|buildActions|getStationName|getProgramName|inputChanged)" }],
+      "no-unused-vars": ["warn", { args: "none", varsIgnorePattern: "^(receivedStatus|statusSource|batchUpdate|batchCancel|buildActions|getStationName|getProgramName|inputChanged)" }],
       "no-undef": "error",
       "eqeqeq": ["warn", "smart"],
       "no-redeclare": "error",

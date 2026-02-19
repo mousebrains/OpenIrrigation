@@ -43,9 +43,9 @@ foreach ($a as $item) {
 	$id = $item['id'];
 	$val = $item['val'];
 	echo "<tr>"
-		. "<td><input type='checkbox' id='d$id' onclick='dailyClick($id)'></td>"
+		. "<td><input type='checkbox' class='et-daily' data-codigo='$id'></td>"
 		. "<th>" . htmlspecialchars($val, ENT_QUOTES, 'UTF-8') . "</th>"
-		. "<td><input type='checkbox' id='y$id' onclick='yearlyClick($id)'></td>"
+		. "<td><input type='checkbox' class='et-annual' data-codigo='$id'></td>"
 		. "</tr>";
 }
 ?>
