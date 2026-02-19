@@ -19,7 +19,6 @@ jobs:
         node-version: '22'
     - run: npm install
     - run: pip install pre-commit -r requirements-dev.txt
-    - run: ruff check . --fix --diff  # DEBUG — show what ruff wants to change in CI
     - run: SKIP=phpstan,ruff-check pre-commit run --all-files
 
   php-lint:
