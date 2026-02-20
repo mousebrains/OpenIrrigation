@@ -22,6 +22,7 @@ class ReportDB {
 	private PDOStatement $getStations;
 	private PDOStatement $getPastTargets;
 	private PDOStatement $getPendingTargets;
+	private PDOStatement $getTodayTargets;
 
 	public function __construct(string $dbName) {
 		$db = new PDO("pgsql:dbname=$dbName;");
@@ -84,6 +85,21 @@ class ReportDB {
 			. ") sub"
 			. " GROUP BY sub.sensor,sub.date;");
 
+		$this->getTodayTargets = $db->prepare("SELECT "
+			. "sub.sensor,ROUND(SUM(sub.runTime*60)) AS target"
+			. " FROM ("
+			. "SELECT DISTINCT h.sensor,ps.id,ps.runTime"
+			. " FROM historical h"
+			. " INNER JOIN pgmStn ps ON ps.id=h.pgmStn"
+			. " WHERE h.tOn::DATE=CURRENT_DATE"
+			. " UNION"
+			. " SELECT DISTINCT a.sensor,ps.id,ps.runTime"
+			. " FROM action a"
+			. " INNER JOIN pgmStn ps ON ps.id=a.pgmStn"
+			. " WHERE a.tOn::DATE=CURRENT_DATE"
+			. ") sub"
+			. " GROUP BY sub.sensor;");
+
 		$db->exec("LISTEN action_update;");
 	} // __construct
 
@@ -103,6 +119,7 @@ class ReportDB {
 		$a['past'] = $this->loadInfo($this->getPast);
 		$a['pastTargets'] = $this->loadInfo($this->getPastTargets);
 		$a['pendingTargets'] = $this->loadInfo($this->getPendingTargets);
+		$a['todayTargets'] = $this->loadInfo($this->getTodayTargets);
 		return $a;
 	} // fetchInfo
 

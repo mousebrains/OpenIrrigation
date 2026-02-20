@@ -114,33 +114,37 @@ function buildTargetMap(arr) {
 	return map;
 }
 
-function colorCell(key, dt, targetMap, id, d) {
-	const target = (id in targetMap) && (d in targetMap[id]) ? targetMap[id][d] : 0;
+function colorCell(key, dt, target) {
 	if (target > 0 && dt / target <= 0.95) {
-		$(key).css('background-color', '#ffe0b2');
+		$(key).css('background-color', '#ffe0b2').attr('title', `Target: ${mkTime(target)}`);
 	} else {
-		$(key).css('background-color', '');
+		$(key).css('background-color', '').removeAttr('title');
 	}
 }
 
 function displayTimes(data) {
-	const past = {}; // indexed by pgmdate/station
-	const pending = {}; // indexed by pgmdate/station
+	const past = {}; // indexed by sensor/date
+	const pending = {}; // indexed by sensor/date
 	const pastTargets = buildTargetMap(data.pastTargets || []);
 	const pendingTargets = buildTargetMap(data.pendingTargets || []);
+	const todayTargets = {};
+	(data.todayTargets || []).forEach((x) => {
+		todayTargets[x[0]] = parseFloat(x[1]);
+	});
+	const today = myInfo.today;
 
 	if ('timeouts' in myInfo) { // Clear existing timeouts
 		Object.values(myInfo.timeouts).forEach((id) => { clearTimeout(id); });
 	}
 	myInfo.timeouts = {};
 
+	// First pass: populate maps and set cell HTML (no coloring yet)
 	data.past.forEach((x) => {
 		const id = x[0];
 		const d = x[1];
 		const dt = parseFloat(x[2]);
 		const key = mkKey(id, d, 'past2col');
 		$(key).html(mkTime(dt));
-		colorCell(key, dt, pastTargets, id, d);
 		if (!(id in past)) {past[id] = {};}
 		past[id][d] = dt;
 	});
@@ -150,9 +154,34 @@ function displayTimes(data) {
 		const dt = parseFloat(x[2]);
 		const key = mkKey(id, d, 'pending2col');
 		$(key).html(mkTime(dt));
-		colorCell(key, dt, pendingTargets, id, d);
 		if (!(id in pending)) {pending[id] = {};}
 		pending[id][d] = dt;
+	});
+
+	// Second pass: color cells
+	data.past.forEach((x) => {
+		const id = x[0];
+		const d = x[1];
+		const key = mkKey(id, d, 'past2col');
+		if (d === today) {
+			const combined = (past[id][d] || 0) + ((id in pending && today in pending[id]) ? pending[id][today] : 0);
+			colorCell(key, combined, todayTargets[id] || 0);
+		} else {
+			const target = (id in pastTargets) && (d in pastTargets[id]) ? pastTargets[id][d] : 0;
+			colorCell(key, past[id][d], target);
+		}
+	});
+	data.pending.forEach((x) => {
+		const id = x[0];
+		const d = x[1];
+		const key = mkKey(id, d, 'pending2col');
+		if (d === today) {
+			const combined = ((id in past && today in past[id]) ? past[id][today] : 0) + (pending[id][d] || 0);
+			colorCell(key, combined, todayTargets[id] || 0);
+		} else {
+			const target = (id in pendingTargets) && (d in pendingTargets[id]) ? pendingTargets[id][d] : 0;
+			colorCell(key, pending[id][d], target);
+		}
 	});
 
 	OI_clearTimeouts();
