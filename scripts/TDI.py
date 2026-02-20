@@ -9,25 +9,28 @@ def mkList(items:list) -> list:
     """ Convert a single item into a list """
     return items if isinstance(items, list) else [items]
 
-class Error(Base):
+class ErrorPoll(Base):
     """ Get errors 0E -> 1EXX """
+    REQUIRED_PARAMS = ['errorPeriod', 'errorSQL']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
             serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'ERR', params['errorPeriod'],
                 '0E', None, (1,), params['errorSQL'], params['zeeSQL'])
 
-class Current(Base):
+class CurrentPoll(Base):
     """ Get current 0U -> 1UXXXXYYYY """
+    REQUIRED_PARAMS = ['currentPeriod', 'currentSQL']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
             serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Current', params['currentPeriod'],
                 '0U', None, (2,2), params['currentSQL'], params['zeeSQL'])
 
 
-class Pee(Base):
+class PathStatusPoll(Base):
     """ 0PXXYY -> 12XXZZZZ (Path?)
         I don't know how this is different than 02
     """
+    REQUIRED_PARAMS = ['peePeriod', 'peeSQL', 'peeChannels']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
             serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Pee', params['peePeriod'],
@@ -41,18 +44,20 @@ class Pee(Base):
         (channel, val) = args
         self._procReplyChanged(t, reply, args, channel, val)
 
-class Pound(Base):
+class StationCountPoll(Base):
     """ 0#XX -> 1#XX
         Number of stations in controller
     """
+    REQUIRED_PARAMS = ['numberPeriod', 'numberSQL', 'numberStations']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
             serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Pound', params['numberPeriod'],
                 '0#', (1,), (1,), params['numberSQL'], params['zeeSQL'])
         self.addArgs((params['numberStations'], ))
 
-class Sensor(Base):
+class SensorPoll(Base):
     """ 0SXX -> 1SXXYYZZZZ """
+    REQUIRED_PARAMS = ['sensorPeriod', 'sensorSQL', 'sensorChannels']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
             serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Sensor', params['sensorPeriod'],
@@ -72,7 +77,8 @@ class Sensor(Base):
         else:
             self.logger.debug('Dropped reading t=%s %s %s', t, reply, args)
 
-class Two(Base): # 02XXYY -> 12XXZZ
+class WirePathPoll(Base): # 02XXYY -> 12XXZZ
+    REQUIRED_PARAMS = ['twoPeriod', 'twoSQL', 'twoChannels']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
             serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Two', params['twoPeriod'],
@@ -86,9 +92,22 @@ class Two(Base): # 02XXYY -> 12XXZZ
         (channel, val) = args
         self._procReplyChanged(t, reply, args, channel, val)
 
-class Version(Base): # 0V -> 1EZ...Z
+class VersionPoll(Base): # 0V -> 1EZ...Z
+    REQUIRED_PARAMS = ['versionPeriod', 'versionSQL']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
             serial:serial.Serial, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Version', params['versionPeriod'],
                 '0V', None, None, params['versionSQL'], params['zeeSQL'])
         self.msgHandler.qString = True # A string argument
+
+# Registry of all polling classes -- TDIserver iterates this to start threads
+# and to build the required-params validation list.
+POLLING_CLASSES = [
+    ErrorPoll,
+    CurrentPoll,
+    PathStatusPoll,
+    StationCountPoll,
+    SensorPoll,
+    WirePathPoll,
+    VersionPoll,
+]

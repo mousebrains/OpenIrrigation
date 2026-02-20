@@ -14,6 +14,7 @@ import select
 import random
 import math
 from MyBaseThread import MyBaseThread
+from TDIconstants import SYNC, ACK, NAK, compute_checksum, verify_checksum
 
 def mkSerial(args, params, logger, qExcept):
     if args.simulate:
@@ -96,7 +97,7 @@ class TDISimul(MyBaseThread):
     def runMain(self): # Called on thread.start
         args = self.args
         self.logger.info('Starting fd=%s', self.fd)
-        while True: # Loop forever reading a message, responding, all in a single thread
+        while self.should_run: # Loop reading a message, responding, all in a single thread
             msg = self.readMessage()
             if not msg: # No response needed
                 continue
@@ -107,8 +108,7 @@ class TDISimul(MyBaseThread):
                 self.procMessage(msg)
 
     def readMessage(self):
-        SYNC = b'\x16' # Sync which indicates the start of a message
-        NAK = b'\x15\r' # Not acknowledge
+        NAK_CR = NAK + b'\r'
         logger = self.logger
 
         c = os.read(self.fd, 1) # Read a byte which should be a SYNC character
@@ -120,48 +120,35 @@ class TDISimul(MyBaseThread):
         hdr = self.read(t1, 2) # Read 2 bytes for the length of the message
         if hdr is None:
             logger.warning("Didn't get two byte length field, %s", hdr)
-            os.write(self.fd, NAK) # Send back a NAK, there was a problem
+            os.write(self.fd, NAK_CR) # Send back a NAK, there was a problem
             return None
         try: # Try converting to string and integer
-            msgLen = int(str(hdr, 'utf-8'), 16) # msg length
+            msgLen = int(hdr.decode('ascii'), 16) # msg length
         except Exception as e:
             logger.warning('Error converting length %s to a hex number, %s', hdr, e)
-            os.write(self.fd, NAK) # Send back a NAK, there was a problem
+            os.write(self.fd, NAK_CR) # Send back a NAK, there was a problem
             return None
         body = self.read(t1, msgLen) # Read message body
         if body is None: # Not enough read
             logger.warning("Didn't get %s bytes while reading body", msgLen)
-            os.write(self.fd, NAK) # Send back a NAK, there was a problem
+            os.write(self.fd, NAK_CR) # Send back a NAK, there was a problem
             return None
         chkSum = self.read(t1, 2) # Read checksum
         if chkSum is None: # Not enough read
             logger.warning("Didn't get 2 bytes while reading checksum, %s", hdr + body)
-            os.write(self.fd, NAK) # Send back a NAK, there was a problem
+            os.write(self.fd, NAK_CR) # Send back a NAK, there was a problem
             return None
-        try: # Try converting to string and integer
-            csum = int(str(chkSum, 'utf-8'), 16) # check sum
-        except Exception:
-            logger.warning('Error converting checksum %s to a hex number, %s', chkSum, hdr + body)
-            os.write(self.fd, NAK) # Send back a NAK, there was a problem
-            return None
-        asum = 0
-        for c in hdr: asum += c
-        for c in body: asum += c
-        if (asum & 0xff) != csum: # Checksum mismatch
-            logger.warning('Checksum missmatch %s!=%s for %s',asum & 0xff, csum, hdr + body + chkSum)
-            os.write(self.fd, NAK) # Send back a NAK, there was a problem
+        if not verify_checksum(hdr, body, chkSum): # Checksum mismatch
+            logger.warning('Checksum mismatch for %s', hdr + body + chkSum)
+            os.write(self.fd, NAK_CR) # Send back a NAK, there was a problem
             return None
         if self.args.simNAK and (self.args.simNAK > random.random()):
             self.logger.info('Generate a random NAK for %s', hdr + body + chkSum)
-            os.write(self.fd, NAK)
+            os.write(self.fd, NAK_CR)
             return None
         return body
 
     def procMessage(self, msg):
-        SYNC = b'\x16' # Sync character to indicate the start of a message
-        NAK = b'\x15' # Not acknowledge
-        ACK = b'\x06' # Acknowledge
-
         self.logger.debug('Received %s', msg)
 
         codigo = msg[0:2]
@@ -209,7 +196,7 @@ class TDISimul(MyBaseThread):
         elif self.args.simLenMore and (self.args.simLenMore > random.random()):
             n = random.randrange(n+1,256)
             self.logger.info('Increased length from %s to %s', len(body), n)
-        msg = bytearray('{:02X}'.format(n), 'utf-8') + body
+        msg = bytearray('{:02X}'.format(n).encode('ascii')) + body
         if self.args.simBadLen0 and (self.args.simBadLen0 > random.random()):
             c = msg[0]
             msg[0] = random.randrange(256)
@@ -219,9 +206,7 @@ class TDISimul(MyBaseThread):
             msg[1] = random.randrange(256)
             self.logger.info('Changed second length byte %s to %s', c, bytes(msg))
 
-        chkSum = 0
-        for c in msg: chkSum += c
-        msg += bytes('{:02X}'.format(chkSum & 0xff), 'utf-8')
+        msg += '{:02X}'.format(compute_checksum(bytes(msg))).encode('ascii')
         if self.args.simBad and (self.args.simBad > random.random()):
             msg2 = bytearray(msg)
             msg[random.randrange(len(msg))] = random.randrange(256)
@@ -239,14 +224,14 @@ class TDISimul(MyBaseThread):
 
     def chkLength(self, n, codigo, body):
         if not body and n > 0: # Body empty but we want something
-            self.logger.warning('Messge empty for %s, wanted %s bytes', codigo, n)
+            self.logger.warning('Message empty for %s, wanted %s bytes', codigo, n)
             return self.cmdZ(codigo, body, 1)
         if len(body) == n: return None
         return self.cmdZ(codigo, body, 1 if len(body) < n else 2)
 
     def convert2Hex(self, codigo, body, item):
         try:
-            return int(str(item, 'utf-8'), 16)
+            return int(item.decode('ascii'), 16)
         except Exception:
             self.logger.warning('Error converting %s to an hex number for %s', item, codigo + body)
         return self.cmdZ(codigo, body, 0)
@@ -286,11 +271,11 @@ class TDISimul(MyBaseThread):
 
         if YY == 0xff:
             return (dt0, dt1,
-                    b'12'+body[0:2]+bytes(fmt.format(self.wirePaths[XX]), 'utf-8'))
+                    b'12'+body[0:2]+fmt.format(self.wirePaths[XX]).encode('ascii'))
 
         self.wirePaths[XX] = (YY == 1)
 
-        return (dt0, dt1, b'12'+body[0:2]+bytes(fmt.format(sum(self.wirePaths)), 'utf-8'))
+        return (dt0, dt1, b'12'+body[0:2]+fmt.format(sum(self.wirePaths)).encode('ascii'))
 
     def cmdPath(self, codigo, body): # 2-wire path enable/disable/queury
         # I don't know how this is different from 02 other than the return format
@@ -326,7 +311,7 @@ class TDISimul(MyBaseThread):
 
         return (0.05 * (0.5 + random.random()),
                 0.05 * (0.5 + random.random()),
-                b'1S' + body + bytes('{:02X}{:04X}'.format(flag, math.floor(freq * 10)), 'utf-8'))
+                b'1S' + body + '{:02X}{:04X}'.format(flag, math.floor(freq * 10)).encode('ascii'))
 
     def cmdTest(self, codigo, body): # Test a valve
         a = self.chkLength(2, codigo, body)
@@ -339,7 +324,7 @@ class TDISimul(MyBaseThread):
             (pre, peak, post) = (0, 0, 0)
         return (0.05 * (0.5 + random.random()),
                 0.15 * (0.5 + random.random()),
-                b'1T' + bytes('{:02X}{:04X}{:04X}{:04X}'.format(XX, pre, peak, post), 'utf-8'))
+                b'1T' + '{:02X}{:04X}{:04X}{:04X}'.format(XX, pre, peak, post).encode('ascii'))
 
     def cmdU(self, codigo, body): # Current draw of system
         a = self.chkLength(0, codigo, body)
@@ -349,7 +334,7 @@ class TDISimul(MyBaseThread):
         current = random.randrange(23,31) + math.floor(n * random.uniform(45,55))
         return (0.05 * (0.5 + random.random()),
                 0.15 * (0.5 + random.random()),
-                b'1U' + bytes('{:04X}{:04X}'.format(voltage, current), 'utf-8'))
+                b'1U' + '{:04X}{:04X}'.format(voltage, current).encode('ascii'))
 
     def cmdValveOff(self, codigo, body): # Turn a valve on if not already on
         a = self.chkLength(2, codigo, body)
@@ -366,7 +351,7 @@ class TDISimul(MyBaseThread):
 
         return (0.05 * (0.5 + random.random()),
                 0.25 * (0.5 + random.random()),
-                b'1D' + bytes('{:02X}{:02X}'.format(XX, YY), 'utf-8'))
+                b'1D' + '{:02X}{:02X}'.format(XX, YY).encode('ascii'))
 
     def cmdValveOn(self, codigo, body): # Turn a valve on if not already on
         a = self.chkLength(4, codigo, body)
@@ -389,7 +374,7 @@ class TDISimul(MyBaseThread):
         return (0.05 * (0.5 + random.random()),
                 0.25 * (0.5 + random.random()),
                 b'1A' +
-                bytes('{:02X}{:02X}{:04X}{:04X}{:04X}'.format(XX, ZZ, pre, peak, post), 'utf-8'))
+                '{:02X}{:02X}{:04X}{:04X}{:04X}'.format(XX, ZZ, pre, peak, post).encode('ascii'))
 
     def cmdVersion(self, codigo, body): # Version queury
         a = self.chkLength(0, codigo, body)
@@ -401,4 +386,4 @@ class TDISimul(MyBaseThread):
     def cmdZ(self, codigo, body, reason): # Unknown sentence, but checksum okay
         return (0.05 * (0.5 + random.random()),
                 0.05 * (0.5 + random.random()),
-                b'1Z' + codigo[1:2] + bytes('{:02X}'.format(reason), 'utf-8') + b'00')
+                b'1Z' + codigo[1:2] + '{:02X}'.format(reason).encode('ascii') + b'00')

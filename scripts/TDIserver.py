@@ -47,16 +47,9 @@ try:
     if not args.simulate:
         required.extend(['port', 'baudrate'])
     if not args.noPeriodic:
-        required.extend([
-            'errorPeriod', 'errorSQL',
-            'currentPeriod', 'currentSQL',
-            'peePeriod', 'peeSQL', 'peeChannels',
-            'numberPeriod', 'numberSQL', 'numberStations',
-            'sensorPeriod', 'sensorSQL', 'sensorChannels',
-            'twoPeriod', 'twoSQL', 'twoChannels',
-            'versionPeriod', 'versionSQL',
-            'zeeSQL',
-        ])
+        required.append('zeeSQL')
+        for cls in TDI.POLLING_CLASSES:
+            required.extend(cls.REQUIRED_PARAMS)
     missing = [k for k in required if k not in params]
     if missing:
         raise ValueError('Missing required parameters: {}'.format(missing))
@@ -67,13 +60,8 @@ try:
     thrDBout = DB.DBout(args, logger, qExcept) # Queue to send SQL commands to
     threads = [thrSerial, thrValve, thrDBout]
     if not args.noPeriodic: # Don't start periodic events when testing valves
-        threads.append(TDI.Error(params, logger, qExcept, thrSerial, thrDBout))
-        threads.append(TDI.Pee(params, logger, qExcept, thrSerial, thrDBout))
-        threads.append(TDI.Pound(params, logger, qExcept, thrSerial, thrDBout))
-        threads.append(TDI.Sensor(params, logger, qExcept, thrSerial, thrDBout))
-        threads.append(TDI.Two(params, logger, qExcept, thrSerial, thrDBout))
-        threads.append(TDI.Version(params, logger, qExcept, thrSerial, thrDBout))
-        threads.append(TDI.Current(params, logger, qExcept, thrSerial, thrDBout))
+        for cls in TDI.POLLING_CLASSES:
+            threads.append(cls(params, logger, qExcept, thrSerial, thrDBout))
     for thr in threads: thr.start()
 
     thrDBout.putShort('SELECT simulate_insert(%s);', (True if args.simulate else False,))
@@ -87,5 +75,10 @@ except Exception as e:
     db = DB.DB(args.db, logger)
     db.updateState(myName, repr(e))
 finally:
+    # Signal all threads to stop and wait for them to finish
+    for thr in threads:
+        thr.shutdown()
+    for thr in threads:
+        thr.join(timeout=5)
     if s: s.close() # Close the serial port
     Notify.onException(args, logger)

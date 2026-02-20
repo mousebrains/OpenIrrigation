@@ -21,6 +21,7 @@ class MyBaseThread(threading.Thread):
         self.name = name
         self.logger = logger
         self.qExcept = qExcept
+        self._shutdown = threading.Event()
 
     def run(self) -> None:
         """ Called on thread start. Will pass any exception to qExcept so program can exit """
@@ -29,6 +30,15 @@ class MyBaseThread(threading.Thread):
         except Exception as e:
             self.logger.exception('Unexpected exception')
             self.qExcept.put(e)
+
+    @property
+    def should_run(self) -> bool:
+        """Returns True while the thread should keep running."""
+        return not self._shutdown.is_set()
+
+    def shutdown(self) -> None:
+        """Signal this thread to stop at the next opportunity."""
+        self._shutdown.set()
 
     def runMain(self) -> None:
         """ This method should be overridden by the class derived from me """

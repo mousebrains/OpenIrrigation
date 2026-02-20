@@ -6,12 +6,10 @@ import queue
 import time
 import random
 
-class MessageHandler: # construct/deconstruct TDI messages
-    def __init__(self, logger, cmd, argInfo, replyInfo, sql):
+class TDICodec: # construct/deconstruct TDI protocol messages
+    def __init__(self, logger, cmd, argInfo, replyInfo):
         self.logger = logger
-        self.cmd = bytes(cmd, 'utf-8') if isinstance(cmd, str) else cmd
-        self.sql = sql
-        self.queue = queue.Queue()
+        self.cmd = cmd.encode('ascii') if isinstance(cmd, str) else cmd
         self.argLimit = []
         self.argFormat = []
         self.replyStart = []
@@ -30,10 +28,6 @@ class MessageHandler: # construct/deconstruct TDI messages
                 offset += 2 * n
                 self.replyEnd.append(offset)
                 self.replyLength = offset
-
-    def put(self, t, args): self.queue.put((t, args))
-    def get(self, timeout=None): return self.queue.get(timeout=timeout)
-    def task_done(self): return self.queue.task_done()
 
     def buildMessage(self, args):
         if not args: # No arguments supplied
@@ -61,12 +55,12 @@ class MessageHandler: # construct/deconstruct TDI messages
                         self.cmd, i, val, self.argLimit[i])
                 return None
             msg += self.argFormat[i].format(val)
-        return self.cmd + bytes(msg, 'utf-8')
+        return self.cmd + msg.encode('ascii')
 
     def procReplyArgs(self, msg): # Chop up message into arguments
         if self.qString:
             try:
-                return (str(msg[2:], 'utf-8'),) # A single string argument
+                return (msg[2:].decode('ascii'),) # A single string argument
             except Exception:
                 self.logger.warning('Unable to convert %s to a string', msg[2:])
                 return (msg[2:],) # A single bytes argument
@@ -82,12 +76,28 @@ class MessageHandler: # construct/deconstruct TDI messages
             i1 = self.replyEnd[i]
             c = msg[i0:i1]
             try:
-                val = int(str(c, 'utf-8'), 16)
+                val = int(c.decode('ascii'), 16)
                 args.append(val)
             except Exception:
                 self.logger.error('Error converting %s to a hex number in %s', c, msg)
                 return None
         return args
+
+
+class MessageHandler(TDICodec): # TDICodec with a reply queue for polling threads
+    def __init__(self, logger, cmd, argInfo, replyInfo, sql):
+        super().__init__(logger, cmd, argInfo, replyInfo)
+        self.sql = sql
+        self.queue = queue.Queue()
+
+    def put(self, t, args): self.queue.put((t, args))
+    def get(self, timeout=None): return self.queue.get(timeout=timeout)
+    def task_done(self): return self.queue.task_done()
+
+def is_zee_reply(reply):
+    """Check if a reply is a Zee (1Z) error message. Returns True if so."""
+    return reply and (len(reply) > 1) and (reply[1:2] == b'Z')
+
 
 def parseZee(msg, logger): # Parse and build reply for 1Z messages
     if (not msg) or (len(msg) != 7) or (msg[1:2] != b'Z'):
@@ -95,17 +105,17 @@ def parseZee(msg, logger): # Parse and build reply for 1Z messages
         return None
     args = []
     try:
-        args.append(str(msg[2:3], 'utf-8'))
+        args.append(msg[2:3].decode('ascii'))
     except Exception as e:
         logger.warning('Unable to convert %s to a string in %s, %s', msg[2:3], msg, e)
         return None
     try:
-        args.append(int(str(msg[3:5], 'utf-8'), 16))
+        args.append(int(msg[3:5].decode('ascii'), 16))
     except Exception as e:
         logger.warning('Unable to convert %s in %s, %s', msg[3:5], msg, e)
         return None
     try:
-        args.append(int(str(msg[5:], 'utf-8'), 16))
+        args.append(int(msg[5:].decode('ascii'), 16))
     except Exception as e:
         logger.warning('Unable to convert %s in %s, %s', msg[5:], msg, e)
         return None
@@ -140,7 +150,7 @@ class Base(MyBaseThread):
         logger.info('Starting dt=%s cmd=%s initial sleep %s seconds',
                 dt, self.msgHandler.cmd, initialDelay)
         time.sleep(initialDelay)
-        while True:
+        while self.should_run:
             for item in args: # Loop over arguments
                 msg = msgHandler.buildMessage(item)
                 serial.put(msg, self.msgHandler)
@@ -153,7 +163,7 @@ class Base(MyBaseThread):
                 self.msgHandler.task_done()
                 if not reply:
                     logger.warning('Timeout for %s', msg)
-                elif (len(reply) > 1) and (reply[1:2] == b'Z'):
+                elif is_zee_reply(reply):
                     replyArgs = parseZee(reply, logger)
                     logger.warning('Zee reply, %s, for %s, SQL=%s args=%s',
                             reply, msg, self.zeeSQL, replyArgs)

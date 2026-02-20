@@ -1,7 +1,8 @@
 # Do valve operations for the TDI controller
 
 from MyBaseThread import MyBaseThread
-from TDIbase import MessageHandler,parseZee
+from TDIbase import TDICodec,parseZee,is_zee_reply
+from TDIconstants import CMD_ON, CMD_OFF, CMD_TEST
 import DB
 import psycopg
 import argparse
@@ -36,9 +37,9 @@ class ValveOps(MyBaseThread):
         self.dbName = args.db
         self.listen = DB.Listen(self.dbName, self.listenName, logger)
         self.queue: queue.Queue = queue.Queue() # Reply queue from serial
-        self.msgOn   = MessageHandler(logger, '0A', (1,1), (1,1,2,2,2), None)
-        self.msgOff  = MessageHandler(logger, '0D', (1,), (1,1), None)
-        self.msgTest = MessageHandler(logger, '0T', (1,), (1,2,2,2), None)
+        self.msgOn   = TDICodec(logger, '0A', (1,1), (1,1,2,2,2))
+        self.msgOff  = TDICodec(logger, '0D', (1,), (1,1))
+        self.msgTest = TDICodec(logger, '0T', (1,), (1,2,2,2))
         self.db = DB.DB(args.db, logger)
         self.controller = None
 
@@ -58,7 +59,7 @@ class ValveOps(MyBaseThread):
         self.logger.info('Starting db=%s channel=%s controller=%s',
                 self.dbName, self.listenName, self.controller)
         tNext = self.nextTime() # Get the next wakeup time
-        while True:
+        while self.should_run:
             dt = tNext - time.time()
             if dt <= 0:
                 self.doPending() # Execute any pending commands
@@ -77,24 +78,24 @@ class ValveOps(MyBaseThread):
 
     def doPending(self) -> None:
         """ Get the pending events and execute them """
-        with self.db.cursor() as cur0, self.db.cursor() as cur1:
+        with self.db.cursor() as cur:
             sql = "SELECT id,addr,name,cmd FROM command" \
                     + " WHERE EXTRACT(EPOCH FROM timestamp) <= %s AND controller=%s" \
                     + " ORDER BY timestamp"
-            cur0.execute(sql, (time.time(),self.controller))
-            rows = cur0.fetchall()
+            cur.execute(sql, (time.time(),self.controller))
+            rows = cur.fetchall()
             for row in rows:
                 cmd = row[-1]
                 self.logger.debug('doPending row=%s', row)
-                if cmd == 0:  # On command
-                    self.valveOn(row[0], row[1], row[2], cur1)
-                elif cmd == 1:  # Off command
-                    self.valveOff(row[0], row[1], row[2], cur1)
-                elif cmd == 2:  # Test command
-                    self.valveTest(row[0], row[1], row[2], cur1)
+                if cmd == CMD_ON:
+                    self.valveOn(row[0], row[1], row[2], cur)
+                elif cmd == CMD_OFF:
+                    self.valveOff(row[0], row[1], row[2], cur)
+                elif cmd == CMD_TEST:
+                    self.valveTest(row[0], row[1], row[2], cur)
                 else:
                     self.logger.warning('Invalid command, %s, for command row %s', cmd, row)
-                    self.dbExec(cur1, 'DELETE FROM command WHERE id=%s', (row[0],))
+                    self.dbExec(cur, 'DELETE FROM command WHERE id=%s', (row[0],))
 
 
     def nextTime(self) -> float:
@@ -110,7 +111,7 @@ class ValveOps(MyBaseThread):
 
 
     def chkZee(self, cur:psycopg.Cursor, msg:str, t:datetime.datetime, reply:str) -> bool:
-        if reply and (len(reply) > 1) and (reply[1:2] == b'Z'):
+        if is_zee_reply(reply):
             args = parseZee(reply, self.logger)
             if args:
                 sql = 'SELECT zeeInsert(%s,%s,%s,%s,%s,%s);'
@@ -130,6 +131,7 @@ class ValveOps(MyBaseThread):
         (tOn, nOn)  = self.onInfo(cur, addr)
         if tOn:
             logger.warning('%s(%s) was turned on at %s', name, addr, tOn)
+            # Intentional fall-through: re-affirm the on command to the controller
         elif nOn is not None and nOn >= self.maxStations:  # Not on but over limit
             logger.warning('Maximum number of stations, %s, reached for %s(%s), nOn=%s',
                     self.maxStations, name, addr, nOn)
@@ -151,7 +153,7 @@ class ValveOps(MyBaseThread):
                 continue
             t = datetime.datetime.fromtimestamp(t).astimezone()
             if self.chkZee(cur, msg, t, reply):
-                self.logger.warning('Valve on recieved a Zee message, %s, in reply to %s',
+                self.logger.warning('Valve on received a Zee message, %s, in reply to %s',
                         reply, msg)
                 continue
             args = self.msgOn.procReplyArgs(reply)
@@ -192,7 +194,7 @@ class ValveOps(MyBaseThread):
                 continue
             t = datetime.datetime.fromtimestamp(t).astimezone()
             if self.chkZee(cur, msg, t, reply):
-                self.logger.warning('Valve off recieved a Zee message, %s, in reply to %s',
+                self.logger.warning('Valve off received a Zee message, %s, in reply to %s',
                         reply, msg)
                 continue
             args = self.msgOff.procReplyArgs(reply)
@@ -235,7 +237,7 @@ class ValveOps(MyBaseThread):
             return False
         t = datetime.datetime.fromtimestamp(t).astimezone()
         if self.chkZee(cur, msg, t, reply):
-            self.logger.warning('Valve off recieved a Zee message, %s, in reply to %s', reply, msg)
+            self.logger.warning('Valve test received a Zee message, %s, in reply to %s', reply, msg)
             self.dbExec(cur, sqlFail, (cmdID, ERR_TEST_ZEE))
             return False
         args = self.msgTest.procReplyArgs(reply)
