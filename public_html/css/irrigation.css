@@ -230,6 +230,9 @@ input[type='number'] {
 	min-width: 80px;
 }
 
+/* === Utility Classes === */
+.cell-bold { font-weight: bold; }
+
 /* === Responsive: Small Screens === */
 @media (max-width: 600px) {
 	#statusLeft { float: none; }

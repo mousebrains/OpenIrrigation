@@ -66,7 +66,7 @@ function mkBodyRow(id, name, program, rowCount) {
 		++cnt;
 	});
 
-	line += `<th${color}>${escapeHTML(name)}</th><th${color}>${escapeHTML(program)}</th>`;
+	line += `<td class='cell-bold'${color}>${escapeHTML(name)}</td><td class='cell-bold'${color}>${escapeHTML(program)}</td>`;
 
 	myInfo.pendingDates.forEach(() => {
 		line += `<td id='R${id}C${cnt}'></td>`;

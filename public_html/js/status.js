@@ -8,8 +8,6 @@ function updateSystemctlStatus(val, id) {
 
 function updateSystemctl(info) {
 	if (info.length !== 2) {
-		console.log('Invalid systemctl info block');
-		console.log(info);
 		return;
 	}
 	updateSystemctlStatus(info[0], '#statusOITDI');

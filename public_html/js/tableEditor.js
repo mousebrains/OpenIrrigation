@@ -241,8 +241,6 @@ function receivedStatus(event) {
 			updateActions($(trID));
 			return;
 		}
-		console.log(`Unrecognized action, "${data['action']}"`);
-		console.log(data);
 		return;
 	}
 	if ('data' in data) {buildBody(data['data']);}

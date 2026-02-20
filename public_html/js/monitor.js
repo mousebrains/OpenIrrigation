@@ -18,12 +18,12 @@ function buildActions(pocs) {
 
 function getStationName(id) {
 	return ('stn2name' in myInfo) && (id in myInfo['stn2name']) ?
-		myInfo['stn2name'][id] : 'Got Me!';
+		myInfo['stn2name'][id] : 'Unknown station';
 }
 
 function getProgramName(id) {
 	return ('pgm2name' in myInfo) && (id in myInfo['pgm2name']) ?
-		myInfo['pgm2name'][id] : 'Got Me!';
+		myInfo['pgm2name'][id] : 'Unknown program';
 }
 
 function formatTime(t) {

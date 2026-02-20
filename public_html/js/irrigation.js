@@ -110,8 +110,6 @@ function OI_connectSSE(url, onMessage) {
 
 function OI_processSubmit(event, url, formData) { // Submission of form data to url
 	// Form submission and alert on failure
-	console.log(url);
-	console.log(formData);
 	$.ajax({
 		type: 'POST', // Post the form data
 		url: url, // Script to process this form
@@ -119,7 +117,6 @@ function OI_processSubmit(event, url, formData) { // Submission of form data to 
 		dataType: 'json', // returned data format
 		encode: true
 	}).done((data) => {
-		console.log(data);
 		if (('success' in data) && !data['success']) {
 			OI_toast(data['message'], true);
 		}
