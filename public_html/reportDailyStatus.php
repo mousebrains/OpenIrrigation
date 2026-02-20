@@ -11,8 +11,8 @@ echo "retry: 10000\n\n";
 class ReportDB {
 	/** @var array<mixed> */
 	private array $errors = [];
-	private int $daysBack = 9; # Days from current date to look backwards
-	private int $daysFwd =  9; # Days from current date to look forwards
+	private int $daysBack = 9; // Days from current date to look backwards
+	private int $daysFwd =  9; // Days from current date to look forwards
 	private PDO $db;
 	private PDOStatement $getPast;
 	private PDOStatement $getPending;
@@ -23,12 +23,8 @@ class ReportDB {
 	private PDOStatement $getPastTargets;
 	private PDOStatement $getPendingTargets;
 
-	function __construct(string $dbName) {
-		try {
-			$db = new PDO("pgsql:dbname=$dbName;");
-		} catch (\PDOException $e) {
-			throw $e;
-		}
+	public function __construct(string $dbName) {
+		$db = new PDO("pgsql:dbname=$dbName;");
 		$this->db = $db;
 
 		$this->getPast = $db->prepare("SELECT "
@@ -92,14 +88,14 @@ class ReportDB {
 	} // __construct
 
 	/** @return array<string, mixed> */
-	function notifications(int $dt): array {
+	public function notifications(int $dt): array {
 		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
 		if (!$a) return [];
 		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	} // notifications
 
 	/** @return array<string, mixed> */
-	function fetchInfo(): array { # Get all the pending and active actions
+	public function fetchInfo(): array { // Get all the pending and active actions
 		$this->errors = [];
 		$a = $this->getDates();
 		$a['active'] = $this->loadInfo($this->getActive);
@@ -110,17 +106,17 @@ class ReportDB {
 		return $a;
 	} // fetchInfo
 
-	function fetchInitial(): string {
+	public function fetchInitial(): string {
 		$a = $this->fetchInfo();
 		$a['info'] = $this->fetchStations();
 		if (!empty($this->errors)) {
 			$a['errors'] = $this->errors;
 			$this->errors = [];
 		}
-		return json_encode($a);
+		return json_encode($a, JSON_THROW_ON_ERROR);
 	} // fetchInitial
 	
-	function exec(PDOStatement $stmt): bool {
+	private function exec(PDOStatement $stmt): bool {
 		if ($stmt->execute([]) === false) {
 			$this->errors[] = $stmt->errorInfo();
 			return false;
@@ -129,27 +125,27 @@ class ReportDB {
 	} // exec
 
 	/** @return array<int, array<int, mixed>> */
-	function loadInfo(PDOStatement $stmt): array { # Read all the rows from a result and return an array
+	private function loadInfo(PDOStatement $stmt): array { // Read all the rows from a result and return an array
 		if (!$this->exec($stmt)) return [];
 		return $stmt->fetchAll(PDO::FETCH_NUM);
 	} // loadInfo
 
 	/** @return array<string, mixed> */
-	function getDates(): array { # Get start/end date range
+	private function getDates(): array { // Get start/end date range
 		$stmt = $this->getDates;
 		if (!$this->exec($stmt)) return [];
-		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) return $row;
-		return []; // This should never be reached
+		$row = $stmt->fetch(PDO::FETCH_ASSOC);
+		return $row !== false ? $row : [];
 	} // getDates
 
 	/** @return array<int, array<int|string, mixed>> */
-	function fetchStations(): array { # Get sensor/name and program/label 
+	private function fetchStations(): array { // Get sensor/name and program/label
 		$stmt = $this->getPgmStn;
 		if (!$this->exec($stmt)) return [];
 		$s2p = [];
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 			$stn = $row['station'];
-			if (!array_key_exists($stn, $s2p)) {
+			if (!isset($s2p[$stn])) {
 				$s2p[$stn] = [];
 			}
 			$s2p[$stn][] = $row['label'];
@@ -161,7 +157,7 @@ class ReportDB {
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
 			$id = $row['id'];
 			$b = [$row['sensor'], $row['name'],
-				array_key_exists($id, $s2p) ? implode(', ', $s2p[$id]) : ''];
+				isset($s2p[$id]) ? implode(', ', $s2p[$id]) : ''];
 			$a[] = $b;
 		}
 
@@ -182,7 +178,7 @@ try {
 
 echo "data: " . $db->fetchInitial() . "\n\n";
 
-while (!connection_aborted()) { # Wait until client disconnects
+while (!connection_aborted()) { // Wait until client disconnects
 	if (ob_get_length()) {ob_flush();} // Flush output buffer
 	flush();
 	try {

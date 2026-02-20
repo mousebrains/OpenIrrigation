@@ -1,11 +1,11 @@
-let myInfo = {};
+const myInfo = {};
 
 function addToMyInfo(cnt, t, dateKey, colKey) {
 	const year = t.getUTCFullYear();
 	const mon = t.getUTCMonth() + 1;
-	const dom = ('0' + t.getUTCDate()).slice(-2);
+	const dom = String(t.getUTCDate()).padStart(2, '0');
 	const a = `${mon}-${dom}`;
-	const key = `${year}-${('0' + mon).slice(-2)}-${dom}`;
+	const key = `${year}-${String(mon).padStart(2, '0')}-${dom}`;
 	myInfo[dateKey].push(a);
 	myInfo[colKey][key] = cnt;
 	return cnt + 1;
@@ -16,13 +16,13 @@ function mkDate2Col(earliest, today, latest) {
 	const eTime = new Date(latest); // Latest with UTC midnight
 	let cnt = 0;
 
-	myInfo['earliest'] = earliest;
-	myInfo['today'] = today;
-	myInfo['latest'] = latest;
-	myInfo['past2col'] = {};
-	myInfo['pending2col'] = {};
-	myInfo['pastDates'] = [];
-	myInfo['pendingDates'] = [];
+	myInfo.earliest = earliest;
+	myInfo.today = today;
+	myInfo.latest = latest;
+	myInfo.past2col = {};
+	myInfo.pending2col = {};
+	myInfo.pastDates = [];
+	myInfo.pendingDates = [];
 
 	for (let t = new Date(earliest); t <= now; t.setDate(t.getDate() + 1)) {
 		cnt = addToMyInfo(cnt, t, 'pastDates', 'past2col');
@@ -36,19 +36,19 @@ function mkDate2Col(earliest, today, latest) {
 function mkHeaders(tbl) {
 	const thead = tbl.find('thead');
 	const tfoot = tbl.find('tfoot');
-	const nPast = myInfo['pastDates'].length;
-	const nPending = myInfo['pendingDates'].length;
+	const nPast = myInfo.pastDates.length;
+	const nPending = myInfo.pendingDates.length;
 	let past = "<tr>";
 	let pending = "<th>Today</th>";
 	const mid =  "<th rowspan='2'>Station</th><th rowspan='2'>Program</th>";
 	const pre = `<tr><th colspan='${nPast}'>Recent</th>`;
 	const post = `<th colspan='${nPending}'>Future</th></tr>`;
 
-	(myInfo['pastDates'].slice(0,-1)).forEach((x) => {
+	myInfo.pastDates.slice(0, -1).forEach((x) => {
 		past += `<th>${x.slice(-5)}</th>`;});
 	past += "<th>Today</th>";
 
-	(myInfo['pendingDates'].slice(1)).forEach((x) => {
+	myInfo.pendingDates.slice(1).forEach((x) => {
 		pending += `<th>${x.slice(-5)}</th>`;});
 
 	thead.append(pre + mid + post);
@@ -61,14 +61,14 @@ function mkBodyRow(id, name, program, rowCount) {
 	const color = ` style='background-color:${(rowCount & 0x01) ? "#fcbe03;'" : "#03cffc;'"}`;
 	let cnt = 0;
 	let line = "<tr>";
-	myInfo['pastDates'].forEach((x) => {
+	myInfo.pastDates.forEach(() => {
 		line += `<td id='R${id}C${cnt}'></td>`;
 		++cnt;
 	});
 
 	line += `<th${color}>${escapeHTML(name)}</th><th${color}>${escapeHTML(program)}</th>`;
 
-	myInfo['pendingDates'].forEach((x) => {
+	myInfo.pendingDates.forEach(() => {
 		line += `<td id='R${id}C${cnt}'></td>`;
 		++cnt;
 	});
@@ -95,7 +95,7 @@ function buildTable(info, earliest, today, latest) {
 function mkTime(dt) {
 	const hours = Math.floor(dt / 3600);
 	const minutes = Math.floor(dt / 60) % 60;
-	return hours + ":" + ("00" + minutes).slice(-2);
+	return `${hours}:${String(minutes).padStart(2, '0')}`;
 }
 
 function mkKey(id, d, key) {
@@ -126,15 +126,15 @@ function colorCell(key, dt, targetMap, id, d) {
 function displayTimes(data) {
 	const past = {}; // indexed by pgmdate/station
 	const pending = {}; // indexed by pgmdate/station
-	const pastTargets = buildTargetMap(data['pastTargets'] || []);
-	const pendingTargets = buildTargetMap(data['pendingTargets'] || []);
+	const pastTargets = buildTargetMap(data.pastTargets || []);
+	const pendingTargets = buildTargetMap(data.pendingTargets || []);
 
 	if ('timeouts' in myInfo) { // Clear existing timeouts
-		for (const key in myInfo['timeouts']) { clearTimeout(myInfo['timeouts'][key]); }
+		Object.values(myInfo.timeouts).forEach((id) => { clearTimeout(id); });
 	}
-	myInfo['timeouts'] = {};
+	myInfo.timeouts = {};
 
-	data['past'].forEach((x) => {
+	data.past.forEach((x) => {
 		const id = x[0];
 		const d = x[1];
 		const dt = parseFloat(x[2]);
@@ -144,7 +144,7 @@ function displayTimes(data) {
 		if (!(id in past)) {past[id] = {};}
 		past[id][d] = dt;
 	});
-	data['pending'].forEach((x) => {
+	data.pending.forEach((x) => {
 		const id = x[0];
 		const d = x[1];
 		const dt = parseFloat(x[2]);
@@ -157,7 +157,7 @@ function displayTimes(data) {
 
 	OI_clearTimeouts();
 
-	data['active'].forEach((x) => {
+	data.active.forEach((x) => {
 		const id = x[0];
 		const d = x[1];
 		const t0 = parseFloat(x[2]);
@@ -174,11 +174,11 @@ function receivedStatus(event) {
 	const data = JSON.parse(event.data);
 	if ('burp' in data) { return; } // Nothing to do on burp messages
 	if (('info' in data)
-		|| (!('earliest' in myInfo) || (myInfo['earliest'] !== data['earliest']))
-		|| (!('today' in myInfo) || (myInfo['today'] !== data['today']))
-		|| (!('latest' in myInfo) || (myInfo['latest'] !== data['latest']))) {
+		|| (!('earliest' in myInfo) || (myInfo.earliest !== data.earliest))
+		|| (!('today' in myInfo) || (myInfo.today !== data.today))
+		|| (!('latest' in myInfo) || (myInfo.latest !== data.latest))) {
 		// rebuild the full table
-		buildTable(data['info'], data['earliest'], data['today'], data['latest']);
+		buildTable(data.info, data.earliest, data.today, data.latest);
 	}
 	if ('active' in data) {displayTimes(data);}
 }
