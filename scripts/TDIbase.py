@@ -124,6 +124,7 @@ def parseZee(msg, logger): # Parse and build reply for 1Z messages
 
 
 class Base(MyBaseThread):
+    REQUIRED_PARAMS: list[str] = []  # Subclasses override with their required param keys
     def __init__(self, logger, qExcept, serial, dbOut, label, dt, cmd, argInfo, replyInfo,
             sql, zeeSQL):
         MyBaseThread.__init__(self, label, logger, qExcept)
