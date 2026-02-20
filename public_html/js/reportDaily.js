@@ -102,9 +102,32 @@ function mkKey(id, d, key) {
 	return `#R${id}C${(((key in myInfo) && (d in myInfo[key])) ? myInfo[key][d] : 'XX')}`;
 }
 
+function buildTargetMap(arr) {
+	const map = {};
+	arr.forEach((x) => {
+		const id = x[0];
+		const d = x[1];
+		const target = parseFloat(x[2]);
+		if (!(id in map)) {map[id] = {};}
+		map[id][d] = target;
+	});
+	return map;
+}
+
+function colorCell(key, dt, targetMap, id, d) {
+	const target = (id in targetMap) && (d in targetMap[id]) ? targetMap[id][d] : 0;
+	if (target > 0 && dt / target <= 0.95) {
+		$(key).css('background-color', '#ffe0b2');
+	} else {
+		$(key).css('background-color', '');
+	}
+}
+
 function displayTimes(data) {
 	const past = {}; // indexed by pgmdate/station
 	const pending = {}; // indexed by pgmdate/station
+	const pastTargets = buildTargetMap(data['pastTargets'] || []);
+	const pendingTargets = buildTargetMap(data['pendingTargets'] || []);
 
 	if ('timeouts' in myInfo) { // Clear existing timeouts
 		for (const key in myInfo['timeouts']) { clearTimeout(myInfo['timeouts'][key]); }
@@ -117,6 +140,7 @@ function displayTimes(data) {
 		const dt = parseFloat(x[2]);
 		const key = mkKey(id, d, 'past2col');
 		$(key).html(mkTime(dt));
+		colorCell(key, dt, pastTargets, id, d);
 		if (!(id in past)) {past[id] = {};}
 		past[id][d] = dt;
 	});
@@ -126,6 +150,7 @@ function displayTimes(data) {
 		const dt = parseFloat(x[2]);
 		const key = mkKey(id, d, 'pending2col');
 		$(key).html(mkTime(dt));
+		colorCell(key, dt, pendingTargets, id, d);
 		if (!(id in pending)) {pending[id] = {};}
 		pending[id][d] = dt;
 	});

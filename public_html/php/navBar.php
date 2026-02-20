@@ -6,12 +6,13 @@
     <div id='top-dropdown-content'>
       <a href='index.php'>Manual Operations</a>
       <a href='reportDaily.php'>Daily Summary</a>
-      <a href='flowGraph.php'>Flow Graph</a>
       <a href='monitor.php'>Monitor Operations</a>
       <a href='tableEditor.php?tbl=program&orderby=name'>Program</a>
-      <a href='tableEditor.php?tbl=site&orderby=name'>Site</a>
       <a href='tableEditor.php?tbl=pgmStn'>Program Station</a>
       <a href='tableEditor.php?tbl=station&orderby=name'>Station</a>
+      <a href='flowGraph.php'>Flow Graph</a>
+      <a href='ET.php'>ET Daily</a>
+      <a href='tableEditor.php?tbl=site&orderby=name'>Site</a>
       <a href='tableEditor.php?tbl=ETStation&orderby=station'>ET Stations</a>
       <a href='tableEditor.php?tbl=usr&orderby=name'>User</a>
       <a href='tableEditor.php?tbl=email&orderby=email'>email</a>
@@ -25,7 +26,6 @@
       <a href='tableEditor.php?tbl=crop&orderby=name'>Crop Edit</a>
       <a href='tableEditor.php?tbl=params&orderby=grp,name'>Parameter Edit</a>
       <a href='tableEditor.php?tbl=webList&orderby=grp,sortOrder,key'>Web Parameter Edit</a>
-      <a href='ET.php'>ET Daily</a>
       <a href='systemctl.php'>Systemctl</a>
       <a href='processState.php'>Process States</a>
     </div>

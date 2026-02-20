@@ -20,6 +20,8 @@ class ReportDB {
 	private PDOStatement $getDates;
 	private PDOStatement $getPgmStn;
 	private PDOStatement $getStations;
+	private PDOStatement $getPastTargets;
+	private PDOStatement $getPendingTargets;
 
 	function __construct(string $dbName) {
 		try {
@@ -67,6 +69,25 @@ class ReportDB {
 		$this->getStations = $db->prepare("SELECT "
 			. "id,sensor,name FROM station ORDER BY name;");
 
+		$this->getPastTargets = $db->prepare("SELECT "
+			. "sub.sensor,sub.date,ROUND(SUM(sub.runTime*60)) AS target"
+			. " FROM ("
+			. "SELECT DISTINCT h.sensor,h.tOn::DATE AS date,ps.id,ps.runTime"
+			. " FROM historical h"
+			. " INNER JOIN pgmStn ps ON ps.id=h.pgmStn"
+			. " WHERE h.tOn>=(CURRENT_DATE - INTERVAL '" . $this->daysBack . " days')"
+			. ") sub"
+			. " GROUP BY sub.sensor,sub.date;");
+
+		$this->getPendingTargets = $db->prepare("SELECT "
+			. "sub.sensor,sub.date,ROUND(SUM(sub.runTime*60)) AS target"
+			. " FROM ("
+			. "SELECT DISTINCT a.sensor,a.tOn::DATE AS date,ps.id,ps.runTime"
+			. " FROM action a"
+			. " INNER JOIN pgmStn ps ON ps.id=a.pgmStn"
+			. ") sub"
+			. " GROUP BY sub.sensor,sub.date;");
+
 		$db->exec("LISTEN action_update;");
 	} // __construct
 
@@ -84,6 +105,8 @@ class ReportDB {
 		$a['active'] = $this->loadInfo($this->getActive);
 		$a['pending'] = $this->loadInfo($this->getPending);
 		$a['past'] = $this->loadInfo($this->getPast);
+		$a['pastTargets'] = $this->loadInfo($this->getPastTargets);
+		$a['pendingTargets'] = $this->loadInfo($this->getPendingTargets);
 		return $a;
 	} // fetchInfo
 
