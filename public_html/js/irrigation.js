@@ -3,7 +3,7 @@
 let OI_timeouts = {}; // map of pending timeouts and when they were generated
 
 function escapeHTML(s) {
-	if (s === null || s === undefined) return '';
+	if (s === null || s === undefined) {return '';}
 	return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 		.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }

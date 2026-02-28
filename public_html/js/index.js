@@ -1,5 +1,5 @@
 let indexInfo = {'active': new Set(), 'pending': new Set(), 'past': new Set(), 'all': new Set()};
-let dtInfo = {'hoursFuture': 12, 'hoursPast': 12};
+const dtInfo = {'hoursFuture': 12, 'hoursPast': 12};
 
 function procForm(event) {
 	const id = $(this).attr('id').slice(-2); // Form's id
