@@ -30,7 +30,7 @@ function mkRefTable(a, x, form) {
 	const qMultiple = col in mySecondaryInfo;
 	const sec = qMultiple ? mySecondaryInfo[col] : null;
 	let msg = `<select name='${col}${qMultiple ? "[]'" : "'"}`;
-	if (a['qrequired'] === true) msg += ' required';
+	if (a['qrequired'] === true) {msg += ' required';}
 	if (qMultiple) {
 		val = (id in sec) ? sec[id].join() : '';  // Redo val for multiples
 		msg += ' multiple';
@@ -55,7 +55,7 @@ function mkTextArea(a, x, form) {
 	const col = a['col'];
 	const val = (x !== null) && (col in x) && (x[col] !== null) ? x[col] : "";
 	let msg = `<textarea rows='2' cols='20' name='${col}'`;
-	if (a['qrequired'] === true) msg += ' required';
+	if (a['qrequired'] === true) {msg += ' required';}
 	msg += form;
 	msg += escapeHTML(val);
 	msg += "</textarea>";
@@ -70,16 +70,16 @@ function mkInputField(a, x, form) {
 	const rawVal = (x !== null) && (col in x) && (x[col] !== null) ? x[col] : null;
 	const val = rawVal === null ? "" : `value='${escapeHTML(rawVal)}'`;
 	let msg = `<input type='${a['inputtype']}'`;
-	if (a['inputtype'] === 'password') msg += " autocomplete='on'";
-	if (a['valmin'] !== null) msg += ` min='${a['valmin']}'`;
-	if (a['valmax'] !== null) msg += ` max='${a['valmax']}'`;
-	if (a['valstep'] !== null) msg += ` step='${a['valstep']}'`;
+	if (a['inputtype'] === 'password') {msg += " autocomplete='on'";}
+	if (a['valmin'] !== null) {msg += ` min='${a['valmin']}'`;}
+	if (a['valmax'] !== null) {msg += ` max='${a['valmax']}'`;}
+	if (a['valstep'] !== null) {msg += ` step='${a['valstep']}'`;}
 	msg += ` name='${col}'${val}`;
-	if (a['placeholder'] !== '') msg += ` placeholder='${escapeHTML(a['placeholder'])}'`;
-	if (a['qrequired'] === true) msg += ' required';
-	if ((a['inputtype'] === 'checkbox') && rawVal) msg += ' checked';
+	if (a['placeholder'] !== '') {msg += ` placeholder='${escapeHTML(a['placeholder'])}'`;}
+	if (a['qrequired'] === true) {msg += ' required';}
+	if ((a['inputtype'] === 'checkbox') && rawVal) {msg += ' checked';}
 	msg += form;
-	if (x !== null) msg += `<input type='hidden' name='${col}Prev'${val}${form}`;
+	if (x !== null) {msg += `<input type='hidden' name='${col}Prev'${val}${form}`;}
 	return msg;
 }
 
@@ -173,16 +173,16 @@ function checkRowChanged(tds) {
 	for (let i = 0; i < tds.length; ++i) {
 		const td = tds[i];
 		const prev = $(td).children('input:hidden');
-		if (prev.length !== 1) continue;
+		if (prev.length !== 1) {continue;}
 		const prevVal = (prev === undefined) ? undefined : prev.val();
 		let item = $(td).children('select');
 		if (item.length === 1) {
-			if (checkCellChanged(item.val(), prevVal)) return true;
+			if (checkCellChanged(item.val(), prevVal)) {return true;}
 			continue;
 		}
 		item = $(td).children('input:not(:hidden)');
-		if (item.length !== 1) continue;
-		if (checkCellChanged(item.val(), prevVal)) return true;
+		if (item.length !== 1) {continue;}
+		if (checkCellChanged(item.val(), prevVal)) {return true;}
 	} // for i
 	return false;
 } // checkRowChanged
@@ -191,7 +191,7 @@ function batchUpdate() { // batch update button pressed
 	const trs = $('tbody').children('tr');
 	for (let i = 0; i < trs.length; ++i) {
 		const tr = trs[i];
-		if (!$(tr).hasClass('rowchanged')) continue;
+		if (!$(tr).hasClass('rowchanged')) {continue;}
 		const frm = $(tr).find('.formUpdate');
 		$(frm).submit(); // Update this row
 	} // for i
@@ -201,7 +201,7 @@ function batchCancel() { // cancel button pressed
 	const trs = $('tbody').children('tr');
 	for (let i = 0; i < trs.length; ++i) {
 		const tr = trs[i];
-		if (!$(tr).hasClass('rowchanged')) continue; // Nothing to reset to
+		if (!$(tr).hasClass('rowchanged')) {continue;} // Nothing to reset to
 		const frm = $(tr).find('.formUpdate');
 		$(frm)[0].reset(); // Reset to default values
 		$(tr).removeClass('rowchanged'); // No longer changed

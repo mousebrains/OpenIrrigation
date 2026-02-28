@@ -77,7 +77,7 @@ $(function() {
 					tooltip: {
 						callbacks: {
 							afterBody: function(context) {
-								if (!context.length) return '';
+								if (!context.length) {return '';}
 								const t = context[0].parsed.x / 1000;
 								const active = [];
 								for (let i = 0; i < stationData.length; i++) {
@@ -88,7 +88,7 @@ $(function() {
 										active.push(s[0]);
 									}
 								}
-								if (!active.length) return '';
+								if (!active.length) {return '';}
 								return '\nStations: ' + active.map(escapeHTML).join(', ');
 							}
 						}

@@ -1,4 +1,4 @@
-let myInfo = {};
+const myInfo = {};
 
 function buildActions(pocs) {
 	const tbl = $('#topActions');
