@@ -119,8 +119,6 @@ CREATE TABLE params( -- key/value pairs for parameters
 	val TEXT NOT NULL, -- value of parameter
 	UNIQUE(grp, name) -- combination must be unique
 	);
-DROP INDEX IF EXISTS paramsGroup;
-CREATE INDEX paramsGroup ON params (grp, name);
 
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
 	('params', 'grp',   0, True, 'Group', 'text', 'foo'),
@@ -698,8 +696,6 @@ CREATE TABLE numberLog( -- 1N log entries from TDI controller, max # of stations
 	value SMALLINT NOT NULL, -- number returned
 	PRIMARY KEY (timestamp,controller)
 	);
-DROP INDEX IF EXISTS numberTS;
-CREATE INDEX numberTS ON numberLog(timestamp);
 
 -- Insert a record looking up site and controller
 DROP FUNCTION IF EXISTS numberInsert;
@@ -716,8 +712,6 @@ CREATE TABLE versionLog( -- 1V log entries from TDI controller, firmware version
 	value TEXT NOT NULL, -- version string returned
 	PRIMARY KEY (timestamp,controller)
 	);
-DROP INDEX IF EXISTS versionTS;
-CREATE INDEX versionTS ON versionLog (timestamp);
 
 -- Insert a record looking up site and controller
 DROP FUNCTION IF EXISTS versionInsert;
@@ -734,8 +728,6 @@ CREATE TABLE errorLog( -- 1E log entries from TDI controller
 	value SMALLINT NOT NULL, -- error code returned
 	PRIMARY KEY (timestamp,controller)
 	);
-DROP INDEX IF EXISTS errorTS;
-CREATE INDEX errorTS ON errorLog (timestamp);
 
 -- Insert a record looking up site and controller
 DROP FUNCTION IF EXISTS errorInsert;
@@ -753,8 +745,6 @@ CREATE TABLE twoLog( -- 12 log entries from TDI controller, 2-wire path active?
 	value SMALLINT NOT NULL, -- reading
 	PRIMARY KEY (timestamp,controller,addr)
 	);
-DROP INDEX IF EXISTS twoTS;
-CREATE INDEX twoTS ON twoLog (timestamp);
 
 -- Insert a record looking up site and controller
 DROP FUNCTION IF EXISTS twoInsert;
@@ -773,8 +763,6 @@ CREATE TABLE peeLog( -- 1P log entries from TDI controller
 	value INTEGER NOT NULL, -- reading
 	PRIMARY KEY (timestamp,controller,addr)
 	);
-DROP INDEX IF EXISTS peeTS;
-CREATE INDEX peeTS ON peeLog (timestamp);
 
 -- Insert a record looking up site and controller
 DROP FUNCTION IF EXISTS peeInsert;
@@ -793,8 +781,6 @@ CREATE TABLE currentLog( -- 1U log entries from TDI controller, voltage and curr
 	mAmps INTEGER NOT NULL, -- current in mAmps
 	PRIMARY KEY (timestamp,controller)
 	);
-DROP INDEX IF EXISTS currentTS;
-CREATE INDEX currentTS ON currentLog (timestamp);
 
 -- Insert a record looking up site and controller
 DROP FUNCTION IF EXISTS currentInsert;
@@ -821,8 +807,6 @@ CREATE TABLE sensorLog( -- 1S log entries from TDI controller, flow sensor click
 	flow FLOAT NOT NULL, -- value processed into a physical value, units depend on K and offset
 	PRIMARY KEY (timestamp,pocFlow)
 	);
-DROP INDEX IF EXISTS sensorTS;
-CREATE INDEX sensorTS ON sensorLog (timestamp);
 
 -- Insert a record looking up site and controller
 DROP FUNCTION IF EXISTS sensorInsert;
@@ -854,8 +838,6 @@ CREATE TABLE teeLog( -- 1T log entries from TDI controller, pre/peak/post curren
 	post INTEGER CHECK (post BETWEEN 0 AND 65535), -- post on current in mAmps
 	PRIMARY KEY (timestamp,sensor)
 );
-DROP INDEX IF EXISTS teeLog_index;
-CREATE INDEX teeLog_index ON teeLog (timestamp,sensor,code);
 
 -- The following controls the actions the controller takes.
 --
