@@ -81,31 +81,52 @@ function OI_toast(message, isError) {
 }
 
 function OI_connectSSE(url, onMessage) {
-	const source = new EventSource(url);
 	const statusEl = document.getElementById('sse-status');
-	source.onopen = () => {
-		if (statusEl) {
-			statusEl.textContent = '';
-		}
-	};
-	source.onmessage = (event) => {
-		try {
-			const data = JSON.parse(event.data);
-			if (data.error) {
-				OI_toast(data.error, true);
+	let source = null;
+	let closed = false;
+
+	function attach() {
+		if (closed) {return;}
+		source = new EventSource(url);
+		source.onopen = () => {
+			if (statusEl) {statusEl.textContent = '';}
+		};
+		source.onmessage = (event) => {
+			try {
+				const data = JSON.parse(event.data);
+				if (data.error) {OI_toast(data.error, true);}
+			} catch {
+				// Not JSON or parse error — pass through
 			}
-		} catch {
-			// Not JSON or parse error — pass through
+			onMessage(event);
+		};
+		source.onerror = () => {
+			if (statusEl) {statusEl.textContent = 'Connection lost';}
+			OI_toast('SSE connection lost — retrying', true);
+		};
+	}
+
+	attach();
+
+	// iOS Safari kills idle SSE during backgrounding/WiFi power-save and its
+	// auto-reconnect is unreliable. On foreground, force a fresh connection
+	// rather than waiting for the browser to figure out the socket is dead.
+	document.addEventListener('visibilitychange', () => {
+		if (closed) {return;}
+		if (document.visibilityState === 'visible' &&
+		    source && source.readyState !== EventSource.OPEN) {
+			try {source.close();} catch {/* ignore */}
+			attach();
 		}
-		onMessage(event);
+	});
+
+	return {
+		close() {
+			closed = true;
+			if (source) {source.close();}
+		},
+		get readyState() {return source ? source.readyState : EventSource.CLOSED;},
 	};
-	source.onerror = () => {
-		if (statusEl) {
-			statusEl.textContent = 'Connection lost';
-		}
-		OI_toast('SSE connection lost — retrying', true);
-	};
-	return source;
 }
 
 function OI_processSubmit(event, url, formData) { // Submission of form data to url

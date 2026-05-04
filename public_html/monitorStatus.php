@@ -168,7 +168,7 @@ class MonitorDB {
 	}
 } // DB
 
-$delay = 55 * 1000; // 55 seconds between burps
+$delay = 25 * 1000; // 25 seconds between burps; keeps iOS WiFi power-save from dropping idle connection
 require_once 'php/config.php';
 $dbName = OI_DBNAME;
 

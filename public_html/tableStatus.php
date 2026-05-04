@@ -146,8 +146,8 @@ while (!connection_aborted()) { # Wait until client disconnects
 	echo "data: " . json_encode($info) . "\n\n";
 	if (ob_get_length()) {ob_flush();} // Flush output buffer
 	flush();
-	// Connections time out at ~60 seconds, so send a burp every ~55 seconds
-	$notifications = $db->notifications(55000);
+	// 25-second burp keeps iOS WiFi power-save from dropping idle connection
+	$notifications = $db->notifications(25000);
 	if ($notifications === false) { // no notifications
 		$info = ['burp' => 0];
 		continue;
