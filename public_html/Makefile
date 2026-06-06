@@ -22,18 +22,20 @@ SRC+= runScheduler.php
 
 DEST = $(SRC:%=$(WEBDIR)/%)
 
-.PHONY: all install clean php_lint
+.PHONY: all install uninstall clean php_lint
 
-all:
+all::
 
 install:: 
 	$(INSTALL) --target-directory=$(WEBDIR) $(SRC)
 	chown -R $(USER):$(GROUP) $(WEBDIR)
 
 clean::
+
+uninstall::
 	$(RM) $(DEST)
 
-install clean::
+all install uninstall clean::
 	$(MAKE) -C packages $@
 	$(MAKE) -C js $@
 	$(MAKE) -C css $@

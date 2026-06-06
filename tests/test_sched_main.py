@@ -3,10 +3,11 @@
 import datetime
 import logging
 import pytest
+from types import SimpleNamespace
 from SchedCumTime import CumTime
 from SchedResource import ResourceRegistry
 from SchedPlacer import build_schedule
-from SchedMain import _recordExisting
+from SchedMain import _recordExisting, insertActions
 from helpers import dt, td, MockSensor, MockProgramStation, MockProgram
 
 
@@ -50,6 +51,53 @@ class TestRecordExisting:
         tracker = registry.ctl_current[100]
         assert tracker.capacity == 400  # 500 - 100
         assert tracker.reservations[0].limit == 400
+
+
+class TestInsertActions:
+    def test_failure_returns_false_after_rolling_back_savepoint(self, logger):
+        class FailingCursor:
+            def __init__(self):
+                self.commands = []
+
+            def execute(self, sql, args=None):
+                self.commands.append(sql)
+                if sql.startswith('SELECT action_onOff_insert'):
+                    raise RuntimeError('insert failed')
+
+            def __iter__(self):
+                return iter([])
+
+        cursor = FailingCursor()
+        action = SimpleNamespace(
+            tOn=dt(6), tOff=dt(7), pgm=10, pgmStn=1,
+            pgmDate=datetime.date(2024, 7, 1),
+            sensor=SimpleNamespace(id=42),
+        )
+
+        assert not insertActions(cursor, [action], logger)
+        assert 'ROLLBACK TO SAVEPOINT sp_insert;' in cursor.commands
+        assert cursor.commands[-1] == 'RELEASE SAVEPOINT sp_insert;'
+
+    def test_diagnostic_failure_restores_savepoint_before_release(self, logger):
+        class FailingCursor:
+            def __init__(self):
+                self.commands = []
+
+            def execute(self, sql, args=None):
+                self.commands.append(sql)
+                if sql.startswith('SELECT'):
+                    raise RuntimeError('query failed')
+
+        cursor = FailingCursor()
+        action = SimpleNamespace(
+            tOn=dt(6), tOff=dt(7), pgm=10, pgmStn=1,
+            pgmDate=datetime.date(2024, 7, 1),
+            sensor=SimpleNamespace(id=42),
+        )
+
+        assert not insertActions(cursor, [action], logger)
+        assert cursor.commands.count('ROLLBACK TO SAVEPOINT sp_insert;') == 2
+        assert cursor.commands[-1] == 'RELEASE SAVEPOINT sp_insert;'
 
 
 # ── Integration: loadExisting + build_schedule ──────────────────────

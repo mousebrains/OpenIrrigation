@@ -1,5 +1,7 @@
 <?php
 // insert a row into a table
+require_once 'php/CSRF.php';
+csrfRequireValidPost();
 require_once 'php/DB1.php';
 $db = DB::getInstance();
 
@@ -47,6 +49,7 @@ if (!empty($sec)) {
 		$key0 = $db->quoteIdent($row['secondarykey']);
 		$key1 = $db->quoteIdent($row['secondaryvalue']);
 		if (!empty($_POST[$row['col']])) { // Something to be stored
+			if (!is_array($_POST[$row['col']])) exit($db->mkMsg(false, "Invalid secondary values"));
 			$sql = "INSERT INTO $stbl ($key0, $key1) VALUES(?,?);";
 			foreach ($_POST[$stbl] as $sid) {
 				if (!$db->query($sql, [$id, $sid])) {

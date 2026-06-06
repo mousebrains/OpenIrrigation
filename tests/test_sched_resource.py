@@ -228,6 +228,18 @@ class TestResourceSet:
         slots = rs.find_slots(window, min_duration=td(minutes=10))
         assert slots == []
 
+    def test_multi_overlap_blocks_only_over_capacity_segment(self):
+        rs = ResourceSet()
+        t = ResourceTracker(capacity=2)
+        t.add(Reservation(Interval(dt(6), dt(7)), 1, 2, sensor_id=1))
+        t.add(Reservation(Interval(dt(6, 30), dt(7, 30)), 1, 2, sensor_id=2))
+        rs.add(t, 1, 2)
+
+        assert rs.find_slots(Interval(dt(6), dt(8))) == [
+            Interval(dt(6), dt(6, 30)),
+            Interval(dt(7), dt(8)),
+        ]
+
 
 # ── ResourceRegistry ─────────────────────────────────────────────────
 
@@ -521,3 +533,19 @@ class TestResourceRegistryDelays:
             assert slots[0].end <= dt(7) - td(seconds=10)
             if len(slots) > 1:
                 assert slots[-1].start >= dt(8) + td(seconds=10)
+
+    def test_poc_delays_use_correct_transition_direction(self):
+        rs = ResourceSet()
+        t = ResourceTracker(capacity=1)
+        t.add(Reservation(
+            Interval(dt(7), dt(8)), 1, 1, sensor_id=1,
+            delay_on=td(seconds=11), delay_off=td(seconds=13)))
+        rs.add(t, 1, 1, 'poc', {
+            'delay_on': td(seconds=3),
+            'delay_off': td(seconds=7),
+        })
+
+        assert rs.find_slots(Interval(dt(6), dt(9))) == [
+            Interval(dt(6), dt(7) - td(seconds=11)),
+            Interval(dt(8) + td(seconds=13), dt(9)),
+        ]

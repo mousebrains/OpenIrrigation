@@ -5,13 +5,12 @@
 import argparse
 import sys
 import os
-import grp
+import pwd
 import datetime
 
 mydir = os.path.dirname(sys.argv[0])
 
-user = os.getlogin()
-group = grp.getgrgid(os.getgid()).gr_name
+user = pwd.getpwuid(os.getuid()).pw_name
 prefix = os.path.expanduser('~')
 
 serviceDir = None
@@ -26,28 +25,34 @@ parser = argparse.ArgumentParser(description='Generate configuration file for Op
 
 g = parser.add_argument_group('Database related options')
 g.add_argument('--dbname', type=str, default='irrigation', help='Database name')
-g.add_argument('--parentRole', type=str, default='irrParent', 
+g.add_argument('--parentRole', type=str, default='irrParent',
         help='Parent roll which owns everything in the database')
 g.add_argument('--roles', action='append', help='Supplemental roles to create')
 g.add_argument('--siteName', type=str, default='Casa', help='Name of site in database')
-g.add_argument('--controllerName', type=str, default='Casa', 
+g.add_argument('--controllerName', type=str, default='Casa',
         help='Name of controller in database')
+g.add_argument('--telemetryRetentionDays', type=int, default=365,
+        help='Days to retain high-volume current and flow telemetry')
+g.add_argument('--historyRetentionDays', type=int, default=3650,
+        help='Days to retain completed irrigation actions')
+g.add_argument('--auditRetentionDays', type=int, default=730,
+        help='Days to retain user change records')
 
 g = parser.add_argument_group('Directory related options')
 g.add_argument('--prefix', type=str, default=prefix, help='Directory tree prefix')
 g.add_argument('--logdir', type=str, default='logs', help='Where to store log files')
 g.add_argument('--bindir', type=str, default='bin', help='Where to store scripts')
 g.add_argument('--webdir', type=str, default='public_html', help='Where to store web files')
-g.add_argument('--phpdir', type=str, default='public_html/php', 
+g.add_argument('--phpdir', type=str, default='public_html/php',
         help='Where to store php files')
-g.add_argument('--cssdir', type=str, default='public_html/css', 
+g.add_argument('--cssdir', type=str, default='public_html/css',
         help='Where to store css files')
 g.add_argument('--jsdir', type=str, default='public_html/js',
         help='Where to store javascript files')
-g.add_argument('--serviceDir', type=str, default=serviceDir, 
+g.add_argument('--serviceDir', type=str, default=serviceDir,
         help='Where to store service files')
-g.add_argument('--user', type=str, help='User who will own the installed files')
-g.add_argument('--group', type=str, help='Group of the installed files')
+g.add_argument('--user', type=str, default=user, help='User who will own the installed files')
+g.add_argument('--group', type=str, help='Group of the installed files; defaults to --user')
 
 parser.add_argument('--simulate', action='store_true', help='Simulate the controller(s)')
 parser.add_argument('--install', type=str, default=installCmd, help='Install command to use')

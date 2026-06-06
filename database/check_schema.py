@@ -44,6 +44,7 @@ CRITICAL_COLUMNS = [
 # (index_name, table_name)
 EXPECTED_INDEXES = [
     ("historical_index", "historical"),
+    ("historical_toff_index", "historical"),
     ("action_index", "action"),
     ("action_index_onoff", "action"),
     ("command_index", "command"),

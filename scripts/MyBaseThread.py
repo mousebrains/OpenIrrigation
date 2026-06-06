@@ -40,6 +40,10 @@ class MyBaseThread(threading.Thread):
         """Signal this thread to stop at the next opportunity."""
         self._shutdown.set()
 
+    def wait_for_shutdown(self, timeout: float) -> bool:
+        """Wait up to timeout seconds, returning True when shutdown was requested."""
+        return self._shutdown.wait(timeout)
+
     def runMain(self) -> None:
         """ This method should be overridden by the class derived from me """
         raise Exception('runMain not overridden by derived class')

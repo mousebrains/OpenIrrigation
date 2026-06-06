@@ -13,6 +13,11 @@ class ReplyTarget(typing.Protocol):
     """Protocol for objects that can receive a serial reply."""
     def put(self, t: float | None, msg: bytes | None) -> None: ...
 
+
+class SerialSender(typing.Protocol):
+    """Protocol exposed by the queued serial dispatcher."""
+    def put(self, msg: bytes, replyTo: ReplyTarget) -> None: ...
+
 MAX_RECONNECT_ATTEMPTS = 5
 
 class Serial(MyBaseThread):
@@ -26,7 +31,7 @@ class Serial(MyBaseThread):
         """ Send a message """
         self.queue.put((msg, replyTo))
 
-    def _reconnect(self) -> None:
+    def _reconnect(self) -> bool:
         """Attempt to reconnect the serial port with exponential backoff."""
         port = self.s.port
         settings = self.s.get_settings()
@@ -39,14 +44,15 @@ class Serial(MyBaseThread):
             except Exception:
                 pass
             if not self.should_run:
-                raise serial.SerialException('Shutdown requested during reconnect')
-            time.sleep(delay)
+                return False
+            if self.wait_for_shutdown(delay):
+                return False
             try:
                 self.s.port = port
                 self.s.apply_settings(settings)
                 self.s.open()
                 self.logger.info('Reconnected to %s on attempt %s', port, attempt)
-                return
+                return True
             except (serial.SerialException, OSError) as e:
                 self.logger.warning('Reconnect attempt %s failed: %s', attempt, e)
                 delay = min(delay * 2, 30)
@@ -109,7 +115,8 @@ class Serial(MyBaseThread):
                 replyTo.put(t, reply) # Send to the message originator
             except (serial.SerialException, OSError) as e:
                 logger.error('Serial port error: %s', e)
-                self._reconnect()
+                if not self._reconnect():
+                    break
                 timeout = 1  # Reset to drain buffer after reconnect
 
     def readACK(self, msg:bytes) -> bool:

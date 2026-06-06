@@ -1,5 +1,7 @@
 <?php
 // update a row in a table
+require_once 'php/CSRF.php';
+csrfRequireValidPost();
 require_once 'php/DB1.php';
 $db = DB::getInstance();
 
@@ -23,7 +25,7 @@ foreach ($cols as $key) {
 		&& array_key_exists($prevKey, $_POST)
 		&& ($_POST[$key] !== $_POST[$prevKey])) {
 		$keys[] = $db->quoteIdent($key) . "=?";
-		$vals[] = $_POST[$key];
+		$vals[] = $_POST[$key] === '' ? NULL : $_POST[$key];
 		$comment[] = "In $tbl changed $key from " . $_POST[$prevKey] . " to " . $_POST[$key];
 	}
 }
@@ -50,9 +52,10 @@ foreach ($db->loadRows($sql, [$tbl]) as $row) { // Walk through any secondary ta
 	$key1 = $db->quoteIdent($row['secondaryvalue']);
 	$sql = "DELETE FROM $stbl WHERE $key0=?;"; // Remove current entries
 	if (!$db->query($sql, [$id])) exit($db->dbMsg('Delete secondary'));
+	$qSecondary = true;
 	$comment[] = "Deleted $key0=$id row from $stbl";
 	if (!empty($_POST[$row['col']])) { // Something to be stored
-		$qSecondary = true;
+		if (!is_array($_POST[$row['col']])) exit($db->mkMsg(false, "Invalid secondary values"));
 		$sql = "INSERT INTO $stbl ($key0, $key1) VALUES(?,?);";
 		foreach ($_POST[$stbl] as $sid) {
 			if (!$db->query($sql, [$id, $sid])) {

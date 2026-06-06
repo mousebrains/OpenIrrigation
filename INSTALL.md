@@ -16,9 +16,13 @@ I do this as my non-irrigation user, i.e. foo above or whatever you call it. It 
   - ./config --prefix=~irrigation --user=irrigation --roles=irrigation --roles=foo  --simulate
 - After configuration examine Makefile.params to make sure the configuration is what you want!
 ---
-## Build a fresh database
-- make all # Build a fresh database
+## Build and initialize
+- make all # Build generated files without modifying the database
+- make freshdb # Explicitly drop and recreate a fresh database
+- python3 database/migrate_005.py --db irrigation # Existing databases only; add the retention index
 - sudo make install # install everything, including services
+- make clean # Remove generated build files only
+- sudo make uninstall # Explicitly remove installed application files
 - At this point you should be able to go to open a web page and start the configuration. The order I use is:
   - site
   - controller

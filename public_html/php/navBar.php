@@ -1,3 +1,9 @@
+<?php
+require_once __DIR__ . '/CSRF.php';
+$csrfToken = csrfToken();
+session_write_close();
+?>
+<div id='oi-csrf' data-token='<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>' hidden></div>
 <div id='topnav'>
 <span  id='statusLeft'>
  <ul>

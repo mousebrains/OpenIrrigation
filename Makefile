@@ -1,4 +1,4 @@
-.PHONY: all install clean start stop restart status enable disable reload cleanlogs php_lint
+.PHONY: all freshdb install uninstall clean start stop restart status enable disable reload cleanlogs php_lint
 
 all:
 
@@ -11,6 +11,16 @@ all install clean: Makefile.params
 	$(MAKE) -C public_html $@
 	$(MAKE) -C service $@
 	$(MAKE) -C webserver $@
+
+uninstall: Makefile.params
+	$(MAKE) -C service uninstall
+	$(MAKE) -C public_html uninstall
+	$(MAKE) -C scripts uninstall
+	$(MAKE) -C webserver uninstall
+	$(MAKE) -C database uninstall
+
+freshdb: Makefile.params
+	$(MAKE) -C database freshdb
 
 enable disable start stop restart status reload: Makefile.params
 	$(MAKE) -C service $@

@@ -68,7 +68,7 @@ I have Apple devices on my network so I install zeroconf/bonjour:
 - php-fpm configuration involves modifying the /etc/php/8.4/fpm/pool.d/www.conf file. Here is my [example](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/php-fpm/www.conf)
     - Change user and group to the same user nginx is running as. There are four locations, (user|group) and listen.(owner|group). I use irrigation for both.
     - Change "pm =" line to "pm = ondemand"
-    - Change the pm.max_children line to 20"
+    - Change `pm.max_children` to 8, `pm.process_idle_timeout` to 30s, and `pm.max_requests` to 250.
 - Restart the webserver and php-fpm.
   - sudo systemctl restart nginx php8.4-fpm
 ---

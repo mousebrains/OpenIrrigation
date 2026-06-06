@@ -17,7 +17,7 @@ SRC+= processState.js
 
 DEST = $(SRC:%=$(JSDIR)/%)
 
-.PHONY: all install clean
+.PHONY: all install uninstall clean
 
 all:
 
@@ -26,4 +26,6 @@ install:
 	chown -R $(USER):$(GROUP) $(JSDIR)
 
 clean:
+
+uninstall:
 	$(RM) $(DEST)

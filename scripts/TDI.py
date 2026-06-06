@@ -1,9 +1,9 @@
 # Message classes for talking to Tucor TDI 2-wire controller
 
 from TDIbase import Base
+from TDIserial import SerialSender
 import logging
 import queue
-import serial
 
 def mkList(items:list) -> list:
     """ Convert a single item into a list """
@@ -13,7 +13,7 @@ class ErrorPoll(Base):
     """ Get errors 0E -> 1EXX """
     REQUIRED_PARAMS = ['errorPeriod', 'errorSQL']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply):
+            serial:SerialSender, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'ERR', params['errorPeriod'],
                 '0E', None, (1,), params['errorSQL'], params['zeeSQL'])
 
@@ -21,7 +21,7 @@ class CurrentPoll(Base):
     """ Get current 0U -> 1UXXXXYYYY """
     REQUIRED_PARAMS = ['currentPeriod', 'currentSQL']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply):
+            serial:SerialSender, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Current', params['currentPeriod'],
                 '0U', None, (2,2), params['currentSQL'], params['zeeSQL'])
 
@@ -32,7 +32,7 @@ class PathStatusPoll(Base):
     """
     REQUIRED_PARAMS = ['peePeriod', 'peeSQL', 'peeChannels']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply):
+            serial:SerialSender, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Pee', params['peePeriod'],
                 '0P', (1,1), (1,2), params['peeSQL'], params['zeeSQL'])
         self.previous = {}
@@ -50,7 +50,7 @@ class StationCountPoll(Base):
     """
     REQUIRED_PARAMS = ['numberPeriod', 'numberSQL', 'numberStations']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply):
+            serial:SerialSender, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Pound', params['numberPeriod'],
                 '0#', (1,), (1,), params['numberSQL'], params['zeeSQL'])
         self.addArgs((params['numberStations'], ))
@@ -59,7 +59,7 @@ class SensorPoll(Base):
     """ 0SXX -> 1SXXYYZZZZ """
     REQUIRED_PARAMS = ['sensorPeriod', 'sensorSQL', 'sensorChannels']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply):
+            serial:SerialSender, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Sensor', params['sensorPeriod'],
                 '0S', (1,), (1,1,2), params['sensorSQL'], params['zeeSQL'])
         self.previous = {}
@@ -80,7 +80,7 @@ class SensorPoll(Base):
 class WirePathPoll(Base): # 02XXYY -> 12XXZZ
     REQUIRED_PARAMS = ['twoPeriod', 'twoSQL', 'twoChannels']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply):
+            serial:SerialSender, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Two', params['twoPeriod'],
                 '02', (1,1), (1,1), params['twoSQL'], params['zeeSQL'])
         self.previous = {}
@@ -95,7 +95,7 @@ class WirePathPoll(Base): # 02XXYY -> 12XXZZ
 class VersionPoll(Base): # 0V -> 1EZ...Z
     REQUIRED_PARAMS = ['versionPeriod', 'versionSQL']
     def __init__(self, params:dict, logger:logging.Logger, qExcept:queue.Queue,
-            serial:serial.Serial, qReply):
+            serial:SerialSender, qReply):
         Base.__init__(self, logger, qExcept, serial, qReply, 'Version', params['versionPeriod'],
                 '0V', None, None, params['versionSQL'], params['zeeSQL'])
         self.msgHandler.qString = True # A string argument

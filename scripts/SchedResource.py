@@ -89,21 +89,42 @@ class ResourceTracker:
         the proposed limit, each existing reservation's limit, and the
         tracker's global capacity.
         """
+        return all(fits for _, fits, _ in
+                   self._availability_segments(interval, amount, limit))
+
+    def _availability_segments(self, window: Interval, amount: float,
+                               limit: Optional[float] = None) -> list:
+        """Return (sub-interval, fits, active reservations) sweep segments."""
         if self.capacity is not None and limit is not None:
-            effective_limit = min(self.capacity, limit)
+            base_limit = min(self.capacity, limit)
         elif self.capacity is not None:
-            effective_limit = self.capacity
+            base_limit = self.capacity
         else:
-            effective_limit = limit  # may be None
+            base_limit = limit
 
-        total = amount
-        for r in self._overlapping(interval):
-            total += r.amount
-            if r.limit is not None:
-                effective_limit = r.limit if effective_limit is None \
-                        else min(effective_limit, r.limit)
+        overlapping = list(self._overlapping(window))
+        boundaries = {window.start, window.end}
+        for r in overlapping:
+            if window.contains(r.interval.start):
+                boundaries.add(r.interval.start)
+            if window.contains(r.interval.end):
+                boundaries.add(r.interval.end)
 
-        return effective_limit is None or total <= effective_limit
+        points = sorted(boundaries)
+        segments = []
+        for i in range(len(points) - 1):
+            sub = Interval(points[i], points[i + 1])
+            active = [r for r in overlapping if r.interval.overlaps(sub)]
+            effective_limit = base_limit
+            usage = amount
+            for r in active:
+                usage += r.amount
+                if r.limit is not None:
+                    effective_limit = r.limit if effective_limit is None \
+                            else min(effective_limit, r.limit)
+            fits = effective_limit is None or usage <= effective_limit
+            segments.append((sub, fits, active))
+        return segments
 
     def find_available(self, window: Interval, amount: float,
                        limit: Optional[float] = None,
@@ -117,49 +138,11 @@ class ResourceTracker:
         Uses a sweep-line approach: collect all reservation boundaries within
         the window, form sub-intervals, and check aggregate usage in each.
         """
-        if self.capacity is not None and limit is not None:
-            base_limit = min(self.capacity, limit)
-        elif self.capacity is not None:
-            base_limit = self.capacity
-        else:
-            base_limit = limit  # may be None
-
-        # Collect overlapping reservations once for the whole sweep
-        overlapping = list(self._overlapping(window))
-
-        # Unconstrained only if no limit applies from any side
-        if base_limit is None and all(r.limit is None for r in overlapping):
-            if window.duration >= min_duration:
-                return [window]
-            return []
-
-        # Collect all boundary times within the window from overlapping
-        # reservations, then check aggregate usage in each sub-interval.
-        boundaries = set()
-        boundaries.add(window.start)
-        boundaries.add(window.end)
-        for r in overlapping:
-            if window.contains(r.interval.start):
-                boundaries.add(r.interval.start)
-            if window.contains(r.interval.end):
-                boundaries.add(r.interval.end)
-
-        points = sorted(boundaries)
-
         # Walk sub-intervals, merging consecutive available ones
         available = []
         merge_start = None
-        for i in range(len(points) - 1):
-            sub = Interval(points[i], points[i + 1])
-            # Compute effective limit and usage from overlapping reservations
-            eff = base_limit
-            usage = 0.0
-            for r in overlapping:
-                if r.interval.overlaps(sub):
-                    usage += r.amount
-                    if r.limit is not None:
-                        eff = r.limit if eff is None else min(eff, r.limit)
-            if eff is None or usage + amount <= eff:
+        for sub, fits, _ in self._availability_segments(window, amount, limit):
+            if fits:
                 if merge_start is None:
                     merge_start = sub.start
                 merge_end = sub.end
@@ -210,51 +193,47 @@ class ResourceSet:
             if not slots:
                 break
 
-            # Build blocked zones: for each overlapping reservation in the
-            # tracker, expand by the delay margins
+            # Build exact capacity-blocked zones, then expand only those zones
+            # by the transition delays of their active reservations.
             blocked = []
+            padding = ZERO
+            if delay_cat == 'ctl':
+                padding = max(
+                    [stn_delays.get('ctl_delay', ZERO)]
+                    + [r.ctl_delay for r in tracker.reservations])
+            elif delay_cat == 'poc':
+                padding = max(
+                    [stn_delays.get('delay_on', ZERO),
+                     stn_delays.get('delay_off', ZERO)]
+                    + [max(r.delay_on, r.delay_off)
+                       for r in tracker.reservations])
             expanded_window = window.expanded(
-                before=datetime.timedelta(seconds=300),
-                after=datetime.timedelta(seconds=300))
-            for r in tracker._overlapping(expanded_window):
+                before=padding, after=padding)
+            segments = tracker._availability_segments(
+                expanded_window, amount, limit)
+            for sub, fits, active in segments:
+                if fits:
+                    continue
 
-                # Check if this reservation would actually block us
-                # (capacity check)
-                eff_limit = limit
-                if tracker.capacity is not None:
-                    eff_limit = min(eff_limit, tracker.capacity) \
-                        if eff_limit is not None else tracker.capacity
-                if r.limit is not None:
-                    eff_limit = min(eff_limit, r.limit) \
-                        if eff_limit is not None else r.limit
-
-                if eff_limit is None:
-                    continue  # unconstrained
-
-                # Check usage at this reservation's interval
-                usage = tracker.usage_at(r.interval)
-                if usage + amount <= eff_limit:
-                    continue  # We fit alongside this reservation
-
-                # This reservation blocks us — compute delay-expanded zone
                 before_delay = ZERO
                 after_delay = ZERO
                 if delay_cat == 'ctl':
-                    before_delay = max(r.ctl_delay,
-                                       stn_delays.get('ctl_delay', ZERO))
+                    before_delay = max(
+                        [stn_delays.get('ctl_delay', ZERO)]
+                        + [r.ctl_delay for r in active])
                     after_delay = before_delay
                 elif delay_cat == 'poc':
-                    # Before: we're turning on, they had their transition
+                    # Proposed station ends before existing stations start.
                     before_delay = max(
-                        r.delay_off if not r.interval.overlaps(window) else r.delay_on,
-                        stn_delays.get('delay_on', ZERO))
-                    # After: we're turning off, they turn on
+                        [stn_delays.get('delay_off', ZERO)]
+                        + [r.delay_on for r in active])
+                    # Existing stations end before the proposed station starts.
                     after_delay = max(
-                        r.delay_on,
-                        stn_delays.get('delay_off', ZERO))
+                        [stn_delays.get('delay_on', ZERO)]
+                        + [r.delay_off for r in active])
 
-                expanded = r.interval.expanded(before=before_delay,
-                                               after=after_delay)
+                expanded = sub.expanded(before=before_delay,
+                                        after=after_delay)
                 blocked.append(expanded)
 
             # Subtract all blocked zones from available slots

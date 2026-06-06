@@ -15,11 +15,13 @@ SQL+= db.soil.sql
 SQL+= db.crop.sql
 SQL+= db.changelog.sql
 
-.PHONY: all install clean freshdb mkRoles dropRoles mkdb dropdb createdb dumpdb mkSite
+.PHONY: all install uninstall clean freshdb mkRoles dropRoles mkdb dropdb createdb dumpdb mkSite
 
-all: clean freshdb
+all:
 
 install:
+
+uninstall:
 
 clean:
 	rm -f .drop.role.sql .make.role.sql .make.tables.sql

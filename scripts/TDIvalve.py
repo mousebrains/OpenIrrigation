@@ -2,12 +2,12 @@
 
 from MyBaseThread import MyBaseThread
 from TDIbase import TDICodec,parseZee,is_zee_reply
+from TDIserial import SerialSender
 from TDIconstants import CMD_ON, CMD_OFF, CMD_TEST
 import DB
 import psycopg
 import argparse
 import logging
-import serial
 import queue
 import time
 import datetime
@@ -28,7 +28,7 @@ REPLY_TIMEOUT = 30  # seconds to wait for a serial reply
 class ValveOps(MyBaseThread):
     """ Interface to database to drive valve related operations """
     def __init__(self, args:argparse.Namespace, params:dict,
-            logger:logging.Logger, qExcept:queue.Queue, serial:serial.Serial):
+            logger:logging.Logger, qExcept:queue.Queue, serial:SerialSender):
         MyBaseThread.__init__(self, 'ValveOps', logger, qExcept)
         self.args = args # Command line arguments
         self.serial = serial # Command line arguments
@@ -43,8 +43,13 @@ class ValveOps(MyBaseThread):
         self.db = DB.DB(args.db, logger)
         self.controller = None
 
-    def put(self, t:float, msg:str) -> None:
+    def put(self, t:float | None, msg:bytes | None) -> None:
         self.queue.put((t, msg))
+
+    def shutdown(self) -> None:
+        """Wake any valve operation waiting for a serial reply."""
+        super().shutdown()
+        self.queue.put((None, None))
 
     def setController(self) -> None:
         """ get the controller id for the site/controller name combination """
@@ -66,7 +71,7 @@ class ValveOps(MyBaseThread):
                 tNext = self.nextTime() # Get the next wakeup time from the list
             else:
                 self.logger.debug('Sleeping until %s, %s', time.ctime(tNext), dt)
-                notifications = self.listen.fetch(dt)
+                notifications = self.listen.fetch(min(dt, 1.0))
                 if notifications: # Got notifications
                     for i in range(len(notifications)):
                         try:
@@ -110,7 +115,7 @@ class ValveOps(MyBaseThread):
         return time.time() + 3600 # We should be woken up by a notification on changes sooner
 
 
-    def chkZee(self, cur:psycopg.Cursor, msg:str, t:datetime.datetime, reply:str) -> bool:
+    def chkZee(self, cur:psycopg.Cursor, msg:bytes, t:datetime.datetime, reply:bytes) -> bool:
         if is_zee_reply(reply):
             args = parseZee(reply, self.logger)
             if args:
@@ -148,6 +153,9 @@ class ValveOps(MyBaseThread):
             except queue.Empty:
                 self.logger.warning('Timeout waiting for serial reply to %s', msg)
                 continue
+            self.queue.task_done()
+            if not self.should_run:
+                return False
             if t is None: # Bad reply
                 self.logger.warning('Valve on attempt %s failed in sending %s', i, msg)
                 continue
@@ -189,6 +197,9 @@ class ValveOps(MyBaseThread):
             except queue.Empty:
                 self.logger.warning('Timeout waiting for serial reply to %s', msg)
                 continue
+            self.queue.task_done()
+            if not self.should_run:
+                return False
             if t is None: # Bad reply
                 self.logger.warning('Valve off attempt %s failed in sending %s', i, msg)
                 continue
@@ -230,6 +241,9 @@ class ValveOps(MyBaseThread):
         except queue.Empty:
             logger.warning('Timeout waiting for serial reply to %s', msg)
             self.dbExec(cur, sqlFail, (cmdID, ERR_TEST_SEND))
+            return False
+        self.queue.task_done()
+        if not self.should_run:
             return False
         if t is None: # Bad reply
             logger.warning('Valve test failed in sending %s', msg)
