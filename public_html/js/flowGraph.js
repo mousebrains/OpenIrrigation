@@ -43,7 +43,9 @@ $(function() {
 					backgroundColor: 'rgba(54, 162, 235, 0.2)',
 					fill: true,
 					pointRadius: 0,
-					stepped: 'after'
+					// 'before' holds each value flat until the next point
+					// (sample-and-hold); 'after' extends the next value backward
+					stepped: 'before'
 				}]
 			},
 			options: {
