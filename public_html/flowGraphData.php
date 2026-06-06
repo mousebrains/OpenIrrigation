@@ -21,20 +21,30 @@ if (!$db->isConnected()) {
 	exit;
 }
 
+// Downsample by keeping the last actual reading in each bucket. Flow is a
+// step signal, so averaging within a bucket fabricates values that never
+// existed (e.g. a run-end 0 averaged with a real reading); the last reading
+// preserves true (timestamp, flow) pairs and run-end zeros always survive.
 $flow = $db->loadRowsNum(
 	"SELECT"
-	. " ROUND(EXTRACT(EPOCH FROM MIN(timestamp))) AS t,"
-	. " ROUND(AVG(flow)::numeric, 2) AS flow"
-	. " FROM sensorLog"
-	. " WHERE timestamp >= NOW() - INTERVAL '1 hour' * ?"
-	. " GROUP BY width_bucket("
-	. "   EXTRACT(EPOCH FROM timestamp),"
-	. "   EXTRACT(EPOCH FROM NOW() - INTERVAL '1 hour' * ?),"
-	. "   EXTRACT(EPOCH FROM NOW()),"
-	. "   ?"
-	. " )"
+	. " ROUND(EXTRACT(EPOCH FROM timestamp)) AS t,"
+	. " ROUND(flow::numeric, 2) AS flow"
+	. " FROM ("
+	. "  SELECT DISTINCT ON (bucket) timestamp, flow"
+	. "  FROM ("
+	. "   SELECT timestamp, flow, width_bucket("
+	. "     EXTRACT(EPOCH FROM timestamp),"
+	. "     EXTRACT(EPOCH FROM NOW() - INTERVAL '1 hour' * ?),"
+	. "     EXTRACT(EPOCH FROM NOW()),"
+	. "     ?"
+	. "   ) AS bucket"
+	. "   FROM sensorLog"
+	. "   WHERE timestamp >= NOW() - INTERVAL '1 hour' * ?"
+	. "  ) raw"
+	. "  ORDER BY bucket, timestamp DESC"
+	. " ) sub"
 	. " ORDER BY t",
-	[$hours, $hours, $buckets]
+	[$hours, $buckets, $hours]
 );
 
 $stations = $db->loadRowsNum(
