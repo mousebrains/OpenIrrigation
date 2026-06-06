@@ -54,6 +54,8 @@ grp0.add_argument('--minCleanSeconds', type=float, default=5,
         help='Clean out actions past this many seconds from current time')
 grp.add_argument('--initialDelay', type=float, default=60,
         help='How long to wait until the first scheduler run in seconds')
+grp.add_argument('--failureRetrySeconds', type=float, default=900,
+        help='How long to wait before retrying after a failed scheduler run')
 
 grp = parser.add_argument_group('Database related options')
 grp.add_argument('--db', type=str, required=True, help='database name')
@@ -73,6 +75,8 @@ if not args.single: # Check single only options are not specified
         parser.error('You can only specifiy --minCleanTime with the --single option!')
     if args.sDate is not None:
         parser.error('You can only specifiy --sDate with the --single option!')
+if args.failureRetrySeconds <= 0:
+    parser.error('--failureRetrySeconds must be greater than zero')
 
 myName = 'Sched'
 
@@ -101,12 +105,16 @@ try:
             else: # Run triggered by timeout
                 db.updateState(myName, 'Starting')
         logger.info('Starting scheduler run')
-        if runScheduler(args, logger):
+        qSucceeded = runScheduler(args, logger)
+        if qSucceeded:
             failureCount = 0
             db.updateState(myName, 'Done')
         else:
             failureCount += 1
-            msg = 'Failed {} consecutive scheduler run(s)'.format(failureCount)
+            retryDelay = datetime.timedelta(seconds=args.failureRetrySeconds)
+            tNext = datetime.datetime.now() + retryDelay
+            msg = 'Failed {} consecutive scheduler run(s); retrying at {}'.format(
+                    failureCount, tNext)
             logger.error(msg)
             db.updateState(myName, msg)
             if failureCount == 3:
@@ -115,9 +123,10 @@ try:
                 except RuntimeError:
                     Notify.onException(args, logger)
         if args.single: break # Break out of loop if only to be done once
-        # Just after midnight
-        tNext = datetime.datetime.combine(datetime.date.today() + datetime.timedelta(days=1),
-                datetime.time(0,0,1))
+        if qSucceeded:
+            # Just after midnight
+            tNext = datetime.datetime.combine(datetime.date.today() + datetime.timedelta(days=1),
+                    datetime.time(0,0,1))
     db.updateState(myName, 'Exiting')
 
 except Exception as e:
