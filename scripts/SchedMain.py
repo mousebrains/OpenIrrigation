@@ -70,7 +70,12 @@ def doit(cur:psycopg.Cursor,
 
 def insertActions(cur:psycopg.Cursor, actions:list,
         logger:logging.Logger) -> bool:
-    """ Insert new scheduled actions into the action table """
+    """
+    Insert new scheduled actions into the action table.
+
+    Any failed insert rejects the whole generated schedule.  That fail-closed
+    behavior avoids committing a partial irrigation plan with missing stations.
+    """
     sql = 'SELECT action_onOff_insert(%s,%s,%s,%s,%s,%s);'
     for act in actions: # Save the new actions to the database
         logger.info('%s', act)

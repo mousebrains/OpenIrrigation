@@ -69,6 +69,7 @@ I have Apple devices on my network so I install zeroconf/bonjour:
     - Change user and group to the same user nginx is running as. There are four locations, (user|group) and listen.(owner|group). I use irrigation for both.
     - Change "pm =" line to "pm = ondemand"
     - Change `pm.max_children` to 8, `pm.process_idle_timeout` to 30s, and `pm.max_requests` to 250.
+    - Each open browser tab uses a PHP-FPM worker for its status stream; if many tabs are open, buttons may queue until a tab is closed or `pm.max_children` is raised.
 - Restart the webserver and php-fpm.
   - sudo systemctl restart nginx php8.4-fpm
 ---

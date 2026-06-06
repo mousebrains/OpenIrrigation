@@ -149,7 +149,8 @@ function OI_processSubmit(event, url, formData) { // Submission of form data to 
 			OI_toast(data['message'], true);
 		}
 	}).fail((jqXHR, textStatus) => {
-		OI_toast(`Request failed: ${textStatus}`, true);
+		const message = jqXHR.responseJSON?.message ?? `Request failed: ${textStatus}`;
+		OI_toast(message, true);
 	});
 	event.preventDefault();
 }

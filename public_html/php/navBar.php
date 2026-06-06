@@ -1,7 +1,11 @@
 <?php
-require_once __DIR__ . '/CSRF.php';
-$csrfToken = csrfToken();
-session_write_close();
+if (!defined('OI_CSRF_TOKEN')) {
+	throw new RuntimeException('OI_CSRF_TOKEN must be defined before rendering navBar');
+}
+$csrfToken = constant('OI_CSRF_TOKEN');
+if (!is_string($csrfToken)) {
+	throw new RuntimeException('OI_CSRF_TOKEN must be a string');
+}
 ?>
 <div id='oi-csrf' data-token='<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>' hidden></div>
 <div id='topnav'>

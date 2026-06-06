@@ -13,7 +13,8 @@ except ImportError:
 def migrate(db, dry_run: bool) -> bool:
     with db.cursor() as cur:
         cur.execute(
-            "SELECT 1 FROM pg_catalog.pg_indexes WHERE indexname=%s;",
+            "SELECT 1 FROM pg_catalog.pg_indexes"
+            " WHERE schemaname='public' AND tablename='historical' AND indexname=%s;",
             ("historical_toff_index",),
         )
         if cur.fetchone() is not None:

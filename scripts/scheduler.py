@@ -85,6 +85,7 @@ try:
     db = DB.DB(args.db, logger)
     listener = DB.Listen(args.db, args.channel, logger)
     tNext = datetime.datetime.now() + datetime.timedelta(seconds=args.initialDelay)
+    failureCount = 0
 
     while True: # Infinite loop
         dt = tNext - datetime.datetime.now()
@@ -100,8 +101,19 @@ try:
             else: # Run triggered by timeout
                 db.updateState(myName, 'Starting')
         logger.info('Starting scheduler run')
-        runScheduler(args, logger)
-        db.updateState(myName, 'Done')
+        if runScheduler(args, logger):
+            failureCount = 0
+            db.updateState(myName, 'Done')
+        else:
+            failureCount += 1
+            msg = 'Failed {} consecutive scheduler run(s)'.format(failureCount)
+            logger.error(msg)
+            db.updateState(myName, msg)
+            if failureCount == 3:
+                try:
+                    raise RuntimeError(msg)
+                except RuntimeError:
+                    Notify.onException(args, logger)
         if args.single: break # Break out of loop if only to be done once
         # Just after midnight
         tNext = datetime.datetime.combine(datetime.date.today() + datetime.timedelta(days=1),

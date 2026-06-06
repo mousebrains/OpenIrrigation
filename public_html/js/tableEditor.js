@@ -72,7 +72,6 @@ function mkInputField(a, x, form) {
 		const checked = rawVal === true || rawVal === 1 || rawVal === '1' || rawVal === 't';
 		let msg = `<input type='hidden' name='${col}' value='0'${form}`;
 		msg += `<input type='checkbox' name='${col}' value='1'`;
-		if (a['qrequired'] === true) {msg += ' required';}
 		if (checked) {msg += ' checked';}
 		msg += form;
 		if (x !== null) {

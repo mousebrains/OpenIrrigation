@@ -6,7 +6,7 @@ csrfRequireValidPost();
 require_once 'php/DB1.php';
 $db = DB::getInstance();
 
-if (empty($_POST['poc'])) exit($db->mkMsg(false, 'No POC supplied'));
+if (empty($_POST['poc']) || !is_string($_POST['poc'])) exit($db->mkMsg(false, 'No POC supplied'));
 if (!ctype_digit($_POST['poc'])) exit($db->mkMsg(false, 'Invalid POC'));
 
 $poc = $_POST['poc'];
