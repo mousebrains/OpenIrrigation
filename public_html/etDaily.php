@@ -2,7 +2,10 @@
 // Grab a column of data for et information
 
 function mkMsg(bool $flag, string $msg): string {
-	return json_encode(['success' => $flag, 'message' => $msg], JSON_THROW_ON_ERROR);
+	return json_encode(
+		['success' => $flag, 'message' => $msg],
+		JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE
+	);
 }
 
 require_once 'php/DB1.php';

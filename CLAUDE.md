@@ -18,7 +18,7 @@ ruff check scripts/
 # PHP syntax checking
 make php_lint
 
-# PHP static analysis (level 6)
+# PHP static analysis (level 8)
 vendor/bin/phpstan analyse --configuration=phpstan.neon
 
 # Python tests

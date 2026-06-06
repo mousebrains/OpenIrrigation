@@ -108,7 +108,7 @@ class MonitorDB {
 			$a['errors'] = $this->errors;
 			$this->errors = [];
 		}
-		return json_encode($a, JSON_THROW_ON_ERROR);
+		return json_encode($a, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
 	}
 
 	/** @param array<mixed> $args */
