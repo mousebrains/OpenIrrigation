@@ -75,7 +75,7 @@ start:
 	systemctl --no-pager start $(TIMERS) OITDI.service OISched.service
 
 stop:
-	systemctl --no-pager stop $(TIMERS) $(SERVICES)
+	systemctl --no-pager list-unit-files $(SRC) --no-legend | awk '{print $$1}' | xargs -r systemctl --no-pager stop
 
 status:
 	-systemctl --no-pager status $(SRC)
