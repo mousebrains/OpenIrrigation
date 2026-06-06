@@ -169,12 +169,12 @@ def _recordExisting(registry:ResourceRegistry, sensor, stn, program,
     tracker.add(Reservation(interval, sensor.current, ctl_current_cap,
                             sensor.id, **delays))
 
-    # POC stations (sensor.stnMaxStations maps to pocMaxStations)
-    if sensor.stnMaxStations is not None:
-        tracker = registry._get_tracker(registry.poc_stations, sensor.poc,
-                                        sensor.stnMaxStations)
-        tracker.add(Reservation(interval, 1, sensor.stnMaxStations,
-                                sensor.id, **delays))
+    # POC stations (sensor.stnMaxStations maps to pocMaxStations);
+    # recorded unconditionally so a station's maxCoStations limit
+    # constrains stations without one on the same POC
+    tracker = registry._get_tracker(registry.poc_stations, sensor.poc)
+    tracker.add(Reservation(interval, 1, sensor.stnMaxStations,
+                            sensor.id, **delays))
 
     # POC flow
     if sensor.maxFlow is not None:

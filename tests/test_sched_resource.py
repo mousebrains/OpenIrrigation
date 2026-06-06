@@ -321,7 +321,11 @@ class TestResourceRegistry:
         assert slots == []
 
     def test_optional_constraints_none(self, logger):
-        """When pocMaxStations/pgmMaxStations/etc are None, no tracker is created."""
+        """When the flow/program limits are None, no tracker is created.
+
+        poc_stations is the exception: maxCoStations is per-station, so the
+        reservation is recorded (with limit None) even when this station has
+        no limit — another station's limit must still see it."""
         reg = ResourceRegistry(logger)
         stn = MockProgramStation(
             ident=1, program=10, sensor=42, controller=100, poc=200,
@@ -329,8 +333,8 @@ class TestResourceRegistry:
             pocMaxFlow=None, pgmMaxFlow=None,
         )
         reg.record_placement(stn, dt(6), dt(7))
-        # No POC or program trackers should be created
-        assert 200 not in reg.poc_stations
+        assert 200 in reg.poc_stations
+        assert reg.poc_stations[200].reservations[0].limit is None
         assert 200 not in reg.poc_flow
         assert 10 not in reg.pgm_stations
         assert 10 not in reg.pgm_flow
@@ -374,6 +378,47 @@ class TestResourceRegistry:
         slots = rs.find_slots(window)
         # flow: 3+3=6 <= 10 → fits
         assert len(slots) > 0
+
+
+class TestPocMixedLimits:
+    """Regression for 2026-06-06: a station with maxCoStations set must
+    constrain stations WITHOUT one on the same POC, in both placement
+    orders.  (Hierbas, maxCoStations=1, ran concurrently with three
+    NULL-limit stations on the same POC.)"""
+
+    def _stn(self, ident, sensor, pocMaxStations):
+        return MockProgramStation(
+            ident=ident, program=10, sensor=sensor, controller=100, poc=200,
+            ctlMaxStations=10, pocMaxStations=pocMaxStations,
+            pgmMaxStations=None, pocMaxFlow=None, pgmMaxFlow=None,
+        )
+
+    def test_limited_placed_first_blocks_unlimited(self, logger):
+        reg = ResourceRegistry(logger)
+        reg.record_placement(self._stn(1, 42, 1), dt(6), dt(7))
+        rs = reg.build_resource_set(self._stn(2, 43, None))
+        assert rs.find_slots(Interval(dt(6), dt(7))) == []
+
+    def test_unlimited_placed_first_blocks_limited(self, logger):
+        reg = ResourceRegistry(logger)
+        reg.record_placement(self._stn(1, 42, None), dt(6), dt(7))
+        rs = reg.build_resource_set(self._stn(2, 43, 1))
+        assert rs.find_slots(Interval(dt(6), dt(7))) == []
+
+    def test_two_unlimited_coexist(self, logger):
+        reg = ResourceRegistry(logger)
+        reg.record_placement(self._stn(1, 42, None), dt(6), dt(7))
+        rs = reg.build_resource_set(self._stn(2, 43, None))
+        assert len(rs.find_slots(Interval(dt(6), dt(7)))) > 0
+
+    def test_unlimited_fits_after_limited(self, logger):
+        reg = ResourceRegistry(logger)
+        reg.record_placement(self._stn(1, 42, 1), dt(6), dt(7))
+        rs = reg.build_resource_set(self._stn(2, 43, None))
+        slots = rs.find_slots(Interval(dt(6), dt(9)))
+        assert slots and slots[-1].end == dt(9)
+        for s in slots:
+            assert not s.overlaps(Interval(dt(6), dt(7)))
 
 
 class TestResourceRegistryBaseCurrent:

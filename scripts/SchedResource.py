@@ -93,18 +93,17 @@ class ResourceTracker:
             effective_limit = min(self.capacity, limit)
         elif self.capacity is not None:
             effective_limit = self.capacity
-        elif limit is not None:
-            effective_limit = limit
         else:
-            return True  # unconstrained
+            effective_limit = limit  # may be None
 
         total = amount
         for r in self._overlapping(interval):
             total += r.amount
             if r.limit is not None:
-                effective_limit = min(effective_limit, r.limit)
+                effective_limit = r.limit if effective_limit is None \
+                        else min(effective_limit, r.limit)
 
-        return total <= effective_limit
+        return effective_limit is None or total <= effective_limit
 
     def find_available(self, window: Interval, amount: float,
                        limit: Optional[float] = None,
@@ -122,16 +121,17 @@ class ResourceTracker:
             base_limit = min(self.capacity, limit)
         elif self.capacity is not None:
             base_limit = self.capacity
-        elif limit is not None:
-            base_limit = limit
         else:
-            # Unconstrained — the whole window is available
-            if window.duration >= min_duration:
-                return [window]
-            return []
+            base_limit = limit  # may be None
 
         # Collect overlapping reservations once for the whole sweep
         overlapping = list(self._overlapping(window))
+
+        # Unconstrained only if no limit applies from any side
+        if base_limit is None and all(r.limit is None for r in overlapping):
+            if window.duration >= min_duration:
+                return [window]
+            return []
 
         # Collect all boundary times within the window from overlapping
         # reservations, then check aggregate usage in each sub-interval.
@@ -158,8 +158,8 @@ class ResourceTracker:
                 if r.interval.overlaps(sub):
                     usage += r.amount
                     if r.limit is not None:
-                        eff = min(eff, r.limit)
-            if usage + amount <= eff:
+                        eff = r.limit if eff is None else min(eff, r.limit)
+            if eff is None or usage + amount <= eff:
                 if merge_start is None:
                     merge_start = sub.start
                 merge_end = sub.end
@@ -326,12 +326,12 @@ class ResourceRegistry:
         tracker.add(Reservation(interval, stn.current, ctl_current_cap,
                                 stn.sensor, **delays))
 
-        # POC stations (optional)
-        if stn.pocMaxStations is not None:
-            tracker = self._get_tracker(self.poc_stations, stn.poc,
-                                        stn.pocMaxStations)
-            tracker.add(Reservation(interval, 1, stn.pocMaxStations,
-                                    stn.sensor, **delays))
+        # POC stations — recorded unconditionally because maxCoStations is
+        # per-station: a station with a limit must constrain stations
+        # without one (limit None) on the same POC, and vice versa
+        tracker = self._get_tracker(self.poc_stations, stn.poc)
+        tracker.add(Reservation(interval, 1, stn.pocMaxStations,
+                                stn.sensor, **delays))
 
         # POC flow (optional)
         if stn.pocMaxFlow is not None:
@@ -376,8 +376,9 @@ class ResourceRegistry:
             rs.add(self.ctl_current[stn.controller], stn.current,
                    stn.maxCurrent, 'ctl', delays_ctl)
 
-        # POC stations
-        if stn.pocMaxStations is not None and stn.poc in self.poc_stations:
+        # POC stations — always consulted; existing reservations may carry
+        # maxCoStations limits even when this station has none
+        if stn.poc in self.poc_stations:
             rs.add(self.poc_stations[stn.poc], 1, stn.pocMaxStations,
                    'poc', delays_poc)
 

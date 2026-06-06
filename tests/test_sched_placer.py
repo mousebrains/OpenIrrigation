@@ -132,6 +132,37 @@ class TestPlaceStationConstraints:
         # Must start at or after 7:00
         assert acts[0].tOn >= dt(7)
 
+    def test_unlimited_station_dodges_max_co_stations(self, registry, cum_time, logger):
+        """Regression for 2026-06-06: a station with maxCoStations=1 (run
+        alone on its POC) must push later-placed stations that have NO
+        limit of their own past its reservation."""
+        limited = MockProgramStation(
+            ident=1, sensor=42, program=10, controller=100, poc=200,
+            runTime=td(minutes=60), maxCycleTime=td(minutes=60),
+            ctlMaxStations=10, pocMaxStations=1, pgmMaxStations=None,
+            pocMaxFlow=None, pgmMaxFlow=None,
+            delayOn=td(seconds=0), delayOff=td(seconds=0),
+        )
+        acts1 = place_station(registry, limited, cum_time,
+                              dt(6), dt(12), pgm_date(), logger)
+
+        unlimited = MockProgramStation(
+            ident=2, sensor=43, program=11, controller=100, poc=200,
+            runTime=td(minutes=30), maxCycleTime=td(minutes=60),
+            ctlMaxStations=10, pocMaxStations=None, pgmMaxStations=None,
+            pocMaxFlow=None, pgmMaxFlow=None,
+            delayOn=td(seconds=0), delayOff=td(seconds=0),
+        )
+        acts2 = place_station(registry, unlimited, cum_time,
+                              dt(6), dt(12), pgm_date(), logger)
+
+        assert len(acts1) == 1
+        assert len(acts2) == 1
+        i1 = Interval(acts1[0].tOn, acts1[0].tOff)
+        i2 = Interval(acts2[0].tOn, acts2[0].tOff)
+        assert not i1.overlaps(i2)
+        assert acts2[0].tOn >= acts1[0].tOff
+
     def test_multiple_stations_same_controller(self, registry, cum_time, logger):
         """Two stations on same controller with max=2 can coexist."""
         stn1 = MockProgramStation(
