@@ -72,6 +72,7 @@ echo $db->mkMsg(true, "Inserted into $tbl");
 $db->beginTransaction();
 $sql = 'INSERT INTO changeLog (ipAddr,description) VALUES (?,?);';
 $stmt = $db->prepare($sql);
+if ($stmt === false) exit($db->dbMsg("Error preparing $sql"));
 
 foreach ($comment as $row) {
 	if (!$stmt->execute([$_SERVER['REMOTE_ADDR'], $row]))

@@ -95,6 +95,8 @@ try:
         dt = tNext - datetime.datetime.now()
         if dt > datetime.timedelta(seconds=0):
             msg = 'Sleeping till {}'.format(tNext)
+            if failureCount:
+                msg += ' after {} failed scheduler run(s)'.format(failureCount)
             logger.info(msg)
             db.updateState(myName, msg)
             db.close() # Should be a while before I'm needed again

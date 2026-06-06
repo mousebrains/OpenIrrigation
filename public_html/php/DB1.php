@@ -133,7 +133,7 @@ class DB {
 		if ($stmt === false || $stmt->execute([$addr, "$msg, $fn"]) === false) {
 			error_log("mkMsg chgLog failed: " . $this->getError());
 		}
-		return json_encode(["success" => $flag, "message" => $msg]);
+		return json_encode(["success" => $flag, "message" => $msg], JSON_THROW_ON_ERROR);
 	}
 
 	function dbMsg(string $msg): string {
