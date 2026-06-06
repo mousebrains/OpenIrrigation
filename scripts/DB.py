@@ -158,6 +158,11 @@ class DBout(MyBaseThread):
         """ Store data in my queue """
         self.queue.put((sql, args))
 
+    def shutdown(self) -> None:
+        """Stop after processing work already queued."""
+        super().shutdown()
+        self.queue.put(None)
+
     def runMain(self) -> None:
         """ Called on thread start """
         logger = self.logger
@@ -165,6 +170,9 @@ class DBout(MyBaseThread):
         q = self.queue
         while True:
             items = q.get()
+            if items is None:
+                q.task_done()
+                return
             if len(items) == 3:
                 (sql, t, args) = items
                 a = [datetime.datetime.fromtimestamp(t).astimezone()]

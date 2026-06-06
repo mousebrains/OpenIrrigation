@@ -1,10 +1,13 @@
 <?php
 // update a row in a table
+require_once 'php/CSRF.php';
+csrfRequireValidPost();
 require_once 'php/DB1.php';
 $db = DB::getInstance();
 
-if (empty($_POST['tableName'])) exit($db->mkMsg(false, 'No table name supplied'));
-if (empty($_POST['id'])) exit($db->mkMsg(false, 'No table row id supplied'));
+if (empty($_POST['tableName']) || !is_string($_POST['tableName']))
+	exit($db->mkMsg(false, 'No table name supplied'));
+if (empty($_POST['id']) || !is_string($_POST['id'])) exit($db->mkMsg(false, 'No table row id supplied'));
 if (!ctype_digit($_POST['id'])) exit($db->mkMsg(false, "Invalid row ID"));
 
 $tbl = $_POST['tableName'];
@@ -22,9 +25,14 @@ foreach ($cols as $key) {
 	if (array_key_exists($key, $_POST) 
 		&& array_key_exists($prevKey, $_POST)
 		&& ($_POST[$key] !== $_POST[$prevKey])) {
+		if (!is_string($_POST[$key]) || !is_string($_POST[$prevKey]))
+			exit($db->mkMsg(false, "Invalid value for $key"));
+		$val = $_POST[$key] === '' ? NULL : $_POST[$key];
 		$keys[] = $db->quoteIdent($key) . "=?";
-		$vals[] = $_POST[$key];
-		$comment[] = "In $tbl changed $key from " . $_POST[$prevKey] . " to " . $_POST[$key];
+		$vals[] = $val;
+		$prevMsg = $_POST[$prevKey] === '' ? 'NULL' : $_POST[$prevKey];
+		$valMsg = $val === NULL ? 'NULL' : $_POST[$key];
+		$comment[] = "In $tbl changed $key from $prevMsg to $valMsg";
 	}
 }
 
@@ -50,11 +58,13 @@ foreach ($db->loadRows($sql, [$tbl]) as $row) { // Walk through any secondary ta
 	$key1 = $db->quoteIdent($row['secondaryvalue']);
 	$sql = "DELETE FROM $stbl WHERE $key0=?;"; // Remove current entries
 	if (!$db->query($sql, [$id])) exit($db->dbMsg('Delete secondary'));
+	$qSecondary = true;
 	$comment[] = "Deleted $key0=$id row from $stbl";
-	if (!empty($_POST[$row['col']])) { // Something to be stored
-		$qSecondary = true;
+	$postKey = $row['col'];
+	if (!empty($_POST[$postKey])) { // Something to be stored
+		if (!is_array($_POST[$postKey])) exit($db->mkMsg(false, "Invalid secondary values"));
 		$sql = "INSERT INTO $stbl ($key0, $key1) VALUES(?,?);";
-		foreach ($_POST[$stbl] as $sid) {
+		foreach ($_POST[$postKey] as $sid) {
 			if (!$db->query($sql, [$id, $sid])) {
 				exit($db->dbMsg("Failed to insert secondary"));
 			}
@@ -81,6 +91,7 @@ echo $db->mkMsg(true, "Updated $tbl");
 $db->beginTransaction();
 $sql = 'INSERT INTO changeLog (ipAddr,description) VALUES (?,?);';
 $stmt = $db->prepare($sql);
+if ($stmt === false) exit($db->dbMsg("Error preparing $sql"));
 
 foreach ($comment as $row) {
 	if (!$stmt->execute([$_SERVER['REMOTE_ADDR'], $row]))

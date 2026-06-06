@@ -1,10 +1,13 @@
 <?php
 // delete a row into a table
+require_once 'php/CSRF.php';
+csrfRequireValidPost();
 require_once 'php/DB1.php';
 $db = DB::getInstance();
 
-if (empty($_POST['tableName'])) exit($db->mkMsg(false, 'No table name supplied'));
-if (empty($_POST['id'])) exit($db->mkMsg(false, 'No row id supplied'));
+if (empty($_POST['tableName']) || !is_string($_POST['tableName']))
+	exit($db->mkMsg(false, 'No table name supplied'));
+if (empty($_POST['id']) || !is_string($_POST['id'])) exit($db->mkMsg(false, 'No row id supplied'));
 
 $tbl = $_POST['tableName'];
 $id = $_POST['id'];

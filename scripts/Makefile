@@ -12,11 +12,11 @@ LIB+= SchedCumTime.py SchedInterval.py SchedResource.py SchedPlacer.py
 LIB+= TDI.py TDIbase.py TDIconstants.py TDIserial.py TDISimulate.py TDIvalve.py
 LIB+= Notify.py
 BIN = AgriMet.py dumpDatabase.py scheduler.py TDIserver.py 
-BIN+= dailyReport.py
+BIN+= dailyReport.py databaseMaintenance.py
 
 DEST = $(LIB:%=$(BINDIR)/%) $(BIN:%=$(BINDIR)/%)
 
-.PHONY: all install clean
+.PHONY: all install uninstall clean
 
 all:
 
@@ -26,4 +26,6 @@ install:
 	chown -R $(USER):$(GROUP) $(BINDIR)
 
 clean:
+
+uninstall:
 	$(RM) $(DEST)

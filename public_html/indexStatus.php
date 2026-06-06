@@ -103,7 +103,7 @@ class IndexDB {
 			$a['errors'] = $this->errors;
 			$this->errors = [];
 		}
-		return json_encode($a);
+		return json_encode($a, JSON_THROW_ON_ERROR | JSON_INVALID_UTF8_SUBSTITUTE);
 	} // fetchInitial
 
 	function exec(PDOStatement $stmt): bool {

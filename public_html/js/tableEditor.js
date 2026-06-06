@@ -68,6 +68,17 @@ function mkTextArea(a, x, form) {
 function mkInputField(a, x, form) {
 	const col = a['col'];
 	const rawVal = (x !== null) && (col in x) && (x[col] !== null) ? x[col] : null;
+	if (a['inputtype'] === 'checkbox') {
+		const checked = rawVal === true || rawVal === 1 || rawVal === '1' || rawVal === 't';
+		let msg = `<input type='hidden' name='${col}' value='0'${form}`;
+		msg += `<input type='checkbox' name='${col}' value='1'`;
+		if (checked) {msg += ' checked';}
+		msg += form;
+		if (x !== null) {
+			msg += `<input type='hidden' name='${col}Prev' value='${checked ? 1 : 0}'${form}`;
+		}
+		return msg;
+	}
 	const val = rawVal === null ? "" : `value='${escapeHTML(rawVal)}'`;
 	let msg = `<input type='${a['inputtype']}'`;
 	if (a['inputtype'] === 'password') {msg += " autocomplete='on'";}
@@ -77,7 +88,6 @@ function mkInputField(a, x, form) {
 	msg += ` name='${col}'${val}`;
 	if (a['placeholder'] !== '') {msg += ` placeholder='${escapeHTML(a['placeholder'])}'`;}
 	if (a['qrequired'] === true) {msg += ' required';}
-	if ((a['inputtype'] === 'checkbox') && rawVal) {msg += ' checked';}
 	msg += form;
 	if (x !== null) {msg += `<input type='hidden' name='${col}Prev'${val}${form}`;}
 	return msg;
@@ -148,12 +158,13 @@ function updateActions(obj) {
 
 function inputChanged(ev) {
 	const td = $(this).parent(); // TD element above me
-	const prev = td.children('input:hidden');
-	const prevVal = (prev === undefined) ? undefined : prev.val();
+	const prev = td.children("input:hidden[name$='Prev']");
+	const prevVal = prev.length ? prev.val() : undefined;
 
 	const tr = td.parent(); // TR element above me
 
-	const qChanged = checkCellChanged($(this).val(), prevVal) ||
+	const val = $(this).is(':checkbox') ? ($(this).prop('checked') ? '1' : '0') : $(this).val();
+	const qChanged = checkCellChanged(val, prevVal) ||
 		checkRowChanged(tr.children('td'));
 	if (qChanged) {
 		tr.addClass('rowchanged');
@@ -172,9 +183,9 @@ function checkCellChanged(val, prevVal) {
 function checkRowChanged(tds) {
 	for (let i = 0; i < tds.length; ++i) {
 		const td = tds[i];
-		const prev = $(td).children('input:hidden');
+		const prev = $(td).children("input:hidden[name$='Prev']");
 		if (prev.length !== 1) {continue;}
-		const prevVal = (prev === undefined) ? undefined : prev.val();
+		const prevVal = prev.val();
 		let item = $(td).children('select');
 		if (item.length === 1) {
 			if (checkCellChanged(item.val(), prevVal)) {return true;}
@@ -182,7 +193,8 @@ function checkRowChanged(tds) {
 		}
 		item = $(td).children('input:not(:hidden)');
 		if (item.length !== 1) {continue;}
-		if (checkCellChanged(item.val(), prevVal)) {return true;}
+		const val = item.is(':checkbox') ? (item.prop('checked') ? '1' : '0') : item.val();
+		if (checkCellChanged(val, prevVal)) {return true;}
 	} // for i
 	return false;
 } // checkRowChanged

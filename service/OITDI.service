@@ -14,6 +14,8 @@
 Description=OpenIrrigation TDI Serial Interface
 Requires=postgresql.service
 After=postgresql.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
 # Type=simple # Default
@@ -22,8 +24,8 @@ Group=__GROUP__
 SupplementaryGroups=dialout
 WorkingDirectory=__LOGDIR__
 ExecStart=__BINDIR__/TDIserver.py --db=__DBNAME__ --site=__SITENAME__ --controller=__CONTROLLERNAME__ --log=__LOGDIR__/TDI.log __SIMULATE__
-RestartSec=10 
-Restart=always
+RestartSec=30
+Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target

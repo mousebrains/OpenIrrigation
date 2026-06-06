@@ -8,21 +8,24 @@
 set -eu
 
 usage() {
-    echo "Usage: $0 --user=USER [--domain=FQDN]" >&2
+    echo "Usage: $0 --user=USER --webroot=PATH [--domain=FQDN]" >&2
     exit 1
 }
 
 # --- Parse arguments ---
 USER=
+WEBROOT=
 DOMAIN=
 for arg in "$@"; do
     case "$arg" in
         --user=*)   USER="${arg#--user=}" ;;
+        --webroot=*) WEBROOT="${arg#--webroot=}" ;;
         --domain=*) DOMAIN="${arg#--domain=}" ;;
         *) usage ;;
     esac
 done
 [ -z "$USER" ] && usage
+[ -z "$WEBROOT" ] && usage
 
 # Auto-detect FQDN if not provided
 if [ -z "$DOMAIN" ]; then
@@ -32,7 +35,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # --- Detect PHP version ---
-PHP_WWWCONF=$(ls /etc/php/*/fpm/pool.d/www.conf 2>/dev/null | head -1)
+PHP_WWWCONF=$(find /etc/php -path '*/fpm/pool.d/www.conf' -type f -print 2>/dev/null \
+    | sort -V | tail -n 1)
 if [ -z "$PHP_WWWCONF" ]; then
     echo "Error: cannot find php-fpm www.conf" >&2
     exit 1
@@ -50,7 +54,8 @@ echo "Using socket: ${PHPFPM_SOCK}"
 sed -i 's/^\s*user\s\+.*;/user '"${USER}"';/' /etc/nginx/nginx.conf
 
 # Install site config with socket path substituted
-sed "s|__PHPFPM_SOCK__|${PHPFPM_SOCK}|g" \
+sed -e "s|__PHPFPM_SOCK__|${PHPFPM_SOCK}|g" \
+    -e "s|__WEBROOT__|${WEBROOT}|g" \
     "${SCRIPT_DIR}/nginx/sites-available/default" \
     > /etc/nginx/sites-available/irrigation
 
@@ -71,7 +76,7 @@ else
     fi
     if [ -n "$DOMAIN" ]; then
         echo "Hint: to use Let's Encrypt, run:"
-        echo "  certbot certonly --webroot -w /home/${USER}/public_html -d ${DOMAIN}"
+        echo "  certbot certonly --webroot -w ${WEBROOT} -d ${DOMAIN}"
     fi
 fi
 
@@ -111,8 +116,10 @@ patch_fpm "listen.group" "$USER"
 patch_fpm "listen"       "$PHPFPM_SOCK"
 patch_fpm "user"         "$USER"
 patch_fpm "group"        "$USER"
-patch_fpm "pm.max_children" "20"
 patch_fpm "pm"           "ondemand"
+patch_fpm "pm.max_children" "8"
+patch_fpm "pm.process_idle_timeout" "30s"
+patch_fpm "pm.max_requests" "250"
 
 # --- Restart services ---
 

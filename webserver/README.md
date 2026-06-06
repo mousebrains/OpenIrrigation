@@ -4,7 +4,7 @@ Example configuration files for running the web interface. These are installed t
 
 ## Nginx
 - **nginx/nginx.conf** -- Main nginx configuration. Sets the worker user to the irrigation user (not the default www-data), enables gzip compression, and includes site configs.
-- **nginx/sites-available/default** -- Virtual host configuration. Redirects HTTP to HTTPS, enables PHP-FPM via FastCGI, loads SSL certificates, and points the document root at the irrigation user's public_html directory.
+- **nginx/sites-available/default** -- Virtual host configuration. Redirects HTTP to HTTPS, enables PHP-FPM via FastCGI, loads SSL certificates, and uses the configured `WEBDIR` as its document root.
 - **nginx/snippets/ssl.conf** -- SSL/TLS certificate and key paths for HTTPS.
 
 ## PHP-FPM

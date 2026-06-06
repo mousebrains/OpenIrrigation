@@ -15,6 +15,16 @@ import Notify
 import TDIvalve
 import argparse
 import queue
+import signal
+import time
+
+
+class ServiceStop(Exception):
+    """Raised when systemd requests an orderly daemon stop."""
+
+
+def stopService(_signum, _frame):
+    raise ServiceStop()
 
 parser = argparse.ArgumentParser(description='TDI serial interface')
 parser.add_argument('--noPeriodic', action='store_true', help='Do not start periodic threads to test valve ops')
@@ -32,11 +42,16 @@ args = parser.parse_args()
 
 logger = MyLogger.mkLogger(args, __name__)
 logger.info('Args=%s', args)
+signal.signal(signal.SIGTERM, stopService)
+signal.signal(signal.SIGINT, stopService)
 
 s = None
+threads = []
+thrDBout = None
+myName = 'TDI'
+failure = None
 
 try:
-    myName = 'TDI'
     params = Params.load(args.db, args.group, logger)
     if not params:
         raise ValueError('No parameters found for group {!r}'.format(args.group))
@@ -70,15 +85,37 @@ try:
     e = qExcept.get() # wait on a thread to throw an exception
     qExcept.task_done()
     raise e
+except ServiceStop:
+    logger.info('Shutdown requested')
 except Exception as e:
+    failure = e
     logger.exception('Thread exception')
-    db = DB.DB(args.db, logger)
-    db.updateState(myName, repr(e))
+    try:
+        db = DB.DB(args.db, logger)
+        db.updateState(myName, repr(e))
+    except Exception:
+        logger.exception('Unable to record TDI failure in the database')
 finally:
-    # Signal all threads to stop and wait for them to finish
-    for thr in threads:
+    # Stop producers first so DBout can drain every queued write.
+    workers = [thr for thr in threads if thr is not thrDBout]
+    for thr in workers:
         thr.shutdown()
-    for thr in threads:
-        thr.join(timeout=5)
-    if s: s.close() # Close the serial port
+    deadline = time.monotonic() + 5
+    for thr in workers:
+        thr.join(timeout=max(0, deadline - time.monotonic()))
+        if thr.is_alive():
+            logger.warning('Thread %s did not stop within five seconds', thr.name)
+    if thrDBout is not None:
+        thrDBout.shutdown()
+        thrDBout.join(timeout=5)
+        if thrDBout.is_alive():
+            logger.warning('Thread %s did not stop within five seconds', thrDBout.name)
+    if s:
+        try:
+            s.close() # Close the serial port
+        except Exception:
+            logger.exception('Unable to close the serial port')
+
+if failure is not None:
     Notify.onException(args, logger)
+    raise SystemExit(1)

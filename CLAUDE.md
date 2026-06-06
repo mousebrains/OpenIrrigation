@@ -18,7 +18,7 @@ ruff check scripts/
 # PHP syntax checking
 make php_lint
 
-# PHP static analysis (level 6)
+# PHP static analysis (level 8)
 vendor/bin/phpstan analyse --configuration=phpstan.neon
 
 # Python tests
@@ -38,8 +38,11 @@ CI runs all linters plus PHPStan, bandit, mypy, and migration-check on push/PR t
 The build uses Make with a config-generated `Makefile.params`:
 ```bash
 ./config [options]     # generates Makefile.params with DB name, user, paths, etc.
-make all               # builds all components
+make all               # builds generated files; does not modify the database
+make freshdb           # explicitly drops and recreates the database
 sudo make install      # installs with proper ownership/permissions
+make clean             # removes generated files only
+sudo make uninstall    # explicitly removes installed application files
 make enable start      # enable and start systemd services/timers
 make status            # show systemd service status
 make restart           # daemon-reload + restart all services

@@ -66,15 +66,17 @@ def doit(cur:psycopg.Cursor,
 
     # Insert new scheduled actions into action table
     logger.info('Going to insert %s new actions', len(actions))
-    insertActions(cur, actions, logger)
-
-    return True
+    return insertActions(cur, actions, logger)
 
 def insertActions(cur:psycopg.Cursor, actions:list,
-        logger:logging.Logger) -> None:
-    """ Insert new scheduled actions into the action table """
+        logger:logging.Logger) -> bool:
+    """
+    Insert new scheduled actions into the action table.
+
+    Any failed insert rejects the whole generated schedule.  That fail-closed
+    behavior avoids committing a partial irrigation plan with missing stations.
+    """
     sql = 'SELECT action_onOff_insert(%s,%s,%s,%s,%s,%s);'
-    nFailed = 0
     for act in actions: # Save the new actions to the database
         logger.info('%s', act)
         cur.execute('SAVEPOINT sp_insert;')
@@ -82,8 +84,7 @@ def insertActions(cur:psycopg.Cursor, actions:list,
             cur.execute(sql, (act.tOn, act.tOff, act.sensor.id, act.pgm, act.pgmStn, act.pgmDate))
             cur.execute('RELEASE SAVEPOINT sp_insert;')
         except Exception:
-            nFailed += 1
-            logger.warning('Unable to insert %s', act)
+            logger.warning('Unable to insert %s', act, exc_info=True)
             cur.execute('ROLLBACK TO SAVEPOINT sp_insert;')
             try:
                 cur.execute(
@@ -94,9 +95,11 @@ def insertActions(cur:psycopg.Cursor, actions:list,
                             row[0], row[1], row[2], row[3])
             except Exception:
                 logger.warning('Unable to query existing actions for sensor %s', act.sensor.id)
-
-    if nFailed:
-        logger.warning('Failed to insert %s of %s actions', nFailed, len(actions))
+                cur.execute('ROLLBACK TO SAVEPOINT sp_insert;')
+            finally:
+                cur.execute('RELEASE SAVEPOINT sp_insert;')
+            return False
+    return True
 
 def cleanPending(cur:psycopg.Cursor,
         minTime:datetime.datetime, logger:logging.Logger) -> None:

@@ -69,6 +69,14 @@ class TestPollingRegistry:
 # ── Base.procReply dedup ─────────────────────────────────────────────
 
 class TestBaseProcReplyDedup:
+    def test_shutdown_interrupts_initial_delay(self, logger, mock_dbout):
+        poll = make_poll(ErrorPoll, logger, mock_dbout)
+
+        poll.shutdown()
+        poll.runMain()
+
+        poll.serial.put.assert_not_called()
+
     def test_first_reply_stored(self, logger, mock_dbout):
         """First reply is always forwarded to DB."""
         poll = make_poll(ErrorPoll, logger, mock_dbout)

@@ -7,7 +7,7 @@ include ../../Makefile.params
 
 SRC = irrigation.css
 
-.PHONY: all install clean
+.PHONY: all install uninstall clean
 
 all:
 
@@ -16,5 +16,7 @@ install: $(SRC)
 	chown -R $(USER):$(GROUP) $(CSSDIR)
 
 clean:
+
+uninstall:
 	$(RM) $(CSSDIR)/irrigation.css
 	$(RM) $(CSSDIR)/table.css $(CSSDIR)/tooltip.css $(CSSDIR)/topnav.css

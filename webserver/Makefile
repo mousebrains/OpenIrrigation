@@ -4,11 +4,13 @@
 
 include ../Makefile.params
 
-.PHONY: all install clean
+.PHONY: all install uninstall clean
 
 all:
 
 install:
-	./setup.sh --user=$(USER)
+	./setup.sh --user=$(USER) --webroot=$(WEBDIR)
 
 clean:
+
+uninstall:

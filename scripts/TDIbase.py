@@ -2,9 +2,10 @@
 # and for event driven messages
 
 from MyBaseThread import MyBaseThread
+from TDIserial import SerialSender
 import queue
-import time
 import random
+from typing import Any
 
 class TDICodec: # construct/deconstruct TDI protocol messages
     def __init__(self, logger, cmd, argInfo, replyInfo):
@@ -125,7 +126,7 @@ def parseZee(msg, logger): # Parse and build reply for 1Z messages
 
 class Base(MyBaseThread):
     REQUIRED_PARAMS: list[str] = []  # Subclasses override with their required param keys
-    def __init__(self, logger, qExcept, serial, dbOut, label, dt, cmd, argInfo, replyInfo,
+    def __init__(self, logger, qExcept, serial: SerialSender, dbOut, label, dt, cmd, argInfo, replyInfo,
             sql, zeeSQL):
         MyBaseThread.__init__(self, label, logger, qExcept)
         self.serial = serial
@@ -133,11 +134,16 @@ class Base(MyBaseThread):
         self.dbOut = dbOut
         self.msgHandler = MessageHandler(logger, cmd, argInfo, replyInfo, sql)
         self.zeeSQL = zeeSQL
-        self.args = []
-        self.previous = None
+        self.args: list = []
+        self.previous: Any = None
 
     def addArgs(self, arg):
         self.args.append(arg)
+
+    def shutdown(self) -> None:
+        """Wake any pending reply wait while requesting shutdown."""
+        super().shutdown()
+        self.msgHandler.put(None, None)
 
     def runMain(self): # Called on thread start
         serial = self.serial
@@ -150,18 +156,24 @@ class Base(MyBaseThread):
         initialDelay = random.uniform(30,60) # Startup delay
         logger.info('Starting dt=%s cmd=%s initial sleep %s seconds',
                 dt, self.msgHandler.cmd, initialDelay)
-        time.sleep(initialDelay)
+        if self.wait_for_shutdown(initialDelay):
+            return
         while self.should_run:
             for item in args: # Loop over arguments
+                if not self.should_run:
+                    return
                 msg = msgHandler.buildMessage(item)
                 serial.put(msg, self.msgHandler)
                 try:
                     (t, reply) = self.msgHandler.get(timeout=30)
                 except queue.Empty:
                     logger.warning('Timeout waiting for serial reply to %s', msg)
-                    time.sleep(dt)
+                    if self.wait_for_shutdown(dt):
+                        return
                     continue
                 self.msgHandler.task_done()
+                if not self.should_run:
+                    return
                 if not reply:
                     logger.warning('Timeout for %s', msg)
                 elif is_zee_reply(reply):
@@ -172,7 +184,8 @@ class Base(MyBaseThread):
                 else:
                     replyArgs = msgHandler.procReplyArgs(reply)
                     if replyArgs is not None: self.procReply(t, reply, replyArgs)
-                time.sleep(dt)  # Wait a bit to send message
+                if self.wait_for_shutdown(dt):
+                    return
 
     def _procReplyChanged(self, t, reply, args, channel, val):
         """Store a reading only if the value changed for this channel."""

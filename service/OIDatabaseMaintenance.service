@@ -1,0 +1,15 @@
+# This file is part of OpenIrrigation
+
+[Unit]
+Description=OpenIrrigation Database Retention Maintenance
+Requires=postgresql.service
+After=postgresql.service
+
+[Service]
+Type=oneshot
+User=__USER__
+Group=__GROUP__
+WorkingDirectory=__LOGDIR__
+Nice=10
+IOSchedulingClass=idle
+ExecStart=__BINDIR__/databaseMaintenance.py --db=__DBNAME__ --telemetry-days=__TELEMETRYRETENTIONDAYS__ --history-days=__HISTORYRETENTIONDAYS__ --audit-days=__AUDITRETENTIONDAYS__ --logfile=__LOGDIR__/DatabaseMaintenance.log

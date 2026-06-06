@@ -2,6 +2,13 @@
 
 let OI_timeouts = {}; // map of pending timeouts and when they were generated
 
+$.ajaxPrefilter((options) => {
+	const token = document.getElementById('oi-csrf')?.dataset.token;
+	if (token && !options.crossDomain) {
+		options.headers = {...options.headers, 'X-CSRF-Token': token};
+	}
+});
+
 function escapeHTML(s) {
 	if (s === null || s === undefined) {return '';}
 	return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -142,7 +149,8 @@ function OI_processSubmit(event, url, formData) { // Submission of form data to 
 			OI_toast(data['message'], true);
 		}
 	}).fail((jqXHR, textStatus) => {
-		OI_toast(`Request failed: ${textStatus}`, true);
+		const message = jqXHR.responseJSON?.message ?? `Request failed: ${textStatus}`;
+		OI_toast(message, true);
 	});
 	event.preventDefault();
 }
