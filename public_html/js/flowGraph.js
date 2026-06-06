@@ -20,14 +20,44 @@ $(function() {
 		});
 	}
 
+	// Next local midnight strictly after epoch milliseconds t
+	function nextMidnight(t) {
+		const d = new Date(t);
+		d.setHours(24, 0, 0, 0);
+		return d.getTime();
+	}
+
 	function renderChart(flow, hours) {
 		if (chart) {
 			chart.destroy();
 			chart = null;
 		}
 
-		const points = flow.map(function(row) {
-			return { x: Number(row[0]) * 1000, y: Number(row[1]) };
+		const points = [];
+		const volPoints = [];
+		let prev = null;
+		flow.forEach(function(row) {
+			const t = Number(row[0]) * 1000;
+			const f = Number(row[1]);
+			const v = Number(row[2]);
+			if (prev) {
+				// The server resets cumulative volume at each local
+				// midnight; insert the day-end value and a zero at every
+				// midnight crossed so the reset draws as a vertical drop
+				// instead of a slow ramp to the next day's first reading
+				let vol = prev.vol;
+				let from = prev.t;
+				for (let m = nextMidnight(prev.t); m <= t; m = nextMidnight(m)) {
+					vol += prev.flow * (m - from) / 60000;
+					volPoints.push({x: m, y: vol});
+					volPoints.push({x: m, y: 0});
+					vol = 0;
+					from = m;
+				}
+			}
+			points.push({x: t, y: f});
+			volPoints.push({x: t, y: v});
+			prev = {t: t, flow: f, vol: v};
 		});
 
 		const timeFormat = hours <= 12 ? 'HH:mm' : 'MMM d HH:mm';
@@ -45,7 +75,16 @@ $(function() {
 					pointRadius: 0,
 					// 'before' holds each value flat until the next point
 					// (sample-and-hold); 'after' extends the next value backward
-					stepped: 'before'
+					stepped: 'before',
+					yAxisID: 'y'
+				}, {
+					label: 'Volume (gal)',
+					data: volPoints,
+					borderColor: 'rgba(255, 159, 64, 1)',
+					backgroundColor: 'rgba(255, 159, 64, 0.2)',
+					fill: false,
+					pointRadius: 0,
+					yAxisID: 'y1'
 				}]
 			},
 			options: {
@@ -73,6 +112,15 @@ $(function() {
 							display: true,
 							text: 'Flow (GPM)'
 						}
+					},
+					y1: {
+						beginAtZero: true,
+						position: 'right',
+						title: {
+							display: true,
+							text: 'Volume (gal)'
+						},
+						grid: { drawOnChartArea: false }
 					}
 				},
 				plugins: {
@@ -95,7 +143,7 @@ $(function() {
 							}
 						}
 					},
-					legend: { display: false }
+					legend: { display: true }
 				}
 			}
 		});
