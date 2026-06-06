@@ -43,7 +43,7 @@ $(function() {
 					backgroundColor: 'rgba(54, 162, 235, 0.2)',
 					fill: true,
 					pointRadius: 0,
-					tension: 0.2
+					stepped: 'after'
 				}]
 			},
 			options: {
