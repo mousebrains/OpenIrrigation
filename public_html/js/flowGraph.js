@@ -108,11 +108,21 @@ $(function() {
 					},
 					y: {
 						beginAtZero: true,
+						title: {
+							display: true,
+							text: 'Flow (GPM)',
+							color: 'rgba(54, 162, 235, 1)'
+						},
 						ticks: { color: 'rgba(54, 162, 235, 1)' }
 					},
 					y1: {
 						beginAtZero: true,
 						position: 'right',
+						title: {
+							display: true,
+							text: 'Volume (gal)',
+							color: 'rgba(255, 159, 64, 1)'
+						},
 						ticks: { color: 'rgba(255, 159, 64, 1)' },
 						grid: { drawOnChartArea: false }
 					}
@@ -137,7 +147,7 @@ $(function() {
 							}
 						}
 					},
-					legend: { display: true }
+					legend: { display: false }
 				}
 			}
 		});
