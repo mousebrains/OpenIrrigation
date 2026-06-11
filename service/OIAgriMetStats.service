@@ -13,6 +13,10 @@ After=postgresql.service
 After=network.target
 
 [Service]
+# Resource containment and hardening (1GB Pi: a leak must not take down the host)
+MemoryMax=256M
+NoNewPrivileges=yes
+PrivateTmp=yes
 Type=oneshot
 User=__USER__
 Group=__GROUP__
