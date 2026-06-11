@@ -46,7 +46,7 @@ if (!$db->isConnected()) {
 		echo "<option value=''>Query error</option>";
 	} else {
 		foreach ($a as $item) {
-			$id = $item['id'];
+			$id = htmlspecialchars($item['id'], ENT_QUOTES, 'UTF-8');
 			$val = htmlspecialchars($item['val'], ENT_QUOTES, 'UTF-8');
 			$sel = ($item['val'] === 'ET (in/day)') ? ' selected' : '';
 			echo "<option value='$id'$sel>$val</option>";

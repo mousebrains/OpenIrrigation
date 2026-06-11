@@ -128,11 +128,13 @@ if (empty($_GET['orderby'])) {
 	$orderBy = '';
 } else {
 	$cols = $db->tableColumns($tbl);
-	$a = explode(',', $_GET['orderby']);
-	foreach ($a as $key) {
-		if (!in_array(trim(strtolower($key)), $cols)) {
+	$a = [];
+	foreach (explode(',', $_GET['orderby']) as $key) {
+		$col = trim(strtolower($key)); // Validate, then use the validated form
+		if (!in_array($col, $cols)) {
 			exit(mkMsg(false, "Column, $key, unknown"));
 		}
+		$a[] = $col;
 	}
 	$orderBy = " ORDER BY " . implode(",", $a);
 }
