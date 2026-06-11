@@ -144,7 +144,9 @@ class ValveOps(MyBaseThread):
             self.dbExec(cur, sqlFail, (cmdID, ERR_MAX_STATIONS))
             return False
         else:
-            logger.info('Turning on %s(%s) -> n=%s of %s', name, addr, nOn+1, self.maxStations)
+            # nOn is None when onInfo() hit a DB error; don't crash the thread on nOn+1
+            n = '?' if nOn is None else nOn + 1
+            logger.info('Turning on %s(%s) -> n=%s of %s', name, addr, n, self.maxStations)
         msg = self.msgOn.buildMessage((addr, 0)) # 0AXXYY
         for i in range(2): # Try turning it on twice if need be
             self.serial.put(msg, self) # Send to controller
