@@ -79,6 +79,10 @@ class IndexDB {
 	function notifications(int $dt): array {
 		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
 		if (!$a) return [];
+		// A bulk change (a scheduler run rewrites hundreds of action rows)
+		// fires one NOTIFY per row; drain the queue so the burst coalesces
+		// into a single refetch instead of one refetch per row.
+		while ($this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, 50)) {}
 		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	} // notifications
 
@@ -173,5 +177,6 @@ while (!connection_aborted()) { # Wait until client disconnects
 		echo "data: " . json_encode($info) . "\n\n";
 	} catch (\Exception $e) {
 		echo "data: " . json_encode(["error" => "Database error"]) . "\n\n";
+		break; // Dead DB connection would busy-loop; let EventSource reconnect
 	}
 }
