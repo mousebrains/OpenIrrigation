@@ -907,6 +907,9 @@ DROP INDEX IF EXISTS historical_index;
 CREATE INDEX historical_index ON historical(tOn,tOff);
 DROP INDEX IF EXISTS historical_toff_index;
 CREATE INDEX historical_toff_index ON historical(tOff);
+-- The scheduler's loadExisting query filters on pgmDate every run
+DROP INDEX IF EXISTS historical_pgmdate_index;
+CREATE INDEX historical_pgmdate_index ON historical(pgmDate);
 
 -- Command queue (Generated/removed by insert/delete to/from action)
 DROP TABLE IF EXISTS command CASCADE;
