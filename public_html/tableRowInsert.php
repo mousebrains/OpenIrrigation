@@ -34,7 +34,7 @@ $sql = "INSERT INTO " . $db->quoteIdent($tbl) . " (" . implode(',', $keys) . ") 
 	. " RETURNING id;";
 
 $stmt = $db->prepare($sql); // Prepare the statement
-if ($stmt === false) exit($db->dbMsg('Error preparing $sql'));
+if ($stmt === false) exit($db->dbMsg("Error preparing $sql"));
 if (!$stmt->execute($vals)) exit($db->dbMsg("Error executing $sql"));
 $id = $stmt->fetch(PDO::FETCH_NUM)[0];
 

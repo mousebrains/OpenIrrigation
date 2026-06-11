@@ -14,10 +14,15 @@
 Description=OpenIrrigation TDI Serial Interface
 Requires=postgresql.service
 After=postgresql.service
-StartLimitIntervalSec=300
-StartLimitBurst=5
+# Never stop retrying: an extended DB/serial outage must not leave the
+# irrigation controller permanently down on an unattended appliance.
+StartLimitIntervalSec=0
 
 [Service]
+# Resource containment and hardening (1GB Pi: a leak must not take down the host)
+MemoryMax=256M
+NoNewPrivileges=yes
+PrivateTmp=yes
 # Type=simple # Default
 User=__USER__
 Group=__GROUP__

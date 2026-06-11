@@ -30,7 +30,8 @@ def onException(args:argparse.Namespace, logger:logging.Logger) -> None:
             msg['Subject'] = '{} failed on {}'.format(item, fqdn)
             msg['From'] = email[0]
             msg['To'] = ','.join(email)
-            s = smtplib.SMTP('localhost')
+            # timeout so a wedged local MTA can't hang the exception handler
+            s = smtplib.SMTP('localhost', timeout=30)
             s.send_message(msg)
             s.quit()
     except Exception:

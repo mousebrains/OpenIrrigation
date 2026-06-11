@@ -14,6 +14,15 @@ import MyLogger
 POLICIES = (
     ("currentlog", "timestamp", "telemetry_days"),
     ("sensorlog", "timestamp", "telemetry_days"),
+    # TDI controller status logs; written on change only, so they grow
+    # slowly, but nothing else ever deletes from them
+    ("errorlog", "timestamp", "telemetry_days"),
+    ("numberlog", "timestamp", "telemetry_days"),
+    ("peelog", "timestamp", "telemetry_days"),
+    ("twolog", "timestamp", "telemetry_days"),
+    ("versionlog", "timestamp", "telemetry_days"),
+    ("zeelog", "timestamp", "telemetry_days"),
+    ("teelog", "timestamp", "history_days"),  # valve test history
     ("historical", "toff", "history_days"),
     ("changelog", "timestamp", "audit_days"),
 )

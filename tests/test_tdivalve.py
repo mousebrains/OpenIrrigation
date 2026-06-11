@@ -157,6 +157,23 @@ class TestValveOn:
                     result = ops.valveOn(1, 0x0A, 'Station1', cur)
         assert result is False
 
+    def test_valve_on_oninfo_db_failure(self, logger):
+        """A DB error in onInfo returns (None, None); valveOn must not crash on nOn+1.
+
+        Regression: nOn+1 with nOn=None raised TypeError, which propagated out
+        of the ValveOps thread and took down the whole TDI service.
+        """
+        ops = make_valve_ops(logger)
+        cur = MockCursor()
+
+        with patch.object(ops, 'onInfo', return_value=(None, None)):
+            with patch.object(ops, 'dbExec', return_value=True):
+                t = time.time()
+                reply = b'1A0A00001A02BC003D'
+                ops.queue.put((t, reply))
+                result = ops.valveOn(1, 0x0A, 'Station1', cur)
+        assert result is True
+
     def test_valve_on_reaffirm_when_already_on(self, logger):
         """When valve is already on, it falls through and re-sends command."""
         ops = make_valve_ops(logger)

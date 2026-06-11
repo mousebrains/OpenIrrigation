@@ -14,3 +14,4 @@
 ## Utilities
 - extract.site.py -- Extract site and configuration data from an existing database into portable SQL INSERT statements
 - migrate_005.py -- Add the completion-time index used by database retention on existing installations
+- migrate_006.py -- Add the historical pgmDate index used by the scheduler's loadExisting query
