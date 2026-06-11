@@ -15,9 +15,9 @@ function buildTable(info, tblID, runLabel, stopLabel) {
 		const key = x[0]; // Sensor ID
 		const name = x[1]; // Station name
 		let msg = "";
-		let inputs = `<input type='hidden' name='id' value='${key}'>`;
+		let inputs = `<input type='hidden' name='id' value='${escapeHTML(key)}'>`;
 		if (x.length > 2) {
-			inputs += `<input type='hidden' name='poc' value='${x[2]}'>`;
+			inputs += `<input type='hidden' name='poc' value='${escapeHTML(x[2])}'>`;
 		}
 		msg += `<tr id='${key}'>`;
 		msg += "<td class='tooltip' onclick=''>"; // onclick for ios/safari hover to work

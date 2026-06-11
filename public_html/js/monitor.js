@@ -6,7 +6,7 @@ function buildActions(pocs) {
 	msg += "<th><form id='clearAll'><input type='submit' value='Clear All'></form></th>";
 	msg += "<th><form id='allOff'><input type='submit' value='All Off'></form></th>";
 	for (const key in pocs) {
-		msg += `<td><form class='pocOff'><input type='hidden' name='poc' value='${key}'><input type='submit' value='POC ${escapeHTML(pocs[key])} Off'></form></td>`;
+		msg += `<td><form class='pocOff'><input type='hidden' name='poc' value='${escapeHTML(key)}'><input type='submit' value='POC ${escapeHTML(pocs[key])} Off'></form></td>`;
 	}
 	msg += '</tr>';
 	tbl.find('tr').remove(); // Remove rows
@@ -50,7 +50,7 @@ function buildActive(info) {
 		const key = `A${id}`;
 		const eTime = x[7];
 		let row = "<tr>";
-		row += `<td><form class='active'><input type='hidden' name='id', value='${id}'> <input type='submit' value='Off'></form></td>`;
+		row += `<td><form class='active'><input type='hidden' name='id' value='${escapeHTML(id)}'> <input type='submit' value='Off'></form></td>`;
 		row += `<td>${escapeHTML(getStationName(x[0]))}</td>`;
 		row += `<td>${formatTime(x[6])}</td>`;
 		row += `<td>${formatDeltaTime(eTime - x[6])}</td>`;
@@ -77,7 +77,7 @@ function buildPending(info) {
 	tbl.find('tbody tr').remove();
 	info.forEach((x) => {
 		let row = "<tr>";
-		row += `<td><form class='pending'><input type='hidden' name='id', value='${x[0]}'> <input type='submit' value='Delete'></form></td>`;
+		row += `<td><form class='pending'><input type='hidden' name='id' value='${escapeHTML(x[0])}'> <input type='submit' value='Delete'></form></td>`;
 		row += `<td>${escapeHTML(getStationName(x[1]))}</td>`;
 		row += `<td>${formatTime(x[3])}</td>`;
 		row += `<td>${formatDeltaTime(x[4] - x[3])}</td>`;
