@@ -107,6 +107,26 @@ class TestPlaceStationCycling:
                              dt(6), dt(6, 3), pgm_date(), logger)
         assert acts == []
 
+    def test_runtime_below_min_cycle_time_still_placed(self, registry, cum_time, logger):
+        """A whole run shorter than minCycleTime is placed, not dropped.
+
+        Regression: a short manual run (e.g. 5 min on a station whose
+        minCycleTime is 10) must still fire.  The placer previously skipped
+        every slot because each candidate cycle was < minCycleTime, shorting
+        the run to zero even when the entire requested runtime was that short.
+        """
+        stn = MockProgramStation(
+            ident=1, sensor=42, program=10, controller=100, poc=200,
+            runTime=td(minutes=5), minCycleTime=td(minutes=10),
+            maxCycleTime=td(minutes=120),
+        )
+        # Ample window — the only reason to skip would be the minCycleTime guard
+        acts = place_station(registry, stn, cum_time,
+                             dt(6), dt(18), pgm_date(), logger)
+        assert len(acts) == 1
+        assert acts[0].tOn == dt(6)
+        assert acts[0].tOff == dt(6, 5)
+
 
 class TestPlaceStationConstraints:
     def test_dodges_existing_reservation(self, registry, cum_time, logger):

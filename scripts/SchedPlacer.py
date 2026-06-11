@@ -48,8 +48,12 @@ def place_station(registry: ResourceRegistry, stn, cum_time: CumTime,
         available = slot.duration
         cycle = min(time_needed, stn.maxCycleTime, available)
 
-        if cycle < stn.minCycleTime:
-            # This slot is too short; move past it
+        if cycle < stn.minCycleTime and time_needed > stn.minCycleTime:
+            # This slot can't host a full min-cycle fragment; move past it to
+            # look for a larger hole.  But when the entire remaining run is
+            # itself shorter than minCycleTime -- a short manual run, or the
+            # final tail of a longer run -- place it as-is rather than dropping
+            # it on the floor.
             cursor = slot.end
             continue
 
