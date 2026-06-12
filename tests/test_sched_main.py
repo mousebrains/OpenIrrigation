@@ -6,7 +6,7 @@ import pytest
 from types import SimpleNamespace
 from SchedCumTime import CumTime
 from SchedResource import ResourceRegistry
-from SchedPlacer import build_schedule
+from SchedPlacer import build_schedule, place_station
 from SchedMain import _recordExisting, insertActions
 from helpers import dt, td, MockSensor, MockProgramStation, MockProgram
 
@@ -51,6 +51,42 @@ class TestRecordExisting:
         tracker = registry.ctl_current[100]
         assert tracker.capacity == 400  # 500 - 100
         assert tracker.reservations[0].limit == 400
+
+
+class TestMidRunReschedule:
+    """Regression for 2026-06-12: re-scheduling while a cycle was actively
+    on placed the station's next soak cycle at the exact microsecond the
+    active cycle ended — no soak gap — and action_onOff_insert rejected
+    the abutment, wedging the scheduler in a rollback/retry loop
+    (Comedor/patio: runtime 240, maxCycleTime 50, soakTime 20)."""
+
+    def test_next_cycle_respects_soak_after_existing(self, logger):
+        registry = ResourceRegistry(logger)
+        cum_time = CumTime()
+        pgmDate = datetime.date(2024, 7, 1)
+        soak = td(minutes=20)
+
+        sensor = MockSensor(
+            ident=42, controller=100, poc=200,
+            soakTime=soak,
+            delayOn=td(seconds=10), delayOff=td(seconds=10))
+        stn = MockProgramStation(
+            ident=1, program=10, sensor=42, controller=100, poc=200,
+            runTime=td(minutes=100), maxCycleTime=td(minutes=50),
+            soakTime=soak,
+            delayOn=td(seconds=10), delayOff=td(seconds=10))
+
+        # Active cycle [10:30, 11:20) loaded back from the action table
+        _recordExisting(registry, sensor, stn, 10, dt(10, 30), dt(11, 20))
+        cum_time.add(stn.id, pgmDate, td(minutes=50))
+
+        # Re-schedule mid-cycle (minTime raised sTime to 11:04)
+        acts = place_station(registry, stn, cum_time,
+                             dt(11, 4), dt(21), pgmDate, logger)
+        assert len(acts) == 1
+        # Before the fix this was dt(11, 20) — abutting the active cycle
+        assert acts[0].tOn == dt(11, 20) + soak
+        assert acts[0].tOff - acts[0].tOn == td(minutes=50)
 
 
 class TestInsertActions:

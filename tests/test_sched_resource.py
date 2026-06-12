@@ -549,3 +549,58 @@ class TestResourceRegistryDelays:
             Interval(dt(6), dt(7) - td(seconds=11)),
             Interval(dt(8) + td(seconds=13), dt(9)),
         ]
+
+    def test_sensor_soak_pads_blocked_zone_both_sides(self):
+        rs = ResourceSet()
+        t = ResourceTracker(capacity=1)
+        t.add(Reservation(
+            Interval(dt(7), dt(8)), 1, 1, sensor_id=1,
+            delay_on=td(seconds=10), delay_off=td(seconds=10),
+            soak=td(minutes=20)))
+        rs.add(t, 1, 1, 'sensor', {
+            'soak': td(minutes=20),
+            'delay_on': td(seconds=10),
+            'delay_off': td(seconds=10),
+        })
+
+        assert rs.find_slots(Interval(dt(6), dt(10))) == [
+            Interval(dt(6), dt(6, 40)),
+            Interval(dt(8, 20), dt(10)),
+        ]
+
+
+class TestSensorSoakGap:
+    """Regression for 2026-06-12: a new cycle for a sensor must keep the
+    soak gap from the sensor's existing reservations.  The placer was
+    abutting the next cycle to the exact end of the active one
+    (Comedor/patio), which action_onOff_insert rejected."""
+
+    def test_same_sensor_blocked_during_soak(self, logger):
+        reg = ResourceRegistry(logger)
+        stn = MockProgramStation(
+            ident=1, program=10, sensor=42, controller=100, poc=200,
+            soakTime=td(minutes=20),
+            delayOn=td(seconds=10), delayOff=td(seconds=10),
+        )
+        reg.record_placement(stn, dt(7), dt(8))
+
+        rs = reg.build_resource_set(stn)
+        slots = rs.find_slots(Interval(dt(6), dt(10)))
+        assert slots
+        for s in slots:
+            assert not s.overlaps(Interval(dt(6, 40), dt(8, 20)))
+
+    def test_zero_soak_still_allows_abutting(self, logger):
+        reg = ResourceRegistry(logger)
+        stn = MockProgramStation(
+            ident=1, program=10, sensor=42, controller=100, poc=200,
+            soakTime=td(minutes=0),
+        )
+        # The constructor coerces falsy delays to 1s; force true zeros
+        stn.delayOn = td(seconds=0)
+        stn.delayOff = td(seconds=0)
+        reg.record_placement(stn, dt(7), dt(8))
+
+        rs = reg.build_resource_set(stn)
+        slots = rs.find_slots(Interval(dt(8), dt(10)))
+        assert slots == [Interval(dt(8), dt(10))]

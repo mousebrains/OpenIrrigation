@@ -157,6 +157,7 @@ def _recordExisting(registry:ResourceRegistry, sensor, stn, program,
         ctl_delay=sensor.ctlDelay,
         delay_on=sensor.delayOn,
         delay_off=sensor.delayOff,
+        soak=sensor.soakTime,
     )
 
     # Controller stations

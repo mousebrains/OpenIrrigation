@@ -19,13 +19,14 @@ ZERO = datetime.timedelta(0)
 class Reservation:
     """ A single resource reservation over a time interval """
     __slots__ = ('interval', 'amount', 'limit', 'sensor_id',
-                 'ctl_delay', 'delay_on', 'delay_off')
+                 'ctl_delay', 'delay_on', 'delay_off', 'soak')
 
     def __init__(self, interval: Interval, amount: float, limit: float,
                  sensor_id: int,
                  ctl_delay: datetime.timedelta = ZERO,
                  delay_on: datetime.timedelta = ZERO,
-                 delay_off: datetime.timedelta = ZERO) -> None:
+                 delay_off: datetime.timedelta = ZERO,
+                 soak: datetime.timedelta = ZERO) -> None:
         self.interval = interval
         self.amount = amount
         self.limit = limit
@@ -33,6 +34,7 @@ class Reservation:
         self.ctl_delay = ctl_delay
         self.delay_on = delay_on
         self.delay_off = delay_off
+        self.soak = soak
 
     def __repr__(self) -> str:
         return (f"Reservation({self.interval}, amount={self.amount}, "
@@ -171,8 +173,9 @@ class ResourceSet:
     def __init__(self) -> None:
         self.entries: list[tuple] = []
         # Each entry: (tracker, amount, limit, delay_category, delays)
-        # delay_category: 'ctl', 'poc', or None
-        # delays: dict with keys ctl_delay, delay_on, delay_off from the station
+        # delay_category: 'ctl', 'poc', 'sensor', or None
+        # delays: dict with keys ctl_delay, delay_on, delay_off, soak
+        # from the station
 
     def add(self, tracker: ResourceTracker, amount: float,
             limit: Optional[float], delay_category: Optional[str] = None,
@@ -207,6 +210,13 @@ class ResourceSet:
                      stn_delays.get('delay_off', ZERO)]
                     + [max(r.delay_on, r.delay_off)
                        for r in tracker.reservations])
+            elif delay_cat == 'sensor':
+                padding = max(
+                    [stn_delays.get('soak', ZERO),
+                     stn_delays.get('delay_on', ZERO),
+                     stn_delays.get('delay_off', ZERO)]
+                    + [max(r.soak, r.delay_on, r.delay_off)
+                       for r in tracker.reservations])
             expanded_window = window.expanded(
                 before=padding, after=padding)
             segments = tracker._availability_segments(
@@ -231,6 +241,17 @@ class ResourceSet:
                     after_delay = max(
                         [stn_delays.get('delay_on', ZERO)]
                         + [r.delay_off for r in active])
+                elif delay_cat == 'sensor':
+                    # Cycles of the same sensor must be separated by the soak
+                    # gap in both directions (matches place_station's cursor
+                    # advance of max(soakTime, delayOff, delayOn)).
+                    before_delay = max(
+                        [stn_delays.get('soak', ZERO),
+                         stn_delays.get('delay_on', ZERO),
+                         stn_delays.get('delay_off', ZERO)]
+                        + [max(r.soak, r.delay_on, r.delay_off)
+                           for r in active])
+                    after_delay = before_delay
 
                 expanded = sub.expanded(before=before_delay,
                                         after=after_delay)
@@ -287,6 +308,7 @@ class ResourceRegistry:
             ctl_delay=stn.delayOn,  # use delayOn as proxy for ctl transition
             delay_on=stn.delayOn,
             delay_off=stn.delayOff,
+            soak=stn.soakTime,
         )
         # Use ctlDelay if available (Sensor has it, ProgramStation may not)
         if hasattr(stn, 'ctlDelay'):
@@ -344,6 +366,8 @@ class ResourceRegistry:
         rs = ResourceSet()
         delays_ctl = {'ctl_delay': getattr(stn, 'ctlDelay', stn.delayOn)}
         delays_poc = {'delay_on': stn.delayOn, 'delay_off': stn.delayOff}
+        delays_sensor = {'soak': stn.soakTime,
+                         'delay_on': stn.delayOn, 'delay_off': stn.delayOff}
 
         # Controller stations
         if stn.controller in self.ctl_stations:
@@ -374,8 +398,9 @@ class ResourceRegistry:
         if stn.pgmMaxFlow is not None and stn.program in self.pgm_flow:
             rs.add(self.pgm_flow[stn.program], stn.flow, stn.pgmMaxFlow)
 
-        # Sensor exclusion
+        # Sensor exclusion — soak/delay padded so a new cycle keeps the
+        # soak gap from this sensor's existing (e.g. mid-run) reservations
         if stn.sensor in self.sensor:
-            rs.add(self.sensor[stn.sensor], 1, 1)
+            rs.add(self.sensor[stn.sensor], 1, 1, 'sensor', delays_sensor)
 
         return rs

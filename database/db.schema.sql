@@ -987,12 +987,15 @@ DECLARE stnName TEXT; -- station.name for pgmstn.station
 DECLARE nOn BIGINT; -- Number of times I'm already on between timeOn and timeOff
 BEGIN
 	SELECT addr,controller INTO address,ctrlID FROM sensor WHERE id=sensorID;
-	SELECT COUNT(*) INTO nOn FROM action 
+	-- Half-open interval semantics [tOn, tOff): abutting actions
+	-- (existing tOff == new tOn) do not conflict, matching the
+	-- scheduler's SchedInterval model
+	SELECT COUNT(*) INTO nOn FROM action
 		WHERE addr=address
 		AND controller=ctrlID
 		AND cmd=0
-		AND tOff >= timeOn
-		AND tOn <= timeOff;
+		AND tOff > timeOn
+		AND tOn < timeOff;
 
 	IF nOn > 0 THEN -- I tried this with an assertion and it failed all the time
 		RAISE EXCEPTION
@@ -1034,10 +1037,11 @@ DECLARE stnName TEXT; -- station.name for pgmstn.station
 DECLARE nOn BIGINT; -- Number of times I'm already on between timeOn and timeOff
 BEGIN
 	SELECT addr,controller INTO address,ctrlID FROM sensor WHERE id=sensorID;
-	SELECT COUNT(*) INTO nOn FROM action 
+	-- Half-open: an action ending exactly at timeOn is already off
+	SELECT COUNT(*) INTO nOn FROM action
 		WHERE addr=address
 		AND controller=ctrlID
-		AND tOff >= timeOn
+		AND tOff > timeOn
 		AND tOn <= timeOn;
 
 	IF nOn > 0 THEN -- I tried this with an assertion and it failed all the time
