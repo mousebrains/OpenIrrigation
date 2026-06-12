@@ -51,12 +51,14 @@ make stop              # stop all services
 
 Template files (e.g., `config.php.in`, `*.service`) use `__DBNAME__`, `__USER__`, `__GROUP__`, `__LOGDIR__`, `__BINDIR__` placeholders substituted via sed during install.
 
+**`sudo make install` does not reload running services.** The Python services (notably `OISched`) are long-lived processes that keep the old modules in memory; a code change is not live until `make restart`. To verify which code a service is running, compare its startup line in the log (e.g. `Params=` in `Scheduler.log`) against the install time.
+
 ## Architecture
 
 ### Three-Layer Backend
 
 1. **Hardware Interface** (Python): `scripts/TDI*.py` — communicates with Tucor TDI controller via USB serial. `TDIserver.py` runs as systemd service `OITDI`.
-2. **Scheduler** (Python): `scripts/Sched*.py` — builds irrigation timelines from programs/stations. `scheduler.py` runs as systemd service `OISched`, restarts every 120s.
+2. **Scheduler** (Python): `scripts/Sched*.py` — builds irrigation timelines from programs/stations. `scheduler.py` runs as systemd service `OISched`. The process is long-lived: it loops forever, sleeping until just after midnight or until a `run_scheduler` NOTIFY wakes it (`Restart=always`/`RestartSec=120` in the unit only restarts it 120s after an exit, which doesn't happen in normal operation).
 3. **Web Interface** (PHP/JS): `public_html/` — HTML5 interface with real-time updates.
 
 Supporting services: `AgriMet.py` (weather/ET data), `dailyReport.py` (email reports), `Notify.py` (notifications).
