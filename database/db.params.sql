@@ -31,6 +31,15 @@ INSERT INTO params (grp,name,val) VALUES
 	('AGRIMET', 'statHourOfDay', '04:30'),
 	('AGRIMET', 'earliestDate', '1990-04-01'),
 -- Scheduler parameters
-	('SCHED', 'nDays', 10);
+	('SCHED', 'nDays', 10),
+-- Filter status parameters
+	('FILTER', 'supplyPSI', 51), -- measured feed pressure (PSI)
+	('FILTER', 'cleanDP', 5), -- clean-filter dP (PSI)
+	('FILTER', 'serviceDP', 20), -- alert ("service it") dP (PSI)
+	('FILTER', 'minSoloRuns', 5), -- min solo runs/valve to trust a baseline
+	('FILTER', 'baselineWindowDays', 120), -- trailing window for baseline seeding
+	('FILTER', 'warnPct', 10), -- nav-bar amber threshold (flow loss %)
+	('FILTER', 'servicePct', 18), -- nav-bar red / email threshold (flow loss %)
+	('FILTER', 'emailDebounceHours', 24); -- min hours between service emails
 	
 -- SELECT * FROM params ORDER BY grp,name;

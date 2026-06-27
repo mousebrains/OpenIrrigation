@@ -30,6 +30,7 @@ if (!is_string($csrfToken)) {
       <a href='tableEditor.php?tbl=sensor&orderby=name'>Sensor</a>
       <a href='tableEditor.php?tbl=poc&orderby=name'>Point-of-connect</a>
       <a href='tableEditor.php?tbl=pocFlow&orderby=name'>Point-of-connect Flow</a>
+      <a href='tableEditor.php?tbl=filterReading&orderby=timestamp'>Filter Log</a>
       <a href='tableEditor.php?tbl=pocMV&orderby=name'>Point-of-connect Master Valve</a>
       <a href='tableEditor.php?tbl=pocPump&orderby=name'>Point-of-connect Pump</a>
       <a href='tableEditor.php?tbl=soil&orderby=name'>Soil Edit</a>

@@ -38,6 +38,7 @@ INSERT INTO webList (sortOrder,grp,key,label) VALUES
 	(2,'reports','electrical', 'Electrical Alerts'),
 	(3,'reports','controller', 'Controller Alerts'),
 	(4,'reports','daily', 'Daily Summary Report'),
-	(5,'reports','systemd', 'Systemd Alerts');
+	(5,'reports','systemd', 'Systemd Alerts'),
+	(6,'reports','filter', 'Filter Alerts');
 
  

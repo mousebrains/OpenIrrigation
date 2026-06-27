@@ -436,6 +436,8 @@ CREATE TABLE station( -- irrigation station information
 	highFlowFrac SMALLINT DEFAULT NULL CHECK (highFlowFrac BETWEEN 100 AND 1000), -- % of meas/user flow for alert
 	flowDelayOn NONNEGINTEGER DEFAULT 60, -- delay after on before flow alerts (s)
 	flowDelayOff NONNEGINTEGER DEFAULT 10, -- delay after off before flow alerts (s)
+	cleanFlow NONNEGFLOAT, -- clean-filter baseline flow in GPM (filter feature)
+	qFilterSensor BOOLEAN DEFAULT FALSE, -- include in the common-mode filter index
 	UNIQUE (poc, name),
 	UNIQUE (poc, station)
 	);
@@ -445,7 +447,8 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
 	('station', 'name',          0,True, 'Sensor Name', 'text', 'Shack'),
 	('station', 'make',         15,False, 'Manufacturer', 'text', 'Tucor'),
-	('station', 'model',        16,False, 'Model', 'text', 'TWI 2-Wire');
+	('station', 'model',        16,False, 'Model', 'text', 'TWI 2-Wire'),
+	('station', 'qfiltersensor',17,False, 'Filter Sensor', 'checkbox', NULL);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
 	('station', 'soaktime',      3,'Soak Time (min)', 10, 0, 1000, 0.1),
 	('station', 'maxcycletime',  4,'Max Cycle Time (min)', 10, 0, 1000, 0.1),
@@ -458,7 +461,8 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 	('station', 'station',      11,'Station #', 10, 0, 1000, NULL),
 	('station', 'sortorder',    12,'Sorting Order', 10, 0, 1000, NULL),
 	('station', 'flowdelayon',  13,'Flow delay after on (s)', 1, 0, 120, 0.1),
-	('station', 'flowdelayoff', 14,'Flow delay before off(s)', 1, 0, 120, 0.1);
+	('station', 'flowdelayoff', 14,'Flow delay before off(s)', 1, 0, 120, 0.1),
+	('station', 'cleanflow',    18,'Clean Flow (GPM)', 8, 0, 1000, 0.1);
 
 -- progams, a collection of water events
 DROP TABLE IF EXISTS program CASCADE;
@@ -826,6 +830,40 @@ BEGIN
 	PERFORM(pg_notify('sensorlog_update', 'insert'));
 END;
 $$;
+
+-- Inline-filter status: manual gauge readings + computed degradation (filter feature)
+DROP TABLE IF EXISTS filterReading CASCADE;
+CREATE TABLE filterReading( -- manual upstream/downstream gauge readings
+	id SERIAL PRIMARY KEY,
+	poc INTEGER REFERENCES poc(id) ON DELETE CASCADE DEFAULT 1, -- which POC
+	timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- when read
+	upstreamPSI NONNEGFLOAT, -- upstream analog gauge reading
+	downstreamPSI NONNEGFLOAT, -- downstream analog gauge reading
+	flow FLOAT, -- concurrent POC flow (GPM), back-filled from sensorLog
+	qCleaning BOOLEAN DEFAULT FALSE, -- True => post-cleaning, resets the baseline
+	note TEXT
+	);
+INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
+	('filterReading','upstreampsi',   1,'Upstream (PSI)', '46.75', 0, 200, 0.25),
+	('filterReading','downstreampsi', 2,'Downstream (PSI)', '31.25', 0, 200, 0.25);
+INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
+	('filterReading','qcleaning', 3,False,'Post-cleaning','checkbox',NULL),
+	('filterReading','note',      4,False,'Note','text',NULL);
+
+DROP TABLE IF EXISTS filterStatus CASCADE;
+CREATE TABLE filterStatus( -- computed filter degradation time series
+	id SERIAL PRIMARY KEY,
+	poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- which POC
+	timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- when computed
+	degradation FLOAT, -- common-mode flow loss, percent
+	ensembleFlow FLOAT, -- current lawn-ensemble flow estimate (GPM)
+	baselineFlow FLOAT, -- clean-baseline ensemble flow (GPM)
+	estDP FLOAT, -- estimated/most-recent filter dP (PSI), NULL until calibrated
+	Rf FLOAT, -- filter resistance dP/flow^2, from latest gauge reading
+	forecastDays FLOAT, -- estimated days until the service threshold, NULL if stable
+	state TEXT -- 'clean' | 'watch' | 'service'
+	);
+CREATE INDEX filterStatus_ts_index ON filterStatus(poc, timestamp);
 
 -- Tee message results
 DROP TABLE IF EXISTS teeLog;
