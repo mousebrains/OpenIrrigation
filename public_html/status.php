@@ -21,6 +21,7 @@ class StatusDB {
 	private PDOStatement $getFlow;
 	private PDOStatement $getNumberOn;
 	private PDOStatement $getPending;
+	private PDOStatement $getFilter;
 
 	function __construct(string $dbName) {
 		$db = new PDO("pgsql:dbname=$dbName;");
@@ -40,9 +41,14 @@ class StatusDB {
 			. " FROM action"
 			. " WHERE cmdOn IS NOT NULL"
 			. " AND tOn<=(CURRENT_TIMESTAMP+INTERVAL '1 hour');");
+		$this->getFilter = $db->prepare("SELECT degradation,gallonsSinceClean,"
+			. "estDP,forecastDays,state,"
+			. "EXTRACT(EPOCH FROM timestamp) as tFilter"
+			. " FROM filterStatus ORDER BY timestamp DESC LIMIT 1;");
 		$db->exec("LISTEN currentlog_update;");
 		$db->exec("LISTEN sensorlog_update;");
 		$db->exec("LISTEN action_update;");
+		$db->exec("LISTEN filterstatus_update;");
 	}
 
 	/** @return array<string, mixed> */
@@ -62,7 +68,8 @@ class StatusDB {
 			$this->fetchCurrent(),
 			$this->fetchFlow(),
 			$this->fetchNumberOn(),
-			$this->fetchPending()
+			$this->fetchPending(),
+			$this->fetchFilter()
 		);
 	} // fetchData
 
@@ -158,6 +165,27 @@ class StatusDB {
 		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) return $row;
 		return [];
 	} // fetchPending
+
+	/** @return array<string, mixed> */
+	function fetchFilter(): array {
+		$stmt = $this->getFilter;
+		if (!$this->exec($stmt)) return [];
+		while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+			return ['filter' => [
+				'state' => $row['state'],
+				'degradation' => $row['degradation'] === null
+					? null : round($row['degradation'], 1),
+				'gallons' => $row['gallonssinceclean'] === null
+					? null : round($row['gallonssinceclean']),
+				'estDP' => $row['estdp'] === null
+					? null : round($row['estdp'], 1),
+				'forecastDays' => $row['forecastdays'] === null
+					? null : round($row['forecastdays']),
+				'tFilter' => round($row['tfilter']),
+			]];
+		}
+		return [];
+	} // fetchFilter
 
 	/** @return array<int, string> */
 	function fetchSystemctl(): array {

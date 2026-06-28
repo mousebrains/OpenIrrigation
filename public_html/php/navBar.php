@@ -46,6 +46,7 @@ if (!is_string($csrfToken)) {
  <span id='sse-status'></span>
  <span id='statusCurrent'></span>
  <span id='statusFlow'></span>
+ <span id='statusFilter'></span>
  <span id='statusActive'></span>
  <span id='statusPending'></span>
 </span>
