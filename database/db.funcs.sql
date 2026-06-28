@@ -190,3 +190,4 @@ SELECT generic_add_trigger('poc');
 SELECT generic_add_trigger('pocflow');
 SELECT generic_add_trigger('pocmv');
 SELECT generic_add_trigger('pocpump');
+SELECT generic_add_trigger('filterreading');

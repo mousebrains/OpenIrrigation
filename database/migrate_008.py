@@ -258,6 +258,17 @@ def migrate(db, dry_run):
                 )
                 applied.append(f"params({grp},{name})={val}: inserted row")
 
+        # Step 6: live-update NOTIFY trigger so the tableEditor view refreshes on
+        # insert/update/delete (filterReading is user-edited via tableEditor.php).
+        cur.execute(
+            "SELECT 1 FROM pg_trigger WHERE tgname='filterreading_update_trigger';"
+        )
+        if cur.fetchone():
+            skipped.append("filterReading: update-notify trigger already exists")
+        else:
+            cur.execute("SELECT generic_add_trigger('filterreading');")
+            applied.append("filterReading: created update-notify trigger")
+
     print("=== Migration 008 ===")
     for msg in applied:
         print(f"  APPLIED: {msg}")
