@@ -872,6 +872,7 @@ CREATE TABLE filterStatus( -- computed filter degradation time series
 	degradation FLOAT, -- common-mode flow loss, percent
 	ensembleFlow FLOAT, -- current lawn-ensemble flow estimate (GPM)
 	baselineFlow FLOAT, -- clean-baseline ensemble flow (GPM)
+	gallonsSinceClean FLOAT, -- cumulative POC volume (gal) since the last cleaning
 	estDP FLOAT, -- estimated/most-recent filter dP (PSI), NULL until calibrated
 	Rf FLOAT, -- filter resistance dP/flow^2, from latest gauge reading
 	forecastDays FLOAT, -- estimated days until the service threshold, NULL if stable

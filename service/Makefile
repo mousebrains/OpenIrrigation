@@ -12,12 +12,14 @@ SERVICES+= OIAgriMetStats.service
 SERVICES+= OISched.service
 SERVICES+= OIDailyReport.service
 SERVICES+= OIDatabaseMaintenance.service
+SERVICES+= OIFilterMonitor.service
 
 # Timers
 TIMERS = OIAgriMet.timer
 TIMERS+= OIAgriMetStats.timer
 TIMERS+= OIDailyReport.timer
 TIMERS+= OIDatabaseMaintenance.timer
+TIMERS+= OIFilterMonitor.timer
 
 SRC = $(SERVICES) $(TIMERS)
 

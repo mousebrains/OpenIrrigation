@@ -40,6 +40,7 @@ INSERT INTO params (grp,name,val) VALUES
 	('FILTER', 'baselineWindowDays', 120), -- trailing window for baseline seeding
 	('FILTER', 'warnPct', 10), -- nav-bar amber threshold (flow loss %)
 	('FILTER', 'servicePct', 18), -- nav-bar red / email threshold (flow loss %)
-	('FILTER', 'emailDebounceHours', 24); -- min hours between service emails
+	('FILTER', 'emailDebounceHours', 24), -- min hours between service emails
+	('FILTER', 'serviceVolumeGal', 20000); -- volume (gal) threshold for "service it"
 	
 -- SELECT * FROM params ORDER BY grp,name;
