@@ -1,0 +1,11 @@
+[Unit]
+Description=OpenIrrigation Inline Filter Monitor Timer
+
+[Timer]
+# After the overnight irrigation window (and the daily report), so the night's
+# solo lawn runs are in historical.
+OnCalendar=*-*-* 07:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

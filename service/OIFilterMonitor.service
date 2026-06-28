@@ -1,0 +1,27 @@
+# This file is part of OpenIrrigation
+#
+# this service computes the inline-filter status (filterStatus) and emails
+# 'filter' subscribers when the filter reaches the service threshold
+#
+# man systemd.unit for parameters
+# man systemd.service for parameters
+# man systemd.exec for parameters
+
+[Unit]
+Description=OpenIrrigation Inline Filter Monitor
+Requires=postgresql.service
+After=postgresql.service
+Requires=postfix.service
+After=postfix.service
+After=network.target
+
+[Service]
+# Resource containment and hardening (1GB Pi: a leak must not take down the host)
+MemoryMax=256M
+NoNewPrivileges=yes
+PrivateTmp=yes
+Type=oneshot
+User=__USER__
+Group=__GROUP__
+WorkingDirectory=__LOGDIR__
+ExecStart=__BINDIR__/FilterMonitor.py --db=__DBNAME__ --log=__LOGDIR__/FilterMonitor.log
