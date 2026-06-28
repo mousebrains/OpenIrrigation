@@ -106,6 +106,24 @@ tbody:empty::after {
 	padding: 0 8px;
 }
 
+/* === Inline-filter status badge === */
+#statusFilter {
+	display: inline-block;
+	font-size: 0.85em;
+	font-weight: bold;
+}
+#statusFilter.filter-clean,
+#statusFilter.filter-watch,
+#statusFilter.filter-service {
+	padding: 2px 8px;
+	margin: 0 4px;
+	border-radius: 10px;
+	color: #fff;
+}
+#statusFilter.filter-clean   { background-color: #2e7d32; } /* green  */
+#statusFilter.filter-watch   { background-color: #ef6c00; } /* amber  */
+#statusFilter.filter-service { background-color: #c62828; } /* red    */
+
 /* === Toast Notifications === */
 .oi-toast {
 	position: fixed;
