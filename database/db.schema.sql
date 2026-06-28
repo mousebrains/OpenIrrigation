@@ -848,8 +848,21 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 	('filterReading','downstreampsi', 2,'Downstream (PSI)', '31.25', 0, 200, 0.25),
 	('filterReading','flow',          5,'Flow (GPM)', '8.5', 0, 100, 0.01);
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
+	('filterReading','timestamp', 0,False,'When','text','2026-06-27 15:42'),
 	('filterReading','qcleaning', 3,False,'Post-cleaning','checkbox',NULL),
 	('filterReading','note',      4,False,'Note','text',NULL);
+
+-- stamp the insert time when the table editor posts a blank (NULL) timestamp
+CREATE OR REPLACE FUNCTION filterReading_insert_defaults()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+	NEW.timestamp = COALESCE(NEW.timestamp, CURRENT_TIMESTAMP);
+	RETURN NEW;
+END;
+$$;
+DROP TRIGGER IF EXISTS filterReading_defaults_trigger ON filterReading;
+CREATE TRIGGER filterReading_defaults_trigger BEFORE INSERT ON filterReading
+	FOR EACH ROW EXECUTE FUNCTION filterReading_insert_defaults();
 
 DROP TABLE IF EXISTS filterStatus CASCADE;
 CREATE TABLE filterStatus( -- computed filter degradation time series

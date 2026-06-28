@@ -111,6 +111,24 @@ FILTER_STATUS_INDEX = (
     "CREATE INDEX filterStatus_ts_index ON filterStatus(poc, timestamp);"
 )
 
+# the tableEditor posts a blank timestamp field as NULL, which bypasses the
+# column DEFAULT; this BEFORE INSERT trigger records the insert time anyway so
+# every reading is placed in time (the user may still type a value to backdate).
+FILTER_DEFAULTS_FUNC = """
+CREATE OR REPLACE FUNCTION filterReading_insert_defaults()
+RETURNS TRIGGER LANGUAGE plpgSQL AS $$
+BEGIN
+    NEW.timestamp = COALESCE(NEW.timestamp, CURRENT_TIMESTAMP);
+    RETURN NEW;
+END;
+$$;
+"""
+
+FILTER_DEFAULTS_TRIGGER = (
+    "CREATE TRIGGER filterReading_defaults_trigger BEFORE INSERT ON filterReading"
+    " FOR EACH ROW EXECUTE FUNCTION filterReading_insert_defaults();"
+)
+
 # threshold/config defaults (grp, name, val); all editable via tableEditor params
 FILTER_PARAMS = (
     ("FILTER", "supplyPSI", "51"),           # measured feed pressure (PSI)
@@ -230,6 +248,17 @@ def migrate(db, dry_run):
             )
             applied.append("tableInfo(filterReading,qcleaning): inserted row")
 
+        if tableinfo_row_exists(cur, "filterReading", "timestamp"):
+            skipped.append("tableInfo(filterReading,timestamp): row already exists")
+        else:
+            cur.execute(
+                "INSERT INTO tableinfo"
+                "(tbl,col,displayOrder,qRequired,label,inputType,placeholder)"
+                " VALUES('filterReading','timestamp',0,False,'When','text',"
+                "'2026-06-27 15:42');"
+            )
+            applied.append("tableInfo(filterReading,timestamp): inserted row")
+
         # Step 3: filterStatus time-series table (display-only, no tableInfo)
         if table_exists(cur, "filterstatus"):
             skipped.append("filterStatus: table already exists")
@@ -268,6 +297,22 @@ def migrate(db, dry_run):
         else:
             cur.execute("SELECT generic_add_trigger('filterreading');")
             applied.append("filterReading: created update-notify trigger")
+
+        # Step 7: BEFORE INSERT trigger to stamp the insert time when the form
+        # leaves the (now-displayed) timestamp blank.
+        cur.execute(
+            "SELECT 1 FROM pg_trigger WHERE tgname='filterreading_defaults_trigger';"
+        )
+        if cur.fetchone():
+            skipped.append("filterReading: defaults trigger already exists")
+        else:
+            create_as_parent(
+                cur, parent,
+                FILTER_DEFAULTS_FUNC,
+                "DROP TRIGGER IF EXISTS filterReading_defaults_trigger ON filterReading;",
+                FILTER_DEFAULTS_TRIGGER,
+            )
+            applied.append("filterReading: created defaults trigger")
 
     print("=== Migration 008 ===")
     for msg in applied:
