@@ -839,13 +839,14 @@ CREATE TABLE filterReading( -- manual upstream/downstream gauge readings
 	timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- when read
 	upstreamPSI NONNEGFLOAT, -- upstream analog gauge reading
 	downstreamPSI NONNEGFLOAT, -- downstream analog gauge reading
-	flow FLOAT, -- concurrent POC flow (GPM), back-filled from sensorLog
+	flow FLOAT, -- POC flow (GPM): user-entered, else back-filled from sensorLog
 	qCleaning BOOLEAN DEFAULT FALSE, -- True => post-cleaning, resets the baseline
 	note TEXT
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
 	('filterReading','upstreampsi',   1,'Upstream (PSI)', '46.75', 0, 200, 0.25),
-	('filterReading','downstreampsi', 2,'Downstream (PSI)', '31.25', 0, 200, 0.25);
+	('filterReading','downstreampsi', 2,'Downstream (PSI)', '31.25', 0, 200, 0.25),
+	('filterReading','flow',          5,'Flow (GPM)', '8.5', 0, 100, 0.01);
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
 	('filterReading','qcleaning', 3,False,'Post-cleaning','checkbox',NULL),
 	('filterReading','note',      4,False,'Note','text',NULL);

@@ -32,6 +32,7 @@ import sys
 
 try:
     import psycopg
+    from psycopg import sql
 except ImportError:
     sys.exit("psycopg is required: pip install psycopg[binary]")
 
@@ -85,7 +86,7 @@ CREATE TABLE filterReading(
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     upstreamPSI NONNEGFLOAT,    -- upstream analog gauge reading
     downstreamPSI NONNEGFLOAT,  -- downstream analog gauge reading
-    flow FLOAT,                 -- concurrent POC flow (GPM), back-filled from sensorLog
+    flow FLOAT,                 -- POC flow (GPM): user-entered, else back-filled from sensorLog
     qCleaning BOOLEAN DEFAULT FALSE,  -- True => post-cleaning, resets the baseline
     note TEXT
 );
@@ -123,12 +124,36 @@ FILTER_PARAMS = (
 )
 
 
+def create_as_parent(cur, parent, *statements):
+    """Run CREATE statements owned by the schema's parent role.
+
+    Every OpenIrrigation table is owned by the parent role (e.g. irrparent);
+    freshdb hands objects to it via 'REASSIGN OWNED BY CURRENT_USER'.  A
+    migration runs as a login *member* of that role, so a table it CREATEs
+    would be owned by the login user and be invisible to the web role (also a
+    member, not the owner).  SET ROLE so the new tables -- and their SERIAL
+    sequences -- land on the parent.
+    """
+    if parent:
+        cur.execute(sql.SQL("SET ROLE {}").format(sql.Identifier(parent)))
+    for stmt in statements:
+        cur.execute(stmt)
+    if parent:
+        cur.execute("RESET ROLE")
+
+
 def migrate(db, dry_run):
     """Run all migration steps inside a single transaction."""
     applied = []
     skipped = []
 
     with db.cursor() as cur:
+        # New tables must be owned by the schema's parent role (the web role is a
+        # member of it); discover that role from an existing core table.
+        cur.execute("SELECT tableowner FROM pg_tables WHERE tablename='tableinfo';")
+        row = cur.fetchone()
+        parent = row[0] if row else None
+
         # Step 1: station.cleanFlow baseline (displayOrder 18) + qFilterSensor flag (17)
         if column_exists(cur, "station", "cleanflow"):
             skipped.append("station.cleanFlow: column already exists")
@@ -167,13 +192,14 @@ def migrate(db, dry_run):
         if table_exists(cur, "filterreading"):
             skipped.append("filterReading: table already exists")
         else:
-            cur.execute(FILTER_READING)
+            create_as_parent(cur, parent, FILTER_READING)
             applied.append("filterReading: created table")
 
         filterreading_info = (
             # col, displayOrder, label, placeholder, valMin, valMax, valStep
             ("upstreampsi", 1, "Upstream (PSI)", "46.75", 0, 200, 0.25),
             ("downstreampsi", 2, "Downstream (PSI)", "31.25", 0, 200, 0.25),
+            ("flow", 5, "Flow (GPM)", "8.5", 0, 100, 0.01),
             ("note", 4, "Note", None, None, None, None),
         )
         for col, order, label, ph, vmin, vmax, vstep in filterreading_info:
@@ -208,8 +234,7 @@ def migrate(db, dry_run):
         if table_exists(cur, "filterstatus"):
             skipped.append("filterStatus: table already exists")
         else:
-            cur.execute(FILTER_STATUS)
-            cur.execute(FILTER_STATUS_INDEX)
+            create_as_parent(cur, parent, FILTER_STATUS, FILTER_STATUS_INDEX)
             applied.append("filterStatus: created table + index")
 
         # Step 4: webList email-subscription type
