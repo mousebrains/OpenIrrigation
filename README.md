@@ -35,6 +35,12 @@
     + Programs start times can be wall clock time or referenced to sunrise/sunset/...
     + Programs can have a maximum number of simultaneous stations.
     + Programs can have a maximum allowed flow.
+    + Programs normally pack watering against the start of their window;
+      "Stop2Start" packs it against the end instead, e.g. to finish at
+      sunrise. Stations then run in roughly reverse priority order, and a
+      too-small window (or a late interruption) trims the start of the
+      window, not the end. For a margin before sunrise, use an astral end
+      time offset (e.g. 23:30 = sunrise minus 30 minutes).
 
   - Each station can be associated with multiple programs, a program station.
     + Program stations can be individually turned on or off.

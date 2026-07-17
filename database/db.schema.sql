@@ -495,14 +495,14 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,
   ('program', 'onoff',     1, 'On/Off', 'webList', 'label', 'grp=''onOff''', 'sortOrder,label'),
   ('program', 'action',    3, 'Mode', 'webList', 'label', 'grp=''evAct''', 'sortOrder,label'),
   ('program', 'startmode', 7,'Start Mode','webList','label','grp=''evCel''','sortOrder,label'),
-  ('program', 'stopmode',  9,'Start Mode','webList','label','grp=''evCel''','sortOrder,label');
+  ('program', 'stopmode',  9,'End Mode','webList','label','grp=''evCel''','sortOrder,label');
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
 	('program', 'name',         0,True, 'Program Name', 'text', 'Shack'),
 	('program', 'refdate',      5,False, 'Reference Date', 'date', '2018-08-30'),
 	('program', 'starttime',    8,False, 'Start Time', 'time', '04:05:32'),
 	('program', 'endtime',     10,False, 'End Time', 'time', '04:05:32'),
 	('program', 'label',       12,True,  'Label', 'text', 'Shack'),
-	('program', 'qBackward',   15,False, 'Stop2Start', 'checkbox', NULL);
+	('program', 'qbackward',   15,False, 'Stop2Start', 'checkbox', NULL);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
 	('program', 'priority',      2,'Priority', '10', 0, 1000, NULL),
 	('program', 'ndays',         4,'# Days in cycle', '10', 1, 100, NULL),

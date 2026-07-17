@@ -88,9 +88,12 @@ class MockProgramStation:
 
 class MockProgram:
     """Lightweight mock for SchedProgram.Program."""
-    def __init__(self, name, stations, sTime, eTime):
+    def __init__(self, name, stations, sTime, eTime,
+                 qBackward=False, qManual=False):
         self.name = name
         self.stations = stations
+        self.qBackward = qBackward
+        self.qManual = qManual
         self._sTime = sTime
         self._eTime = eTime
 
@@ -103,6 +106,8 @@ class MockProgramNoRun:
     def __init__(self, name='NoRun'):
         self.name = name
         self.stations = []
+        self.qBackward = False
+        self.qManual = False
 
     def mkTime(self, pgmDate):
         return (None, None)
