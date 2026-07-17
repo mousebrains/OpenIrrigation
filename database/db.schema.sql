@@ -502,7 +502,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder
 	('program', 'starttime',    8,False, 'Start Time', 'time', '04:05:32'),
 	('program', 'endtime',     10,False, 'End Time', 'time', '04:05:32'),
 	('program', 'label',       12,True,  'Label', 'text', 'Shack'),
-	('program', 'qBackward',   15,False, 'Stop2Start', 'checkbox', NULL);
+	('program', 'qbackward',   15,False, 'Stop2Start', 'checkbox', NULL);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
 	('program', 'priority',      2,'Priority', '10', 0, 1000, NULL),
 	('program', 'ndays',         4,'# Days in cycle', '10', 1, 100, NULL),

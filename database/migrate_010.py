@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
-Idempotent migration: program editor label fix.
+Idempotent migration: program editor fixes.
 
   * tableInfo(program, stopmode) label 'Start Mode' -> 'End Mode'
     (copy-paste bug: the program editor showed two "Start Mode" columns).
+  * tableInfo(program, qBackward) col -> 'qbackward'
+    (tableEditor.js looks the column up in row data whose keys PDO folds
+    to lowercase, so a mixed-case col never displays its value: the
+    Stop2Start checkbox always rendered unchecked even when true).
 
 Usage:
     python3 migrate_010.py --db irrigation
@@ -22,6 +26,14 @@ except ImportError:
 def stopmode_label(cur):
     cur.execute(
         "SELECT label FROM tableInfo WHERE tbl = 'program' AND col = 'stopmode';")
+    row = cur.fetchone()
+    return row[0] if row else None
+
+
+def qbackward_col(cur):
+    cur.execute(
+        "SELECT col FROM tableInfo WHERE tbl = 'program'"
+        " AND lower(col) = 'qbackward';")
     row = cur.fetchone()
     return row[0] if row else None
 
@@ -46,6 +58,17 @@ def migrate(db, dry_run):
                 " AND label = 'Start Mode';")
             applied.append(
                 "tableInfo(program,stopmode): label 'Start Mode' -> 'End Mode'")
+
+        col = qbackward_col(cur)
+        if col is None:
+            skipped.append("tableInfo(program,qbackward): row not found")
+        elif col == 'qbackward':
+            skipped.append("tableInfo(program,qbackward): col already lowercase")
+        else:
+            cur.execute(
+                "UPDATE tableInfo SET col = 'qbackward'"
+                " WHERE tbl = 'program' AND col = %s;", (col,))
+            applied.append(f"tableInfo(program,{col!r}): col -> 'qbackward'")
 
     print("=== Migration 010 ===")
     for msg in applied:
