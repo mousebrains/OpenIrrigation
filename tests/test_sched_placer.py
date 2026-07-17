@@ -478,16 +478,36 @@ class TestPlaceStationBackward:
         assert acts[0].tOff == dt(7, 57)
         assert acts[0].tOff - acts[0].tOn == td(minutes=15)
 
-    def test_min_cycle_skip_branch_terminates(self, registry, cum_time, logger):
+    def test_min_cycle_skip_branch_terminates(self, registry, cum_time,
+                                              logger, caplog):
         """maxCycleTime < minCycleTime is the only input that reaches the
         min-cycle skip branch (find_slots filters small holes).  Both
-        directions place nothing and terminate."""
+        directions place nothing, warn, and terminate."""
+        with caplog.at_level(logging.WARNING, logger='test_placer'):
+            for backward in (False, True):
+                stn = MockProgramStation(
+                    ident=1, sensor=42, program=10, controller=100, poc=200,
+                    runTime=td(minutes=60), minCycleTime=td(minutes=30),
+                    maxCycleTime=td(minutes=10),
+                )
+                acts = place_station(registry, stn, cum_time,
+                                     dt(6), dt(10), pgm_date(), logger,
+                                     backward=backward)
+                assert acts == []
+                assert cum_time.get(1, pgm_date()) == td(minutes=0)
+        assert 'Shorted' in caplog.text
+
+    def test_zero_max_cycle_guard_terminates(self, registry, cum_time, logger):
+        """Degenerate maxCycleTime == 0 must terminate with nothing placed,
+        not spin or emit zero-length cycles.  Set post-construction: the
+        mock's or-defaults coerce falsy constructor values."""
         for backward in (False, True):
             stn = MockProgramStation(
                 ident=1, sensor=42, program=10, controller=100, poc=200,
-                runTime=td(minutes=60), minCycleTime=td(minutes=30),
-                maxCycleTime=td(minutes=10),
+                runTime=td(minutes=60),
             )
+            stn.maxCycleTime = td(minutes=0)
+            stn.minCycleTime = td(minutes=0)
             acts = place_station(registry, stn, cum_time,
                                  dt(6), dt(10), pgm_date(), logger,
                                  backward=backward)
@@ -659,17 +679,21 @@ class TestPlaceProgramBackward:
 class TestBuildScheduleBackward:
     def test_forward_and_backward_programs_share_poc(self, registry, cum_time,
                                                      logger):
-        """A forward and a backward program on one flow-limited POC coexist:
-        forward packs early, backward packs late, no overlap."""
+        """A forward and a backward program share a flow-limited POC and the
+        limit genuinely binds (6+6 > 10 GPM): the higher-priority forward
+        program takes 3 of the 4 hours from the front, the backward program
+        keeps only the window tail and absorbs the shortfall there."""
         fwd_stn = MockProgramStation(
             ident=1, sensor=42, program=10, controller=100, poc=200,
-            runTime=td(minutes=10), flow=6.0, pocMaxFlow=10.0,
+            runTime=td(minutes=180), maxCycleTime=td(minutes=180),
+            flow=6.0, pocMaxFlow=10.0,
             pgmMaxFlow=None, pgmMaxStations=None,
             delayOn=td(seconds=0), delayOff=td(seconds=0),
         )
         bwd_stn = MockProgramStation(
             ident=2, sensor=43, program=20, controller=100, poc=200,
-            runTime=td(minutes=10), flow=6.0, pocMaxFlow=10.0,
+            runTime=td(minutes=120), maxCycleTime=td(minutes=180),
+            flow=6.0, pocMaxFlow=10.0,
             pgmMaxFlow=None, pgmMaxStations=None,
             delayOn=td(seconds=0), delayOff=td(seconds=0),
         )
@@ -677,8 +701,12 @@ class TestBuildScheduleBackward:
         bwd = MockProgram('Bwd', [bwd_stn], dt(6), dt(10), qBackward=True)
         acts = build_schedule(registry, [fwd, bwd], cum_time,
                               pgm_date(), pgm_date(), dt(0), False, logger)
-        assert len(acts) == 2
-        by_stn = {a.pgmStn: a for a in acts}
-        assert by_stn[1].tOn == dt(6)
-        assert by_stn[2].tOff == dt(10)
-        assert by_stn[1].tOff <= by_stn[2].tOn
+        fwd_acts = [a for a in acts if a.pgmStn == 1]
+        bwd_acts = [a for a in acts if a.pgmStn == 2]
+        assert sum((a.tOff - a.tOn for a in fwd_acts), td()) == td(minutes=180)
+        assert fwd_acts[0].tOn == dt(6)
+        # Backward can only fit ~1 of its 2 hours after the forward block
+        placed_bwd = sum((a.tOff - a.tOn for a in bwd_acts), td())
+        assert td(minutes=59) <= placed_bwd <= td(minutes=61)
+        assert max(a.tOff for a in bwd_acts) == dt(10)
+        assert all(a.tOn >= dt(9) for a in bwd_acts)

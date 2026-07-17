@@ -36,12 +36,16 @@ def migrate(db, dry_run):
             skipped.append("tableInfo(program,stopmode): row not found")
         elif label == 'End Mode':
             skipped.append("tableInfo(program,stopmode): label already 'End Mode'")
+        elif label != 'Start Mode':
+            skipped.append(
+                f"tableInfo(program,stopmode): customized label {label!r}, leaving as-is")
         else:
             cur.execute(
                 "UPDATE tableInfo SET label = 'End Mode'"
-                " WHERE tbl = 'program' AND col = 'stopmode';")
+                " WHERE tbl = 'program' AND col = 'stopmode'"
+                " AND label = 'Start Mode';")
             applied.append(
-                f"tableInfo(program,stopmode): label {label!r} -> 'End Mode'")
+                "tableInfo(program,stopmode): label 'Start Mode' -> 'End Mode'")
 
     print("=== Migration 010 ===")
     for msg in applied:

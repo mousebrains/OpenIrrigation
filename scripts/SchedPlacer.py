@@ -154,6 +154,8 @@ def build_schedule(registry: ResourceRegistry, programs, cum_time: CumTime,
 
     Iterates dates from sDate to eDate (inclusive), placing programs
     in priority order (they're already priority-sorted in the list).
+    Programs flagged qBackward pack their stations against the window
+    end; see place_program.
 
     Returns a list of Action objects.
     """
