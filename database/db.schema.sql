@@ -495,7 +495,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,
   ('program', 'onoff',     1, 'On/Off', 'webList', 'label', 'grp=''onOff''', 'sortOrder,label'),
   ('program', 'action',    3, 'Mode', 'webList', 'label', 'grp=''evAct''', 'sortOrder,label'),
   ('program', 'startmode', 7,'Start Mode','webList','label','grp=''evCel''','sortOrder,label'),
-  ('program', 'stopmode',  9,'Start Mode','webList','label','grp=''evCel''','sortOrder,label');
+  ('program', 'stopmode',  9,'End Mode','webList','label','grp=''evCel''','sortOrder,label');
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
 	('program', 'name',         0,True, 'Program Name', 'text', 'Shack'),
 	('program', 'refdate',      5,False, 'Reference Date', 'date', '2018-08-30'),

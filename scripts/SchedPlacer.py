@@ -22,11 +22,15 @@ def place_station(registry: ResourceRegistry, stn, cum_time: CumTime,
                   window_start: datetime.datetime,
                   window_end: datetime.datetime,
                   pgm_date: datetime.date,
-                  logger: logging.Logger) -> list:
+                  logger: logging.Logger,
+                  backward: bool = False) -> list:
     """
     Place a single station into available time slots within [window_start, window_end).
 
-    Returns a list of Action objects for the placed cycles.
+    Forward (default) packs cycles as early as possible after window_start;
+    backward packs them as late as possible against window_end.
+
+    Returns a list of Action objects for the placed cycles, ordered by tOn.
     Respects minCycleTime, maxCycleTime, soakTime, and all resource constraints.
     """
     time_needed = stn.runTime - cum_time.get(stn.id, pgm_date)
@@ -34,31 +38,40 @@ def place_station(registry: ResourceRegistry, stn, cum_time: CumTime,
         return []
 
     placed = []
-    cursor = window_start
+    cursor = window_end if backward else window_start
     resource_set = registry.build_resource_set(stn)
 
-    while time_needed > ZERO and cursor < window_end:
-        search_window = Interval(cursor, window_end)
+    while time_needed > ZERO and \
+            (window_start < cursor if backward else cursor < window_end):
+        search_window = Interval(window_start, cursor) if backward \
+                else Interval(cursor, window_end)
         slots = resource_set.find_slots(search_window,
                                         min_duration=stn.minCycleTime)
         if not slots:
             break
 
-        slot = slots[0]
+        slot = slots[-1] if backward else slots[0]
         available = slot.duration
         cycle = min(time_needed, stn.maxCycleTime, available)
+        if cycle <= ZERO:
+            break  # degenerate maxCycleTime; a zero cycle can't make progress
 
         if cycle < stn.minCycleTime and time_needed > stn.minCycleTime:
             # This slot can't host a full min-cycle fragment; move past it to
             # look for a larger hole.  But when the entire remaining run is
             # itself shorter than minCycleTime -- a short manual run, or the
             # final tail of a longer run -- place it as-is rather than dropping
-            # it on the floor.
-            cursor = slot.end
+            # it on the floor.  Only reachable when maxCycleTime < minCycleTime:
+            # find_slots already drops holes shorter than minCycleTime.
+            cursor = slot.start if backward else slot.end
             continue
 
-        tOn = slot.start
-        tOff = tOn + cycle
+        if backward:
+            tOff = slot.end
+            tOn = tOff - cycle
+        else:
+            tOn = slot.start
+            tOff = tOn + cycle
 
         # Record in registry so future queries see this placement
         registry.record_placement(stn, tOn, tOff)
@@ -69,14 +82,16 @@ def place_station(registry: ResourceRegistry, stn, cum_time: CumTime,
         cum_time.add(stn.id, pgm_date, cycle)
 
         time_needed -= cycle
-        # Next search starts after soak/delay gap
-        cursor = tOff + max(stn.soakTime, stn.delayOff, stn.delayOn)
+        # Next search excludes the soak/delay gap around this cycle
+        gap = max(stn.soakTime, stn.delayOff, stn.delayOn)
+        cursor = tOn - gap if backward else tOff + gap
 
     if time_needed > ZERO:
         logger.warning('Shorted %s, window=%s to %s, rt=%s, remaining=%s',
                        stn.name, window_start, window_end,
                        stn.runTime, time_needed)
 
+    placed.sort(key=lambda act: act.tOn)  # backward mode appends latest-first
     return placed
 
 
@@ -86,6 +101,11 @@ def place_program(registry: ResourceRegistry, pgm, cum_time: CumTime,
                   logger: logging.Logger) -> list:
     """
     Place all stations for a program on a given date.
+
+    A program with qBackward set packs its stations against eTime instead of
+    sTime.  qManual programs and qSingle (manual one-shot) stations always
+    fill forward: those are "run now" requests, and a qSingle station's
+    window extends a day past eTime.
 
     Returns a list of Action objects.
     """
@@ -104,6 +124,9 @@ def place_program(registry: ResourceRegistry, pgm, cum_time: CumTime,
         logger.warning('sTime>=eTime, %s >= %s', sTime, eTime)
         return []
 
+    # qBackward is nullable in the DB, hence the bool() coercion
+    backward = bool(pgm.qBackward) and not pgm.qManual
+
     actions = []
     for stn in pgm.stations:
         if stn.qSingle and sDate != sDateOrig:
@@ -114,7 +137,8 @@ def place_program(registry: ResourceRegistry, pgm, cum_time: CumTime,
             window_end = eTime
 
         acts = place_station(registry, stn, cum_time,
-                             sTime, window_end, sDate, logger)
+                             sTime, window_end, sDate, logger,
+                             backward=backward and not stn.qSingle)
         actions.extend(acts)
 
     return actions
