@@ -8,6 +8,7 @@ import datetime
 from unittest.mock import MagicMock, patch
 
 from TDIvalve import (
+    DB_RETRY_SECS, DB_OUTAGE_LIMIT,
     ERR_MAX_STATIONS, ERR_SEND_FAILED, ERR_OFF_FAILED,
     ERR_TEST_ALREADY_ON, ERR_TEST_MAX_STNS, ERR_TEST_SEND,
     ERR_TEST_ZEE, ERR_TEST_NO_REPLY, ERR_TEST_DB_FAIL,
@@ -81,12 +82,19 @@ class MockCursor:
 
 class MockDB:
     """Minimal mock of DB.DB."""
-    def __init__(self):
+    def __init__(self, alive=True, rows=None):
         self.committed = False
         self.rolled_back = False
+        self.isAlive = alive
+        self.cursors = 0
+        self.rows = rows
+
+    def alive(self):
+        return self.isAlive
 
     def cursor(self):
-        return MockCursor()
+        self.cursors += 1
+        return MockCursor(self.rows)
 
     def commit(self):
         self.committed = True
@@ -314,3 +322,73 @@ class TestChkZee:
         cur = MockCursor()
         t = datetime.datetime.now(datetime.timezone.utc)
         assert ops.chkZee(cur, b'0A', t, None) is False
+
+
+class TestDatabaseOutage:
+    """A restarted PostgreSQL must not kill the daemon.
+
+    Regression coverage for 19-Aug-2026: ValveOps' connection went stale across
+    a postgresql-17 upgrade and the AdminShutdown surfaced 4h44m later, on the
+    next scheduled valve command, taking OITDI down with it.
+    """
+
+    def test_do_pending_defers_when_db_is_down(self, logger):
+        ops = make_valve_ops(logger)
+        ops.db = MockDB(alive=False)
+
+        ops.doPending()  # must return quietly rather than raise
+
+        assert ops.db.cursors == 0, 'must not touch a connection known to be dead'
+
+    def test_do_pending_proceeds_when_db_is_up(self, logger):
+        ops = make_valve_ops(logger)
+        ops.db = MockDB(alive=True, rows=[])
+
+        ops.doPending()
+
+        assert ops.db.cursors == 1
+
+    def test_next_time_retries_soon_when_db_is_down(self, logger):
+        ops = make_valve_ops(logger)
+        ops.db = MockDB(alive=False)
+
+        before = time.time()
+        tNext = ops.nextTime()
+
+        assert ops.db.cursors == 0
+        assert before + DB_RETRY_SECS <= tNext <= time.time() + DB_RETRY_SECS
+        assert tNext - time.time() < 3600, 'must retry sooner than the idle poll'
+
+
+class TestDatabaseOutageEscalation:
+    """Ride out a restart, but still raise the alarm on a sustained outage."""
+
+    def test_brief_outage_does_not_raise(self, logger):
+        ops = make_valve_ops(logger)
+        ops.db = MockDB(alive=False)
+
+        for _i in range(10):        # many failed probes, no elapsed time
+            assert ops.dbReady() is False
+
+    def test_recovery_clears_the_outage_clock(self, logger):
+        ops = make_valve_ops(logger)
+        ops.db = MockDB(alive=False)
+        assert ops.dbReady() is False
+        assert ops.dbDownSince is not None
+
+        ops.db = MockDB(alive=True)
+        assert ops.dbReady() is True
+        assert ops.dbDownSince is None
+
+    def test_sustained_outage_raises(self, logger):
+        ops = make_valve_ops(logger)
+        ops.db = MockDB(alive=False)
+
+        assert ops.dbReady() is False
+        ops.dbDownSince = time.time() - DB_OUTAGE_LIMIT - 1  # pretend time passed
+        with pytest.raises(RuntimeError, match='No database connection'):
+            ops.dbReady()
+
+    def test_outage_limit_exceeds_retry_interval(self):
+        """The limit must allow several retries, not trip on the first one."""
+        assert DB_OUTAGE_LIMIT > DB_RETRY_SECS * 5

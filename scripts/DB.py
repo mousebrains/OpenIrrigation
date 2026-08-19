@@ -70,7 +70,9 @@ class DB:
 
     def open(self) -> psycopg.Connection:
         """ Get an active database connection """
-        if self.db: return self.db # Already setup, so return it
+        if self.db is not None:
+            if not self.db.closed: return self.db # Already setup, so return it
+            self.close() # Known dead, drop it before reconnecting
         nTries = 2 # Try twice
         for i in range(nTries): # Try multiple times
             try:
@@ -133,6 +135,29 @@ class DB:
             self.logger.exception('Unable to execute to %s, sql=%s args=%s', self.dbName, sql, args)
         finally:
             cur.close()
+        return False
+
+    def alive(self) -> bool:
+        """ Verify the cached connection still works, reconnecting when it does not
+
+        libpq only discovers that the server closed the socket when it next does
+        I/O, so a connection which sat idle across a PostgreSQL restart still
+        reports closed==False and cursor() still succeeds; the failure does not
+        surface until a real statement is executed.  Probe the connection here,
+        where dropping and reopening it is safe, rather than in the middle of an
+        operation where the caller has no way to recover.
+        """
+        for _i in range(2): # Cached connection, then a fresh one
+            db = self.open() # get an active database connection
+            if not db: return False # Couldn't connect at all
+            try:
+                with db.cursor() as cur:
+                    cur.execute('SELECT 1;')
+                db.rollback() # Don't leave the probe's transaction open
+                return True
+            except Exception:
+                self.logger.warning('Connection to %s is stale, reconnecting', self.dbName)
+            self.close() # Drop the dead connection and try a fresh one
         return False
 
     def updateState(self, name:str, msg:str) -> None:

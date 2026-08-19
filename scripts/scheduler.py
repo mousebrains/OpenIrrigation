@@ -120,10 +120,7 @@ try:
             logger.error(msg)
             db.updateState(myName, msg)
             if failureCount == 3:
-                try:
-                    raise RuntimeError(msg)
-                except RuntimeError:
-                    Notify.onException(args, logger)
+                Notify.onException(args, logger, RuntimeError(msg))
         if args.single: break # Break out of loop if only to be done once
         if qSucceeded:
             # Just after midnight
@@ -140,6 +137,6 @@ except Exception as e:
     except Exception:
         logger.exception('Failed to record error state in database')
     try:
-        Notify.onException(args, logger)
+        Notify.onException(args, logger, e)
     except Exception:
         logger.exception('Failed to send exception notification')
