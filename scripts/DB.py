@@ -14,6 +14,9 @@ import psycopg
 from psycopg import sql
 from psycopg.rows import dict_row
 
+class NoConnection(Exception):
+    """ Raised when a usable database connection or cursor cannot be obtained """
+
 class DB:
     """ Open a database connection and execute statements
 
@@ -86,11 +89,18 @@ class DB:
             if (i+1) < nTries: time.sleep(5) # Wait 5 seconds between attempts
         return None # Failed
 
-    def cursor(self, qDict:bool =False) -> psycopg.Cursor | None:  # type: ignore[type-arg]
-        """ Get an cursor object for the database"""
+    def cursor(self, qDict:bool =False) -> psycopg.Cursor:  # type: ignore[type-arg]
+        """ Get a cursor object for the database
+
+        Raises NoConnection rather than returning None when the database cannot
+        be reached.  Nearly every caller feeds the result straight into a with
+        statement, where a None becomes "'NoneType' object does not support the
+        context manager protocol" -- an error which says nothing about the real
+        cause, several frames from where it happened.
+        """
         for _i in range(2): # Try twice
             db = self.open() # get an active database connection
-            if not db: return None # Couldn't get an active connection and I've already tried twice
+            if not db: break # open() already retried, so don't go round again
             try:
                 if qDict: # Create a cursor with a dictionary like cursor
                     return db.cursor(row_factory=dict_row)  # type: ignore[call-overload, no-any-return]
@@ -98,7 +108,7 @@ class DB:
             except Exception:
                 self.logger.exception('Unable to create a cursor for %s', self.dbName)
             self.close() # Drop the connection and try again
-        return None # Couldn't get a cursor
+        raise NoConnection('Unable to obtain a cursor for {}'.format(self.dbName))
 
     def commit(self) -> bool:
         """ Commit any pending updates for this session """
@@ -124,8 +134,9 @@ class DB:
 
     def execute(self, sql: str, args: list | tuple | None = None) -> bool:
         """ Execute the SQL statement with the supplied args, a cursor object will be created """
-        cur = self.cursor()
-        if cur is None:
+        try:
+            cur = self.cursor()
+        except NoConnection:
             self.logger.warning('Unable to create a cursor for sql=%s args=%s', sql, args)
             return False
         try:

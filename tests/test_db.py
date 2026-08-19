@@ -155,3 +155,56 @@ class TestOpen:
 
         assert db.open() is conn
         assert calls == []
+
+
+class TestCursorRaises:
+    """cursor() must raise, not return None.
+
+    A None fed into `with db.cursor() as cur:` produces "'NoneType' object does
+    not support the context manager protocol", which names neither the database
+    nor the connection failure.  Observed for real on pi0 19-Aug-2026 when
+    TDIserver started against a stopped cluster: Params.load died that way
+    instead of saying it could not connect.
+    """
+
+    def test_raises_when_server_is_down(self, logger, monkeypatch, noSleep):
+        mkConnector(monkeypatch)  # every connect attempt fails
+        db = DB.DB('testdb', logger)
+
+        with pytest.raises(DB.NoConnection, match='testdb'):
+            db.cursor()
+
+    def test_with_statement_gives_a_useful_error(self, logger, monkeypatch, noSleep):
+        """The actual failing idiom from Params.load and friends."""
+        mkConnector(monkeypatch)
+        db = DB.DB('testdb', logger)
+
+        with pytest.raises(DB.NoConnection) as excinfo:
+            with db.cursor() as cur:  # noqa: F841
+                pass
+
+        assert 'NoneType' not in str(excinfo.value)
+        assert 'testdb' in str(excinfo.value)
+
+    def test_returns_a_cursor_when_healthy(self, logger, monkeypatch, noSleep):
+        conn = FakeConn()
+        mkConnector(monkeypatch, conn)
+        db = DB.DB('testdb', logger)
+
+        with db.cursor() as cur:
+            cur.execute('SELECT 1;')
+        assert conn.executed == ['SELECT 1;']
+
+    def test_execute_still_returns_false(self, logger, monkeypatch, noSleep):
+        """DBout relies on execute() returning a bool, not raising."""
+        mkConnector(monkeypatch)
+        db = DB.DB('testdb', logger)
+
+        assert db.execute('SELECT 1;') is False
+
+    def test_updatestate_survives_a_dead_database(self, logger, monkeypatch, noSleep):
+        """The daemon's error path calls this while reporting another failure."""
+        mkConnector(monkeypatch)
+        db = DB.DB('testdb', logger)
+
+        db.updateState('TDI', 'some failure')  # must not raise

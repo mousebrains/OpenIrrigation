@@ -28,6 +28,8 @@ def onException(args:argparse.Namespace, logger:logging.Logger,
         exc:BaseException | None = None) -> None:
     try:
         email = []
+        # The recipient list lives in the database, so a failure which is itself
+        # a database outage cannot be mailed; it is left to the log and systemd.
         sql = 'SELECT email.email FROM email' \
                 + ' LEFT JOIN emailReports ON email.id=emailReports.email' \
                 + ' LEFT JOIN webList ON webList.id=emailReports.report' \
