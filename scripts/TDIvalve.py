@@ -90,7 +90,16 @@ class ValveOps(MyBaseThread):
         A PostgreSQL restart, such as an apt upgrade of the server package, must
         not take the controller down: reconnect and carry on.  A database which
         stays unreachable is a real fault, so give up after DB_OUTAGE_LIMIT and
-        let the exception reach systemd, which restarts us and sends the alert.
+        let the exception reach systemd, which restarts us.
+
+        No alert email is sent while the database is down, because Notify reads
+        the recipient list from it; a total outage is signalled by the log and
+        by systemd only.  The first failure after the database returns does
+        send one.
+
+        The check is lazy, not proactive: an idle ValveOps holds a dead
+        connection until its next use, so DB_OUTAGE_LIMIT measures time since
+        the first failed probe, not since the database died.
         """
         if self.db.alive():
             self.dbDownSince = None
