@@ -196,4 +196,4 @@ if __name__ == '__main__':
         logger.exception('Unexpected exception')
         db = DB.DB(args.db, logger)
         db.updateState(myName, repr(e))
-        Notify.onException(args, logger)
+        Notify.onException(args, logger, e)

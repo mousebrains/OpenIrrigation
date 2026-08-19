@@ -15,6 +15,12 @@ def _install_psycopg_stub():
         pg.Connection = type('Connection', (), {})
         pg.Warning = Warning
         pg.Error = Exception
+        pg.OperationalError = type('OperationalError', (Exception,), {})
+        # Fail loudly rather than reaching for a real server; tests which need a
+        # connection monkeypatch this with a fake.
+        def _connect(**kwargs):
+            raise RuntimeError('psycopg stub: tests must not open real connections')
+        pg.connect = _connect
         sys.modules['psycopg'] = pg
         sys.modules['psycopg.sql'] = pg.sql
         sys.modules['psycopg.rows'] = pg.rows

@@ -24,6 +24,8 @@ ERR_TEST_NO_REPLY   = -8  # No valid reply to test command
 ERR_TEST_DB_FAIL    = -9  # Test succeeded but DB write failed
 
 REPLY_TIMEOUT = 30  # seconds to wait for a serial reply
+DB_RETRY_SECS = 30  # seconds to wait before retrying after a database outage
+DB_OUTAGE_LIMIT = 900  # seconds of no database before giving up so systemd restarts us
 
 class ValveOps(MyBaseThread):
     """ Interface to database to drive valve related operations """
@@ -42,6 +44,7 @@ class ValveOps(MyBaseThread):
         self.msgTest = TDICodec(logger, '0T', (1,), (1,2,2,2))
         self.db = DB.DB(args.db, logger)
         self.controller = None
+        self.dbDownSince: float | None = None # When the database first went away
 
     def put(self, t:float | None, msg:bytes | None) -> None:
         self.queue.put((t, msg))
@@ -81,8 +84,30 @@ class ValveOps(MyBaseThread):
                             self.logger.warning('Error converting %s to a float, %s',
                                     notifications[i], e)
 
+    def dbReady(self) -> bool:
+        """ Check the database is reachable, reconnecting a stale connection
+
+        A PostgreSQL restart, such as an apt upgrade of the server package, must
+        not take the controller down: reconnect and carry on.  A database which
+        stays unreachable is a real fault, so give up after DB_OUTAGE_LIMIT and
+        let the exception reach systemd, which restarts us and sends the alert.
+        """
+        if self.db.alive():
+            self.dbDownSince = None
+            return True
+        now = time.time()
+        if self.dbDownSince is None:
+            self.dbDownSince = now
+        elif (now - self.dbDownSince) >= DB_OUTAGE_LIMIT:
+            raise RuntimeError('No database connection for {:.0f} seconds'.format(
+                    now - self.dbDownSince))
+        return False
+
     def doPending(self) -> None:
         """ Get the pending events and execute them """
+        if not self.dbReady(): # Stale/lost connection, e.g. PostgreSQL was restarted
+            self.logger.warning('No database connection, deferring pending commands')
+            return # Commands stay in the command table and run on the next pass
         with self.db.cursor() as cur:
             sql = "SELECT id,addr,name,cmd FROM command" \
                     + " WHERE EXTRACT(EPOCH FROM timestamp) <= %s AND controller=%s" \
@@ -105,6 +130,9 @@ class ValveOps(MyBaseThread):
 
     def nextTime(self) -> float:
         """ Get the next command time """
+        if not self.dbReady(): # Stale/lost connection, e.g. PostgreSQL was restarted
+            self.logger.warning('No database connection, retrying in %s seconds', DB_RETRY_SECS)
+            return time.time() + DB_RETRY_SECS
         with self.db.cursor() as cur:
             sql = "SELECT timestamp FROM command" \
                     + " WHERE controller=%s" \

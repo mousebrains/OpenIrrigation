@@ -210,9 +210,9 @@ def main():
                 else:
                     raise
 
-    except Exception:
+    except Exception as e:
         logger.exception('Unexpected exception')
-        Notify.onException(args, logger)
+        Notify.onException(args, logger, e)
 
 if __name__ == '__main__':
     main()

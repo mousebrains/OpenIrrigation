@@ -117,5 +117,5 @@ finally:
             logger.exception('Unable to close the serial port')
 
 if failure is not None:
-    Notify.onException(args, logger)
+    Notify.onException(args, logger, failure)
     raise SystemExit(1)
