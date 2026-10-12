@@ -7,7 +7,7 @@ include ../Makefile.params
 
 SRC = favicon.png
 SRC+= index.php indexProcess.php indexStatus.php
-SRC+= status.php 
+SRC+= status.php csrfToken.php
 SRC+= reportDaily.php reportDailyStatus.php
 SRC+= monitor.php monitorStatus.php
 SRC+= monitorActiveOff.php monitorPendingRemove.php 

@@ -91,25 +91,46 @@ function OI_connectSSE(url, onMessage) {
 	const statusEl = document.getElementById('sse-status');
 	let source = null;
 	let closed = false;
+	let retryTimer = null;
+	let backoff = 0; // ms before our own reconnect; doubles up to a minute
+	let lost = false; // toast once per outage, not once per failed retry
 
 	function attach() {
 		if (closed) {return;}
-		source = new EventSource(url);
-		source.onopen = () => {
+		clearTimeout(retryTimer);
+		retryTimer = null;
+		const es = new EventSource(url);
+		source = es;
+		es.onopen = () => {
+			backoff = 0;
 			if (statusEl) {statusEl.textContent = '';}
 		};
-		source.onmessage = (event) => {
+		es.onmessage = (event) => {
 			try {
 				const data = JSON.parse(event.data);
-				if (data.error) {OI_toast(data.error, true);}
+				if (data.error) {
+					OI_toast(data.error, true);
+				} else {
+					lost = false;
+				}
 			} catch {
 				// Not JSON or parse error — pass through
 			}
 			onMessage(event);
 		};
-		source.onerror = () => {
+		es.onerror = () => {
 			if (statusEl) {statusEl.textContent = 'Connection lost';}
-			OI_toast('SSE connection lost — retrying', true);
+			if (!lost) {
+				lost = true;
+				OI_toast('SSE connection lost — retrying', true);
+			}
+			// After a dropped stream EventSource retries by itself
+			// (CONNECTING), but an HTTP error such as nginx's 502 or 504
+			// closes it for good (CLOSED): then reconnect ourselves.
+			if (es.readyState === EventSource.CLOSED && source === es && !retryTimer && !closed) {
+				backoff = Math.min(backoff ? 2 * backoff : 2000, 60000);
+				retryTimer = setTimeout(attach, backoff);
+			}
 		};
 	}
 
@@ -130,15 +151,33 @@ function OI_connectSSE(url, onMessage) {
 	return {
 		close() {
 			closed = true;
+			clearTimeout(retryTimer);
 			if (source) {source.close();}
 		},
 		get readyState() {return source ? source.readyState : EventSource.CLOSED;},
 	};
 }
 
+let OI_csrfRefresh = null; // in-flight token fetch, shared by concurrent retries
+
+// The CSRF token lives in the PHP session, which expires while a page sits
+// open (SSE traffic does not refresh it). Fetch the current session's token,
+// starting a new session if need be, into the page.
+function OI_refreshCSRF() {
+	if (!OI_csrfRefresh) {
+		OI_csrfRefresh = $.ajax({type: 'GET', url: 'csrfToken.php', dataType: 'json', cache: false})
+			.then((data) => {
+				const el = document.getElementById('oi-csrf');
+				if (el && data.token) {el.dataset.token = data.token;}
+			})
+			.always(() => {OI_csrfRefresh = null;});
+	}
+	return OI_csrfRefresh;
+}
+
 function OI_processSubmit(event, url, formData) { // Submission of form data to url
 	// Form submission and alert on failure
-	$.ajax({
+	const send = (retried) => $.ajax({
 		type: 'POST', // Post the form data
 		url: url, // Script to process this form
 		data: formData, // form data to be posted
@@ -149,9 +188,20 @@ function OI_processSubmit(event, url, formData) { // Submission of form data to 
 			OI_toast(data['message'], true);
 		}
 	}).fail((jqXHR, textStatus) => {
-		const message = jqXHR.responseJSON?.message ?? `Request failed: ${textStatus}`;
+		let reply = jqXHR.responseJSON;
+		if (reply === undefined) {
+			try {reply = JSON.parse(jqXHR.responseText);} catch {reply = null;}
+		}
+		if (!retried && jqXHR.status === 403 && reply?.message === 'Invalid CSRF token') {
+			// Expired session: get a fresh token and try once more
+			OI_refreshCSRF().then(() => send(true),
+				() => OI_toast('Session expired; reload the page', true));
+			return;
+		}
+		const message = reply?.message ?? `Request failed: ${textStatus}`;
 		OI_toast(message, true);
 	});
+	send(false);
 	event.preventDefault();
 }
 
