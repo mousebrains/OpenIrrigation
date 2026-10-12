@@ -44,7 +44,7 @@ REPLY_TIMEOUT = 60  # seconds to wait for the serial thread, which bounds each c
 DB_RETRY_SECS = 30  # seconds to wait before retrying after a database outage
 DB_OUTAGE_LIMIT = 900  # seconds of no database before giving up so systemd restarts us
 DB_FAILSAFE_SECS = 120 # seconds of no database, with a valve on, before turning everything off
-DB_PROBE_SECS = 30 # how often to check the database is there while a valve is on
+DB_PROBE_SECS = 30 # how often to check the database is there while a valve is, or should be, on
 OFF_RETRY_SECS = (5, 15, 30, 60) # waits between tries to confirm an off, then the last one
 OFF_ALERT_TRIES = 3 # email the 'controller' report after this many unconfirmed tries
 OFF_ALLOFF_TRIES = 4 # then turn every valve off with 0xFF
@@ -156,7 +156,9 @@ class ValveOps(MyBaseThread):
         while self.should_run:
             self.beat()
             now = time.time()
-            if (self.onAddrs or self.allOffDue) and (now - self.tProbe) >= DB_PROBE_SECS:
+            # reaffirmDue: the failsafe all-off left nothing on, but the valves
+            # go back on only once a probe finds the database again
+            if (self.onAddrs or self.allOffDue or self.reaffirmDue) and (now - self.tProbe) >= DB_PROBE_SECS:
                 self.tProbe = now
                 self.dbReady() # Turns everything off if the database stays away
             if (self.allOffDue is not None) and (now >= self.allOffDue):
@@ -197,7 +199,8 @@ class ValveOps(MyBaseThread):
         The check is lazy while every valve is off: an idle ValveOps holds a
         dead connection until its next use, so DB_OUTAGE_LIMIT measures time
         since the first failed probe, not since the database died.  While a
-        valve is on the runMain loop probes every DB_PROBE_SECS.
+        valve is on, or valves wait to go back on, the runMain loop probes
+        every DB_PROBE_SECS.
         """
         if self.db.alive():
             if self.dbDownSince is not None:

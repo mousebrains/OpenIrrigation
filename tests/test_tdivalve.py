@@ -591,6 +591,29 @@ class TestDatabaseOutageEscalation:
         assert ops.serial.sent == [b'0DFF', b'0A0A00']
         assert not ops.reaffirmDue
 
+    def test_run_loop_turns_valves_back_on_when_the_database_returns(self, logger, monkeypatch):
+        """pi0 2026-10-12: after the failsafe all-off no valve was on, so runMain
+        stopped probing and the valves stayed off until the next command was due"""
+        monkeypatch.setattr(TDIvalve, 'DB_PROBE_SECS', 0)
+        tOff = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=5)
+        ops = make_valve_ops(logger,
+                             replies={b'0DFF': ALL_OFF_REPLY, b'0A0A00': ON_REPLY},
+                             results={'action.addr,station.name': [(0x0A, 'Station1', tOff)]})
+        steps = [ # One per pass of the runMain loop
+            lambda: setattr(ops.db, 'isAlive', False), # PostgreSQL stops
+            lambda: setattr(ops, 'dbDownSince', time.time() - DB_FAILSAFE_SECS - 1),
+            lambda: setattr(ops.db, 'isAlive', True), # and comes back
+            ops.shutdown,
+        ]
+        def fetch(_timeout):
+            steps.pop(0)()
+            return []
+        ops.listen.fetch.side_effect = fetch
+        ops.runMain()
+        # Startup all-off and back on, the failsafe all-off, then back on
+        assert ops.serial.sent == [b'0DFF', b'0A0A00', b'0DFF', b'0A0A00']
+        assert ops.onAddrs == {0x0A} and not ops.reaffirmDue
+
     def test_no_failsafe_with_every_valve_off(self, logger):
         ops = make_valve_ops(logger, alive=False)
         assert ops.dbReady() is False
