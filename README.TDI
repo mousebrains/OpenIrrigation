@@ -31,6 +31,23 @@
 # improper command, invalid number of arguments, out of range arguments, .. a
 # Z repsonse is sent.
 #
+# -- Timing and retransmission (from TDI.log; see TDIserial.py)
+# The ACK comes at once, the reply only after the controller has acted on the
+# sentence, for a valve after talking to its decoder over the 2-wire path:
+# 4-6 seconds under load, e.g. when several valves change in the same second.
+# A reply which is not ACKed is sent again, repeatedly (seen 2026-10-07: 1D2200
+# and then 1D2202 kept arriving after the host had stopped waiting).  So the
+# host:
+#   * waits up to 15 s for a reply once a sentence is ACKed, and never resends
+#     an ACKed sentence (it would be acted on twice); it resends only on a NAK
+#     or no ACK;
+#   * takes a frame as the reply only when its code is 1 + the command letter
+#     (or 1Z for that letter) and, for A, D, S and T, it echoes the address;
+#   * ACKs every well formed frame, wanted or not, so it is not resent.
+# Not yet verified on the hardware: the longest reply delay, how long and how
+# often an unACKed reply is resent, and whether a frame can arrive between a
+# sentence and its ACK.
+#
 # Sentences are:
 # --- Curent and voltage information
 # 0U -- Request 
@@ -74,7 +91,7 @@
 #
 # -- wire paths enable/disable/query ?
 # 0PXXYY -- Request
-# 1PXXYYYY -- Reply
+# 1PXXYYYY -- Reply (TDI.py and TDISimulate say 12XXYYYY; TDIserial accepts both)
 #   XX is 0 or 1, wire path 0 or 1
 #   YY is 0 to turn path off
 #         1 to turn path on
@@ -88,8 +105,13 @@
 #                             master valve 1 -> XX=240, ...
 #                             master valve 4 -> XX=243
 #
-#   ZZ 00 -> valid?
-#   ZZ 08 -> failed?
+#   ZZ 00 -> normal
+#   ZZ 04 -> recorded as onCode=4 for 9 actions 2026-09-04..13; meaning
+#            unknown
+#   ZZ 08 -> unknown; TDISimulate uses it for "already on"
+#   TDIvalve emails the 'electrical' report for any ZZ other than 00, with
+#   the currents, at most once a day per valve.  Whatever ZZ says, the
+#   valve's off is still sent, so a valve which did come on goes off.
 #   AAAA pre on mAmps, 
 #   PPPP peak mAmps, and 
 #   BBBB post on mAmps
@@ -102,6 +124,9 @@
 #   XX is the valve in [0,199] decimal, master valve [240-243], or 0xFF(255) is all
 #   YY 00 -> normal
 #   YY 02 -> nothing to turn off
+#   Both confirm the valve is off; 0D is idempotent, so an off is resent until
+#   one of them comes back.  Any other YY is not taken as a confirmation.
+#   0DFF is assumed to reply 1DFF00 (as TDISimulate does): to be verified.
 #
 # -- Firmware version
 # 0V -- Request firmware on TDI version

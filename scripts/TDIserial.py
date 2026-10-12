@@ -103,9 +103,9 @@ class Serial(MyBaseThread):
 
     def put(self, msg:bytes, replyTo:ReplyTarget, priority:int = PRIORITY_POLL,
             final:bool = False) -> None:
-        """ Send a message; nothing is accepted after a final one """
+        """ Send a message; after a final one, only other final ones are accepted """
         with self.lock:
-            accepted = self.accepting
+            accepted = self.accepting or final
             if accepted:
                 self.queue.put((priority, next(self.sequence), msg, replyTo))
             if final:
@@ -117,8 +117,8 @@ class Serial(MyBaseThread):
     def request(self, msg:bytes, timeout:float, final:bool = False) -> tuple:
         """ Send msg ahead of the polls and wait for its reply, (t, reply) or (None, None)
 
-        Nothing is sent after a final request, so a valve thread which has not
-        stopped can't turn a valve on after the shutdown all-off.
+        Only other final requests are sent after a final one, so a valve thread
+        which has not stopped can't turn a valve on after the shutdown all-off.
         """
         reply = Reply()
         self.put(msg, reply, PRIORITY_VALVE, final)

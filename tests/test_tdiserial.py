@@ -143,8 +143,8 @@ class TestIsReplyTo:
 @pytest.fixture
 def fast(monkeypatch):
     """Short waits so a missing reply doesn't take 15 seconds"""
-    monkeypatch.setattr(TDIserial, 'ACK_WAIT', 0.3)
-    monkeypatch.setattr(TDIserial, 'REPLY_WAIT', 0.6)
+    monkeypatch.setattr(TDIserial, 'ACK_WAIT', 0.5)
+    monkeypatch.setattr(TDIserial, 'REPLY_WAIT', 1.0)
     # tests/conftest.py stubs pyserial; TDIserial raises its exception on EOF
     monkeypatch.setattr(TDIserial.serial, 'SerialException', OSError, raising=False)
 
@@ -272,6 +272,8 @@ class TestQueue:
         ser.put(b'0A2200', late, PRIORITY_VALVE)
         assert late.get(timeout=0) == (None, None) # Refused at once
         assert ser.queue.qsize() == 1
+        ser.put(b'0DFF', Reply(), PRIORITY_VALVE, final=True) # Another try at the all-off
+        assert ser.queue.qsize() == 2
 
     def test_request_times_out_and_abandons(self, logger):
         ser = Serial(None, logger, queue.Queue()) # Not started, so nothing answers

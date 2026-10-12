@@ -21,9 +21,9 @@ MINUTE = datetime.timedelta(minutes=1)
 SECOND = datetime.timedelta(seconds=1)
 
 
-def mkValves(cur, n=2):
+def mkValves(cur, n=2, site="Test site"):
     """A site, controller and n valves (addr 0x20+i); returns (program, [sensor ids])"""
-    cur.execute("INSERT INTO site(name) VALUES('Test site') RETURNING id;")
+    cur.execute("INSERT INTO site(name) VALUES(%s) RETURNING id;", (site,))
     site = cur.fetchone()["id"]
     cur.execute("INSERT INTO controller(site,name) VALUES(%s,'Test ctl') RETURNING id;", (site,))
     ctl = cur.fetchone()["id"]

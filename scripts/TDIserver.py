@@ -5,6 +5,7 @@
 # Oct-2019, Pat Welch, pat@mousebrains.com
 #
 
+import MyBaseThread
 import MyLogger
 import Params
 import TDISimulate
@@ -26,6 +27,18 @@ class ServiceStop(Exception):
 def stopService(_signum, _frame):
     raise ServiceStop()
 
+
+def stopThreads(thrs:list) -> None:
+    """ Ask the threads which were started to stop, giving them five seconds in all """
+    thrs = [thr for thr in thrs if (thr is not None) and (thr.ident is not None)]
+    for thr in thrs:
+        thr.shutdown()
+    deadline = time.monotonic() + 5
+    for thr in thrs:
+        thr.join(timeout=max(0, deadline - time.monotonic()))
+        if thr.is_alive():
+            logger.warning('Thread %s did not stop within five seconds', thr.name)
+
 parser = argparse.ArgumentParser(description='TDI serial interface')
 parser.add_argument('--noPeriodic', action='store_true', help='Do not start periodic threads to test valve ops')
 grp = parser.add_argument_group('Database related options')
@@ -44,9 +57,15 @@ logger = MyLogger.mkLogger(args, __name__)
 logger.info('Args=%s', args)
 signal.signal(signal.SIGTERM, stopService)
 signal.signal(signal.SIGINT, stopService)
+# systemd's watchdog sends SIGABRT: stop the same way, so the valves are turned off
+signal.signal(signal.SIGABRT, stopService)
+
+# Seconds between systemd watchdog pings (WatchdogSec in OITDI.service is larger)
+WATCHDOG_PING = 10
 
 s = None
-threads = []
+threads: list = []
+thrSerial = None
 thrDBout = None
 myName = 'TDI'
 failure = None
@@ -81,10 +100,19 @@ try:
 
     thrDBout.putShort('SELECT simulate_insert(%s);', (True if args.simulate else False,))
     thrDBout.putShort('SELECT processState_insert(%s,%s);', ('TDI', 'Running'))
+    MyBaseThread.sdNotify('READY=1')
 
-    e = qExcept.get() # wait on a thread to throw an exception
-    qExcept.task_done()
-    raise e
+    while True: # Wait on a thread to throw an exception, pinging systemd's watchdog meanwhile
+        try:
+            e = qExcept.get(timeout=WATCHDOG_PING)
+            qExcept.task_done()
+            raise e
+        except queue.Empty:
+            pass
+        stalled = ['{} {}'.format(thr.name, why) for thr in threads if (why := thr.stalled())]
+        if stalled: # Exit, turning everything off, so systemd restarts us
+            raise RuntimeError('Stalled thread(s): ' + ', '.join(stalled))
+        MyBaseThread.sdNotify('WATCHDOG=1')
 except ServiceStop:
     logger.info('Shutdown requested')
 except Exception as e:
@@ -97,19 +125,16 @@ except Exception as e:
         logger.exception('Unable to record TDI failure in the database')
 finally:
     # Stop producers first so DBout can drain every queued write.
-    workers = [thr for thr in threads if thr is not thrDBout]
-    for thr in workers:
-        thr.shutdown()
-    deadline = time.monotonic() + 5
-    for thr in workers:
-        thr.join(timeout=max(0, deadline - time.monotonic()))
-        if thr.is_alive():
-            logger.warning('Thread %s did not stop within five seconds', thr.name)
-    if thrDBout is not None:
-        thrDBout.shutdown()
-        thrDBout.join(timeout=5)
-        if thrDBout.is_alive():
-            logger.warning('Thread %s did not stop within five seconds', thrDBout.name)
+    stopThreads([thr for thr in threads if thr not in (thrSerial, thrDBout)])
+    if (thrSerial is not None) and (thrSerial.ident is not None): # It was started
+        # Nothing turns a valve off while we are down, so turn them all off
+        # now, as the serial thread's last command
+        if thrSerial.is_alive():
+            TDIvalve.allOffNow(thrSerial, logger, 'shutdown')
+        else:
+            logger.error('Serial thread is not running, unable to turn the valves off')
+    stopThreads([thrSerial])
+    stopThreads([thrDBout])
     if s:
         try:
             s.close() # Close the serial port
