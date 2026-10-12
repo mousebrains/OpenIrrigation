@@ -13,6 +13,7 @@ import DB
 import Notify
 import re
 from SchedMain import runScheduler
+from SchedUtils import nextRunTime
 
 def prettyWoke(reply:list, db:DB.DB) -> str:
     a = []
@@ -88,11 +89,11 @@ try:
 
     db = DB.DB(args.db, logger)
     listener = DB.Listen(args.db, args.channel, logger)
-    tNext = datetime.datetime.now() + datetime.timedelta(seconds=args.initialDelay)
+    tNext = datetime.datetime.now().astimezone() + datetime.timedelta(seconds=args.initialDelay)
     failureCount = 0
 
     while True: # Infinite loop
-        dt = tNext - datetime.datetime.now()
+        dt = tNext - datetime.datetime.now().astimezone() # aware: real time on a DST night
         if dt > datetime.timedelta(seconds=0):
             msg = 'Sleeping till {}'.format(tNext)
             if failureCount:
@@ -114,7 +115,7 @@ try:
         else:
             failureCount += 1
             retryDelay = datetime.timedelta(seconds=args.failureRetrySeconds)
-            tNext = datetime.datetime.now() + retryDelay
+            tNext = datetime.datetime.now().astimezone() + retryDelay
             msg = 'Failed {} consecutive scheduler run(s); retrying at {}'.format(
                     failureCount, tNext)
             logger.error(msg)
@@ -123,9 +124,7 @@ try:
                 Notify.onException(args, logger, RuntimeError(msg))
         if args.single: break # Break out of loop if only to be done once
         if qSucceeded:
-            # Just after midnight
-            tNext = datetime.datetime.combine(datetime.date.today() + datetime.timedelta(days=1),
-                    datetime.time(0,0,1))
+            tNext = nextRunTime(datetime.date.today()) # Just after midnight
     db.updateState(myName, 'Exiting')
 
 except Exception as e:

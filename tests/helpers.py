@@ -55,8 +55,9 @@ class MockProgramStation:
                  ctlMaxStations=4, pocMaxStations=4, pgmMaxStations=4,
                  current=50, maxCurrent=500, baseCurrent=25,
                  delayOn=None, delayOff=None, ctlDelay=None,
-                 pgmName='TestProgram', logger=None):
+                 pgmName='TestProgram', logger=None, station=None):
         self.id = ident
+        self.station = station  # station.id
         self.program = program
         self.sensor = sensor
         self.name = name
@@ -99,6 +100,34 @@ class MockProgram:
 
     def mkTime(self, pgmDate):
         return (self._sTime, self._eTime)
+
+
+class FakeCursor:
+    """Answers each execute() with the rows of the first (fragment, rows)
+    pair whose SQL fragment occurs in the statement; records every call."""
+    def __init__(self, answers=()):
+        self.answers = list(answers)
+        self.executed = []
+        self.rows = []
+
+    def execute(self, sql, params=None):
+        self.executed.append((sql, params))
+        self.rows = []
+        for (fragment, rows) in self.answers:
+            if fragment in sql:
+                if isinstance(rows, Exception):
+                    raise rows
+                self.rows = list(rows)
+                break
+
+    def fetchall(self):
+        return self.rows
+
+    def fetchone(self):
+        return self.rows[0] if self.rows else None
+
+    def __iter__(self):
+        return iter(self.rows)
 
 
 class MockProgramNoRun:

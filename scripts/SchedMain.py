@@ -4,6 +4,7 @@
 # Oct-2019, Pat Welch, pat@mousebrains.com
 #
 import DB
+import Notify
 import datetime
 import psycopg
 import argparse
@@ -13,8 +14,13 @@ from SchedProgram import Programs
 from SchedProgramStation import ProgramStations
 from SchedCumTime import CumTime
 from SchedInterval import Interval
-from SchedResource import ResourceRegistry, Reservation
+from SchedResource import ResourceRegistry, Reservation, current_capacity
 from SchedPlacer import build_schedule
+from SchedUtils import UTC, Problems, asInstant, localTime
+
+# Configuration problems last emailed; OISched is long-lived, so this dedups
+# the report across rebuilds for the life of the process
+_reportedProblems: frozenset[str] = frozenset()
 
 def runScheduler(args:argparse.Namespace, logger:logging.Logger) -> bool:
     with DB.DB(args.db, logger) as db, db.cursor() as cur:
@@ -32,11 +38,12 @@ def runScheduler(args:argparse.Namespace, logger:logging.Logger) -> bool:
 
 def doit(cur:psycopg.Cursor,
         args:argparse.Namespace, logger:logging.Logger) -> bool:
+    # All times are UTC instants from here on; see SchedUtils.asInstant
     if args.minCleanTime is None:
-        minTime = datetime.datetime.now().astimezone() \
+        minTime = datetime.datetime.now(UTC) \
                 + datetime.timedelta(seconds=args.minCleanSeconds)
     else:
-        minTime = datetime.datetime.fromisoformat(args.minCleanTime).astimezone()
+        minTime = datetime.datetime.fromisoformat(args.minCleanTime).astimezone(UTC)
     minTime = minTime.replace(microsecond=0)
 
     if args.sDate is None:
@@ -46,11 +53,12 @@ def doit(cur:psycopg.Cursor,
 
     eDate = sDate + datetime.timedelta(days=args.nDays) # Last date to schedule for
 
-    logger.info('minTime=%s sDate=%s eDate=%s', minTime, sDate, eDate)
+    logger.info('minTime=%s sDate=%s eDate=%s', localTime(minTime), sDate, eDate)
 
-    sensors = Sensors(cur, logger)
-    stations = ProgramStations(cur, sensors, logger)
-    programs = Programs(cur, stations, logger) # Active programs in priority order
+    problems = Problems(logger) # Rows which can't be scheduled, unsupported modes
+    sensors = Sensors(cur, logger, problems)
+    stations = ProgramStations(cur, sensors, logger, problems)
+    programs = Programs(cur, stations, logger, problems) # Active programs in priority order
     registry = ResourceRegistry(logger)
     cumTime = CumTime()
 
@@ -60,13 +68,78 @@ def doit(cur:psycopg.Cursor,
                  sDate, eDate, logger,
                  args.noLoadHistorical, args.noNearPending)
 
+    shortfalls: list = []
     actions = build_schedule(registry, programs, cumTime,
                              sDate, eDate, minTime,
-                             args.noAdjustStime, logger)
+                             args.noAdjustStime, logger,
+                             problems=problems, shortfalls=shortfalls)
+
+    reportProblems(cur, problems, logger, args.dryrun)
 
     # Insert new scheduled actions into action table
     logger.info('Going to insert %s new actions', len(actions))
-    return insertActions(cur, actions, logger)
+    if not insertActions(cur, actions, logger):
+        return False
+    writeShortfalls(cur, shortfalls, sDate, eDate, logger)
+    return True
+
+def reportProblems(cur:psycopg.Cursor, problems:list, logger:logging.Logger,
+        qDryRun:bool = False) -> None:
+    """ Email the configuration problems, once per distinct set
+
+    A problem is mailed the first time it is seen in this process; a rebuild
+    with nothing new stays quiet.  A problem that goes away and later comes
+    back is mailed again.  An email failure is logged, never fatal, and leaves
+    the record alone so the next rebuild retries.
+    """
+    global _reportedProblems
+    current = frozenset(problems)
+    if current <= _reportedProblems:
+        _reportedProblems = current # Forget fixed ones so a recurrence is reported
+        return
+    if qDryRun:
+        logger.info('Not emailing %s scheduler problem(s) due to --dryrun', len(current))
+        return
+    body = 'The scheduler skipped or could not fully schedule the following.'
+    body+= ' Everything else was scheduled normally.\n\n'
+    body+= '\n'.join('  * ' + item for item in sorted(current))
+    body+= '\n\nFix the configuration in the web interface; the next schedule'
+    body+= ' rebuild (e.g. Run Scheduler) picks up the change.\n'
+    subject = 'Scheduler: {} configuration problem(s)'.format(len(current))
+    cur.execute('SAVEPOINT sp_report;')
+    try:
+        Notify.sendReport(cur, 'systemd', subject, body, logger)
+        cur.execute('RELEASE SAVEPOINT sp_report;')
+        _reportedProblems = current
+    except Exception:
+        logger.exception('Unable to email the scheduler problems')
+        cur.execute('ROLLBACK TO SAVEPOINT sp_report;')
+
+def writeShortfalls(cur:psycopg.Cursor, shortfalls:list,
+        sDate:datetime.date, eDate:datetime.date, logger:logging.Logger) -> None:
+    """ Rewrite the shortfall rows for the program dates in this horizon
+
+    Earlier dates keep the rows of the last rebuild that covered them.  This is
+    reporting only: a failure, e.g. migration 015 not yet applied, is logged and
+    the schedule is still committed.
+    """
+    rows = [sf for sf in shortfalls
+            if sf.station is not None and sDate <= sf.pgmDate <= eDate]
+    for sf in rows:
+        logger.info('Shortfall pgmDate=%s program=%s %s requested=%s placed=%s',
+                sf.pgmDate, sf.program, sf.name, sf.requested, sf.placed)
+    cur.execute('SAVEPOINT sp_shortfall;')
+    try:
+        cur.execute('DELETE FROM shortfall WHERE pgmDate BETWEEN %s AND %s;', (sDate, eDate))
+        for sf in rows:
+            cur.execute('INSERT INTO shortfall(pgmDate,program,station,requested,placed)'
+                    ' VALUES(%s,%s,%s,%s,%s);',
+                    (sf.pgmDate, sf.program, sf.station,
+                     sf.requested.total_seconds() / 60, sf.placed.total_seconds() / 60))
+        cur.execute('RELEASE SAVEPOINT sp_shortfall;')
+    except Exception:
+        logger.exception('Unable to record %s shortfall(s)', len(rows))
+        cur.execute('ROLLBACK TO SAVEPOINT sp_shortfall;')
 
 def insertActions(cur:psycopg.Cursor, actions:list,
         logger:logging.Logger) -> bool:
@@ -117,14 +190,24 @@ def loadExisting(cur:psycopg.Cursor, registry:ResourceRegistry, cumTime:CumTime,
         sDate:datetime.date, eDate:datetime.date,
         logger:logging.Logger,
         noHistorical:bool, noNearPending:bool) -> None:
-    """ Load completed and active actions into the registry and cumTime """
+    """ Load completed and active actions into the registry and cumTime
+
+    Historical rows start the day before sDate, so a soak or delay that
+    straddles midnight is still honoured, and include every row of a qSingle
+    (manual) run still under way whatever its date.  Such a run keeps the
+    program date it started on (stn.singleDate), so a run spanning midnight
+    is not placed again in full on the new date.
+
+    A master valve action, i.e. a "POC off", blocks every station on its POC.
+    """
     parts = []
     params = []
     if not noHistorical:
         parts.append(
             "SELECT tOn,tOff,sensor,program,pgmStn,pgmDate"
-            " FROM historical WHERE pgmDate BETWEEN %s AND %s")
-        params.extend([sDate, eDate])
+            " FROM historical WHERE pgmDate BETWEEN %s AND %s"
+            " OR pgmStn IN (SELECT id FROM pgmStn WHERE qSingle)")
+        params.extend([sDate - datetime.timedelta(days=1), eDate])
     if not noNearPending:
         parts.append(
             "SELECT tOn,tOff,action.sensor,action.program"
@@ -136,23 +219,41 @@ def loadExisting(cur:psycopg.Cursor, registry:ResourceRegistry, cumTime:CumTime,
         return
     sql = " UNION ALL ".join(parts) + ";"
     cur.execute(sql, params)
-    for row in cur:
+    rows = cur.fetchall()
+
+    for (_, _, _, _, pgmStn, pgmDate) in rows: # A manual run keeps its first date
+        stn = stations.get(pgmStn)
+        if stn is not None and stn.qSingle and pgmDate is not None \
+                and (stn.singleDate is None or pgmDate < stn.singleDate):
+            stn.singleDate = pgmDate
+
+    for row in rows:
         (tOn, tOff, sensorId, program, pgmStn, pgmDate) = row
+        (tOn, tOff) = (asInstant(tOn), asInstant(tOff))
+        if sensorId in sensors.masterValves:
+            mv = sensors.masterValves[sensorId]
+            registry.record_master_valve(mv, tOn, tOff)
+            logger.info('existing POC(%s) off, %s %s to %s',
+                        mv.poc, mv.name, localTime(tOn), localTime(tOff))
+            continue
         if sensorId not in sensors:
-            logger.error('Sensor(%s) not known in loadExisting', sensorId)
+            logger.warning('Sensor(%s) not known in loadExisting, %s to %s',
+                           sensorId, localTime(tOn), localTime(tOff))
             continue
         sensor = sensors[sensorId]
-        stn = stations[pgmStn] if pgmStn in stations else None
+        stn = stations.get(pgmStn)
         # Record into registry using a lightweight proxy
         _recordExisting(registry, sensor, stn, program, tOn, tOff)
+        if stn is not None and stn.qSingle and stn.singleDate is not None:
+            pgmDate = stn.singleDate
         cumTime.add(pgmStn, pgmDate, tOff - tOn)
         logger.info("existing %s %s to %s pgmDate=%s",
-                    sensor.name, tOn, tOff, pgmDate)
+                    sensor.name, localTime(tOn), localTime(tOff), pgmDate)
 
 def _recordExisting(registry:ResourceRegistry, sensor, stn, program,
         tOn:datetime.datetime, tOff:datetime.datetime) -> None:
     """ Record an existing action into the resource registry """
-    interval = Interval(tOn, tOff)
+    interval = Interval(asInstant(tOn), asInstant(tOff))
     delays = dict(
         ctl_delay=sensor.ctlDelay,
         delay_on=sensor.delayOn,
@@ -167,7 +268,7 @@ def _recordExisting(registry:ResourceRegistry, sensor, stn, program,
                             **delays))
 
     # Controller current (capacity excludes baseCurrent — passive sensor draw)
-    ctl_current_cap = sensor.maxCurrent - sensor.baseCurrent
+    ctl_current_cap = current_capacity(sensor.maxCurrent, sensor.baseCurrent)
     tracker = registry._get_tracker(registry.ctl_current, sensor.controller,
                                     ctl_current_cap)
     tracker.add(Reservation(interval, sensor.current, ctl_current_cap,

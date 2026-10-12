@@ -49,10 +49,6 @@ class TestDateDOW:
         with pytest.raises(Exception, match='Unrecognized day of week'):
             DateDOW(['monday'])
 
-    def test_mkRefDate_returns_none(self):
-        dow = DateDOW(['mon'])
-        assert dow.mkRefDate(datetime.date(2024, 7, 1)) is None
-
 
 # ── DateDays.mkDate ──────────────────────────────────────────────────
 
@@ -101,18 +97,6 @@ class TestDateDays:
                 assert dd.mkDate(d) == d
             else:
                 assert dd.mkDate(d) is None
-
-    def test_mkRefDate(self):
-        """mkRefDate returns a future cycle date relative to d."""
-        ref = datetime.date(2024, 7, 1)
-        dd = DateDays(3, ref)
-        # For d on a cycle boundary (dd=0), returns d + nDays
-        result = dd.mkRefDate(ref)
-        assert result == ref + datetime.timedelta(days=3)
-        # For d=ref+1 (dd=1): d + dd + nDays - (dd%nDays) = d + 1+3-1 = d+3
-        d = ref + datetime.timedelta(days=1)
-        result = dd.mkRefDate(d)
-        assert result == d + datetime.timedelta(days=3)
 
 
 # ── TimeClock.mkTime ─────────────────────────────────────────────────

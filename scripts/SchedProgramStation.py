@@ -9,14 +9,18 @@
 
 import psycopg
 import logging
+import datetime
 from datetime import timedelta
 from SchedSensor import Sensors
+from SchedUtils import Problems
 
 class ProgramStations(dict):
     """ Dictionary of program stations indexed by pgmstn.id """
     def __init__(self, cur:psycopg.Cursor, sensors:Sensors,
-            logger:logging.Logger) -> None:
+            logger:logging.Logger, problems:Problems | None = None) -> None:
         self.pgm2stn: dict[int, list[ProgramStation]] = {} # program.id -> list of stations
+        self.etStations: dict[int, list[str]] = {} # program.id -> stations in 'ET' mode
+        if problems is None: problems = Problems(logger)
         sql = "SELECT "
         sql+= "pgmstn.id,pgmstn.program,pgmstn.station,pgmstn.runTime,pgmstn.qSingle"
         sql+= ",webList.key"
@@ -25,11 +29,18 @@ class ProgramStations(dict):
         sql+= " FROM pgmstn"
         sql+= " INNER JOIN webList ON webList.id=pgmstn.mode"
         sql+= " INNER JOIN program ON program.id=pgmstn.program"
-        sql+= " ORDER BY pgmstn.priority"
+        sql+= " ORDER BY pgmstn.priority,pgmstn.id" # id: a stable order for equal priorities
         sql+= ";"
         cur.execute(sql)
-        for row in cur:
-            item = ProgramStation(row, sensors, logger)
+        for row in cur.fetchall():
+            try:
+                item = ProgramStation(row, sensors, logger)
+            except Exception as e: # One bad row must not stop the whole schedule
+                problems.error('Program station {} in program {} is not scheduled: {}'.format(
+                    row[0], row[8], e))
+                continue
+            if item.qET and item.qOkay: # Reported by Programs if the program is on
+                self.etStations.setdefault(item.program, []).append(item.name)
             if item.qOkay:
                 self[item.id] = item
                 if item.qOn:
@@ -53,6 +64,10 @@ class ProgramStation:
         self.logger = logger
         self.qOkay = False
         self.qOn = onOff == 'on'
+        self.qET = onOff == 'ET' # Accepted by the editor but never implemented
+        # The program date of a qSingle (manual) run already under way, set by
+        # SchedMain.loadExisting so the rest of the run keeps that date
+        self.singleDate: datetime.date | None = None
         if runTime is None:
             logger.error('pgmStn(%s) runTime is None, row=%s', stationID, row)
             return
@@ -72,6 +87,7 @@ class ProgramStation:
             return
 
         self.qOkay = True
+        self.station = stationID
         sensor = sensors.stations[stationID]
         self.name = sensor.name
         self.addr = sensor.addr
