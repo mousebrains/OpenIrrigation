@@ -131,6 +131,46 @@ def mkTable(rows:list) -> str:
     tbl.append('</html>')
     return '\n'.join(tbl)
 
+def addShortfalls(tbl:str, db:DB.DB, today:datetime.date, logger:logging.Logger) -> str:
+    """ Append today's and tomorrow's scheduler shortfalls to the report tbl
+
+    The shortfall table holds run time the scheduler could not place, e.g. a
+    station crowded out of its window.  Best effort: if it can't be read (say
+    migration 015 has not been applied) the report goes out without it.
+    """
+    sql = "SELECT shortfall.pgmDate,program.name,station.name"
+    sql+= ",shortfall.requested,shortfall.placed"
+    sql+= " FROM shortfall"
+    sql+= " INNER JOIN program ON program.id=shortfall.program"
+    sql+= " INNER JOIN station ON station.id=shortfall.station"
+    sql+= " WHERE shortfall.pgmDate BETWEEN %s AND %s"
+    sql+= " ORDER BY shortfall.pgmDate,program.name,station.name;"
+    try:
+        with db.cursor() as cur:
+            cur.execute(sql, (today, today + datetime.timedelta(days=1)))
+            rows = cur.fetchall()
+    except Exception:
+        logger.exception('Unable to load the scheduler shortfalls')
+        db.rollback()
+        return tbl
+    if not rows: return tbl
+
+    def minutes(val:float) -> str:
+        return html.escape('{:.1f}'.format(val))
+
+    a = ['<h3>Scheduled run time that could not be placed</h3>']
+    a.append('<table>')
+    a.append('<tr><th>Date</th><th>Program</th><th>Station</th>'
+             '<th>Requested (min)</th><th>Placed (min)</th></tr>')
+    for (pgmDate, pgm, stn, requested, placed) in rows:
+        a.append('<tr><td>' + html.escape(str(pgmDate)) + '</td>'
+                 + '<td>' + html.escape(str(pgm)) + '</td>'
+                 + '<td>' + html.escape(str(stn)) + '</td>'
+                 + '<td>' + minutes(requested) + '</td>'
+                 + '<td>' + minutes(placed) + '</td></tr>')
+    a.append('</table>')
+    return tbl.replace('</body>', '\n'.join(a) + '\n</body>')
+
 def sendTable(tbl:str, nPast:int, nFut:int, args:argparse.Namespace,
               logger:logging.Logger) -> None:
     msg = MIMEText(tbl, 'html')
@@ -169,6 +209,7 @@ def doit(t0:datetime.datetime, args:argparse.Namespace, logger:logging.Logger) -
         pending = getPending(db, t0, args, logger)
         rows = mkRows(historical, pending)
         tbl = mkTable(rows)
+        tbl = addShortfalls(tbl, db, t0.date(), logger)
         sendTable(tbl, len(historical), len(pending), args, logger)
 
 def main():
