@@ -45,6 +45,8 @@ INSERT INTO params (grp,name,val) VALUES
 -- Flow-sensor watchdog parameters (FlowSensorWatch.py)
 	('FLOWWATCH', 'graceMinutes', 6), -- minutes valves must be on before zero flow alarms
 	('FLOWWATCH', 'minExpectedGPM', 2), -- only check when open valves should draw this much
-	('FLOWWATCH', 'noFlowGPM', 0.5); -- a reading at or below this is "no flow"
+	('FLOWWATCH', 'noFlowGPM', 0.5), -- a reading at or below this is "no flow"
+	('FLOWWATCH', 'highFlowPct', 130), -- high flow: % of a lawn zone's cleanFlow baseline
+	('FLOWWATCH', 'highFlowMinutes', 4); -- high flow must persist this long
 	
 -- SELECT * FROM params ORDER BY grp,name;

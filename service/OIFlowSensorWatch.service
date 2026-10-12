@@ -1,7 +1,8 @@
 # This file is part of OpenIrrigation
 #
-# this service checks that the POC flow sensor shows flow while valves that
-# should be drawing water are on, and emails 'lowFlow' subscribers if not
+# this service checks the POC flow sensor against the valves that are open:
+# no flow when there should be ('lowFlow' subscribers), or a lawn zone well
+# above its clean baseline ('highFlow' subscribers)
 #
 # man systemd.unit for parameters
 # man systemd.service for parameters
