@@ -8,7 +8,9 @@ parameters:
     - public_html/css
   reportUnmatchedIgnoredErrors: false
   ignoreErrors:
-    # config.php is generated at build time via ./config; not in the repo
-    - identifier: requireOnce.fileNotFound
-    # OI_DBNAME is defined in the generated config.php
-    - identifier: constant.notFound
+    # OI_DBNAME is defined in config.php, which make generates from
+    # config.php.in; only DB::dbName() reads it
+    -
+      identifier: constant.notFound
+      message: '#^Constant OI_DBNAME not found\.$#'
+      path: public_html/php/DB1.php

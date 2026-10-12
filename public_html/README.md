@@ -5,8 +5,8 @@
 - **monitor.php** -- Monitor active, pending, and historical station operations in real time.
 - **reportDaily.php** -- Daily summary report of scheduled and actual irrigation.
 - **tableEditor.php** -- Generic table editor for all configuration tables (programs, stations, sites, controllers, sensors, POCs, users, etc.).
-- **ET.php** -- Evapotranspiration data viewer (with etDaily.php and etAnnual.php sub-pages).
-- **systemctl.php** -- Start/stop/restart systemd services from the web interface.
+- **ET.php** -- Evapotranspiration data viewer (data from etAnnual.php).
+- **systemctl.php** -- Shows the status of the OITDI and OISched services (read-only).
 - **processState.php** -- View running process states.
 
 ## Server-Sent Events (SSE) endpoints
@@ -25,10 +25,15 @@
 - **monitorClearAll.php** -- Clear all pending and active actions.
 - **monitorPocOff.php** -- Turn off all stations on a POC.
 - **monitorPendingRemove.php** -- Remove a pending action.
-- **tableRowInsert.php**, **tableRowUpdate.php**, **tableRowDelete.php** -- Table CRUD operations.
+- **tableRowInsert.php**, **tableRowUpdate.php**, **tableRowDelete.php** -- Table CRUD operations, limited to the tables and columns listed in `tableInfo`.
+
+## Other endpoints
+- **flowGraphData.php**, **etAnnual.php** -- JSON data for the flow and ET graphs.
+- **csrfToken.php** -- the session's CSRF token, so an open page can retry a POST after its session expired.
 
 ## Shared PHP
 - **php/DB1.php** -- PDO database wrapper with transaction and prepared statement support.
+- **php/CSRF.php** -- session and CSRF token handling for the POST endpoints.
 - **php/navBar.php** -- Navigation bar included by all pages.
 
 ## JavaScript (`js/`)

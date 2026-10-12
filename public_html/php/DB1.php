@@ -218,12 +218,17 @@ class DB {
 		return true;
 	}
 
+	// The database name, from config.php, which make generates
+	static function dbName(): string {
+		require_once __DIR__ . '/config.php';
+		return OI_DBNAME;
+	}
+
 	private static ?DB $instance = null;
 
 	static function getInstance(): DB {
 		if (self::$instance === null) {
-			require_once __DIR__ . '/config.php';
-			self::$instance = new DB(OI_DBNAME);
+			self::$instance = new DB(self::dbName());
 		}
 		return self::$instance;
 	}

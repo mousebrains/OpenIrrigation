@@ -200,8 +200,7 @@ class StatusDB {
 
 $delay = 25 * 1000; // 25 seconds between burps; keeps iOS WiFi power-save from dropping idle connection
 require_once 'php/DB1.php';
-require_once 'php/config.php';
-$dbName = OI_DBNAME;
+$dbName = DB::dbName();
 
 try {
 	$db = new StatusDB($dbName);
