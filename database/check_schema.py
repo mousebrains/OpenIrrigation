@@ -55,11 +55,19 @@ EXPECTED_FUNCTIONS = [
     "action_tee_insert",
     "action_onoff_insert",
     "command_on_done",
+    "command_on_failed",
+    "command_on_refused",
     "command_off_done",
     "command_tee_done",
     "processstate_insert",
     "sensorinsert",
     "currentinsert",
+]
+
+# (function, result type) where TDIvalve.py depends on the result (migrate_013)
+EXPECTED_RESULTS = [
+    ("command_on_done", "boolean"),
+    ("command_on_failed", "integer"),
 ]
 
 # Constraints that should NOT exist
@@ -147,6 +155,15 @@ def check(db):
             )
             if cur.fetchone() is None:
                 errors.append(f"Missing function: {func_name}")
+
+        for func_name, result in EXPECTED_RESULTS:
+            cur.execute(
+                "SELECT pg_get_function_result(oid) FROM pg_catalog.pg_proc WHERE proname = %s;",
+                (func_name,),
+            )
+            row = cur.fetchone()
+            if row and row[0] != result:
+                errors.append(f"{func_name} returns {row[0]}, expected {result} (run migrate_013)")
 
         # action_tee_insert should NOT reference pStnID
         cur.execute(
