@@ -95,11 +95,14 @@ class TestEmailBody:
             def __init__(self, host, timeout=None):
                 pass
 
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
             def send_message(self, msg):
                 sent.append(msg)
-
-            def quit(self):
-                pass
 
         class FakeCursor:
             def __enter__(self):
@@ -111,8 +114,8 @@ class TestEmailBody:
             def execute(self, sql, args=None):
                 pass
 
-            def __iter__(self):
-                return iter([['pat@example.com']])
+            def fetchall(self):
+                return [['pat@example.com']]
 
         class FakeDB:
             def __init__(self, dbName, logger):
@@ -156,3 +159,68 @@ class _NullLogger:
 
 if __name__ == '__main__':
     pytest.main([__file__])
+
+
+class FakeCursor:
+    def __init__(self, rows):
+        self.rows = rows
+        self.args = None
+
+    def execute(self, sql, args=None):
+        self.args = args
+
+    def fetchall(self):
+        return self.rows
+
+
+class FakeSMTP:
+    sent = []
+
+    def __init__(self, host, timeout=None):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def send_message(self, msg):
+        FakeSMTP.sent.append(msg)
+
+
+@pytest.fixture
+def smtp(monkeypatch):
+    FakeSMTP.sent = []
+    monkeypatch.setattr(Notify.smtplib, 'SMTP', FakeSMTP)
+    return FakeSMTP.sent
+
+
+class TestSendReport:
+    def test_subscribers(self, smtp, logger):
+        cur = FakeCursor([('a@x.org',), ('b@x.org',)])
+        used = Notify.sendReport(cur, 'lowFlow', 'subj', 'body', logger, mailFrom='oi@x.org')
+        assert used == ['a@x.org', 'b@x.org']
+        assert cur.args == ('lowFlow',)
+        assert smtp[0]['To'] == 'a@x.org, b@x.org'
+        assert smtp[0]['Subject'] == 'subj' and smtp[0]['From'] == 'oi@x.org'
+
+    def test_dict_rows(self, smtp, logger):
+        assert Notify.sendReport(FakeCursor([{'addr': 'a@x.org'}]), 'k', 's', 'b', logger) == ['a@x.org']
+
+    def test_no_subscribers_falls_back_to_root(self, smtp, logger):
+        """An alarm must never be dropped because nobody subscribed."""
+        assert Notify.sendReport(FakeCursor([]), 'filter', 's', 'b', logger) == ['root']
+        assert smtp[0]['To'] == 'root'
+
+    def test_no_subscribers_without_fallback(self, smtp, logger):
+        assert Notify.sendReport(FakeCursor([]), 'daily', 's', 'b', logger, fallback=False) == []
+        assert smtp == []
+
+    def test_smtp_failure_propagates(self, monkeypatch, logger):
+        class Down(FakeSMTP):
+            def __init__(self, host, timeout=None):
+                raise ConnectionRefusedError('postfix down')
+        monkeypatch.setattr(Notify.smtplib, 'SMTP', Down)
+        with pytest.raises(ConnectionRefusedError):
+            Notify.sendReport(FakeCursor([('a@x.org',)]), 'k', 's', 'b', logger)

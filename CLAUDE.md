@@ -27,6 +27,12 @@ python -m pytest tests/ -x -q
 # Single test
 python -m pytest tests/test_sched_main.py::TestClassName::test_method -xvs
 
+# SQL-level tests (functions, triggers, every migration twice on a fresh
+# install, check_schema.py) against a real PostgreSQL; skipped unless
+# OI_TEST_PG is set.  Needs a server where PGUSER can create roles/databases.
+# Run separately from tests/ (its conftest stubs out psycopg).
+OI_TEST_PG=1 PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres python -m pytest tests_sql
+
 # Run all pre-commit checks (ruff + pytest)
 pre-commit run --all-files
 ```
