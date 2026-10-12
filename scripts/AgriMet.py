@@ -15,6 +15,7 @@ import re
 import os.path
 
 myName = 'AgriMet'
+FETCH_TIMEOUT = 120 # seconds; without one a stalled server hangs the oneshot unit
 
 def codigoToIndex(db:DB.DB, logger:logging.Logger) -> dict:
     info = {}
@@ -35,8 +36,8 @@ def fetchPage(tStart:datetime.timedelta, params:dict,
     urlBase = params['URL']
     url = '{}{}'.format(urlBase, tStart.days)
     try:
-        fd = urllib.request.urlopen(url)
-        page = fd.read().decode('utf-8')
+        with urllib.request.urlopen(url, timeout=FETCH_TIMEOUT) as fd:
+            page = fd.read().decode('utf-8')
         logger.info('Loaded %s bytes from %s', len(page), url)
         if args.output:
             with open(args.output, 'w') as fp:

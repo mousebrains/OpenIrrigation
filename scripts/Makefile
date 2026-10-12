@@ -16,6 +16,7 @@ BIN = AgriMet.py dumpDatabase.py scheduler.py TDIserver.py
 BIN+= dailyReport.py databaseMaintenance.py
 BIN+= FilterMonitor.py filterBaseline.py
 BIN+= FlowSensorWatch.py
+BIN+= notifyFailure.py
 
 DEST = $(LIB:%=$(BINDIR)/%) $(BIN:%=$(BINDIR)/%)
 

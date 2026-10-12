@@ -8,6 +8,8 @@
 
 [Unit]
 Description=OpenIrrigation Agrimet Harvester
+# Email the 'systemd' subscribers (root if none) when this unit fails
+OnFailure=OIFailure@%n.service
 Requires=postgresql.service
 After=postgresql.service
 After=network.target
@@ -18,6 +20,9 @@ MemoryMax=256M
 NoNewPrivileges=yes
 PrivateTmp=yes
 Type=oneshot
+# A oneshot has no start timeout by default; a hung run must not hold the
+# unit forever. The fetch itself times out after 2 minutes.
+TimeoutStartSec=15min
 User=__USER__
 Group=__GROUP__
 WorkingDirectory=__LOGDIR__

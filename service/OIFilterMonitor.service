@@ -1,7 +1,8 @@
 # This file is part of OpenIrrigation
 #
 # this service computes the inline-filter status (filterStatus) and emails
-# 'filter' subscribers when the filter reaches the service threshold
+# 'filter' subscribers (root if none) while the filter is at the service
+# threshold, every FILTER.emailDebounceHours
 #
 # man systemd.unit for parameters
 # man systemd.service for parameters
@@ -9,6 +10,8 @@
 
 [Unit]
 Description=OpenIrrigation Inline Filter Monitor
+# Email the 'systemd' subscribers (root if none) when this unit fails
+OnFailure=OIFailure@%n.service
 Requires=postgresql.service
 After=postgresql.service
 Requires=postfix.service
@@ -21,6 +24,9 @@ MemoryMax=256M
 NoNewPrivileges=yes
 PrivateTmp=yes
 Type=oneshot
+# A oneshot has no start timeout by default; a hung run must not hold the
+# unit forever. Generous: it integrates sensorLog since the last cleaning.
+TimeoutStartSec=10min
 User=__USER__
 Group=__GROUP__
 WorkingDirectory=__LOGDIR__
