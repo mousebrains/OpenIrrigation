@@ -15,12 +15,15 @@ I do this as my non-irrigation user, i.e. foo above or whatever you call it. It 
 - For a simulation system this is the config command I use:
   - ./config --prefix=~irrigation --user=irrigation --roles=irrigation --roles=foo  --simulate
 - After configuration examine Makefile.params to make sure the configuration is what you want!
+- Retention maintenance archives expired rows as gzip'd CSV into --archiveDir (default <prefix>/archive) before deleting them; with no archive directory it deletes nothing.
 ---
 ## Build and initialize
 - make all # Build generated files without modifying the database
-- make freshdb # Explicitly drop and recreate a fresh database
-- python3 database/migrate_005.py --db irrigation # Existing databases only; add the retention index
-- sudo make install # install everything, including services
+- New installs only: make freshdb FORCE=1 # Drop and recreate the database and its roles; an existing database is pg_dumped into database/dump.<db>.<time> first
+- Existing databases only: run every database/migrate_NNN.py, in order; each is idempotent, so re-running them is safe (see database/README.md)
+  - for f in database/migrate_*.py; do python3 "$f" --db irrigation || break; done
+  - python3 database/check_schema.py --db irrigation # Reports anything missing and the newest migration applied
+- sudo make install # install everything, including services and the archive directory
 - make clean # Remove generated build files only
 - sudo make uninstall # Explicitly remove installed application files
 - At this point you should be able to go to open a web page and start the configuration. The order I use is:
