@@ -78,7 +78,7 @@ class TDISimul(MyBaseThread):
         self.fd = fd
         self.args = args
         self.wirePaths = [True, True] # Both paths initially on
-        self.sensors = [0, 0, 0, 0] # Time of last sensor lookup
+        self.sensors: list[float] = [0.0, 0.0, 0.0, 0.0] # Time of last sensor lookup
         self.valves = {} # Valves which are on
         self.valveInfo = {} # Currents of last valve on operation for T command
 
