@@ -74,6 +74,15 @@ server { # HTTPS
 		add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self'; connect-src 'self'; frame-ancestors 'none';" always;
 	}
 
+	# Server-Sent Events streams (status.php and *Status.php) hold a php-fpm
+	# worker for as long as a page is open, so they go to a pool of their
+	# own and cannot starve page loads and the POST actions (All Off etc.).
+	# Regex locations match in order: keep this before the \.php$ one.
+	location ~ ^/(status|[A-Za-z]+Status)\.php$ {
+		include snippets/fastcgi-php.conf;
+		fastcgi_pass unix:__SSE_SOCK__;
+	}
+
 	# pass PHP scripts to FastCGI server
 	#
 	location ~ \.php$ {

@@ -27,7 +27,8 @@ g = parser.add_argument_group('Database related options')
 g.add_argument('--dbname', type=str, default='irrigation', help='Database name')
 g.add_argument('--parentRole', type=str, default='irrParent',
         help='Parent roll which owns everything in the database')
-g.add_argument('--roles', action='append', help='Supplemental roles to create')
+g.add_argument('--roles', action='append',
+        help='Roles to create in the parent role; defaults to --user. --webUser is always added')
 g.add_argument('--siteName', type=str, default='Casa', help='Name of site in database')
 g.add_argument('--controllerName', type=str, default='Casa',
         help='Name of controller in database')
@@ -55,6 +56,9 @@ g.add_argument('--serviceDir', type=str, default=serviceDir,
         help='Where to store service files')
 g.add_argument('--user', type=str, default=user, help='User who will own the installed files')
 g.add_argument('--group', type=str, help='Group of the installed files; defaults to --user')
+g.add_argument('--webUser', type=str, default='oiweb',
+        help='Unix user, and database role, that nginx and php-fpm run as;'
+        + ' it reads but does not own the web files. Empty runs them as --user')
 
 parser.add_argument('--simulate', action='store_true', help='Simulate the controller(s)')
 parser.add_argument('--install', type=str, default=installCmd, help='Install command to use')
@@ -66,7 +70,10 @@ if args.serviceDir is None:
 
 if args.group is None: args.group = args.user
 
-args.roles = args.user if args.roles is None else " ".join(args.roles)
+roles = [args.user] if args.roles is None else args.roles
+if args.webUser and args.webUser not in roles:
+    roles.append(args.webUser) # The web pages connect as this role (peer authentication)
+args.roles = " ".join(roles)
 
 args.simulate = '--simulate' if args.simulate else ''
 
