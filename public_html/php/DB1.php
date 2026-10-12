@@ -101,7 +101,7 @@ class DB {
 		$a = $this->query($sql, [$tbl]);
 		if ($a === false) return false;
 		$result = $a->fetch(PDO::FETCH_ASSOC); // Should only be one row
-		return array_key_exists('cnt', $result) && $result['cnt'];
+		return is_array($result) && array_key_exists('cnt', $result) && $result['cnt'];
 	}
 
 	/** @return array<int, string> */

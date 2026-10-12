@@ -36,7 +36,9 @@ $sql = "INSERT INTO " . $db->quoteIdent($tbl) . " (" . implode(',', $keys) . ") 
 $stmt = $db->prepare($sql); // Prepare the statement
 if ($stmt === false) exit($db->dbMsg("Error preparing $sql"));
 if (!$stmt->execute($vals)) exit($db->dbMsg("Error executing $sql"));
-$id = $stmt->fetch(PDO::FETCH_NUM)[0];
+$idRow = $stmt->fetch(PDO::FETCH_NUM);
+if ($idRow === false) exit($db->dbMsg("Error fetching id from $sql"));
+$id = $idRow[0];
 
 $comment = ["Inserted into $tbl (" . implode(',', $keys) . ')->(' . implode(',', $vals) . ')'];
 
