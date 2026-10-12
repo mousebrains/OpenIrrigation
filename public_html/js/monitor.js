@@ -114,6 +114,9 @@ function receivedStatus(event) {
 	if ('programs' in data) {myInfo['pgm2name'] = data['programs'];} // Update pgm to name
 	if ('stations' in data) {myInfo['stn2name'] = data['stations'];} // Update sensor to name
 	if ('pocs' in data) {buildActions(data['pocs']);}
+	// The first frame of every connection, including an SSE reconnect,
+	// carries the whole history again; later frames only what is new
+	if ('stations' in data) {$('#pastTable tbody tr').remove();}
 	if ('active' in data) {buildActive(data['active'])}
 	if ('pending' in data) {buildPending(data['pending'])}
 	if ('past' in data) {buildPast(data['past'])}

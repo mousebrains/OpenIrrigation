@@ -56,7 +56,7 @@ if (!is_string($csrfToken)) {
    <input type='submit' value='Run Scheduler'>
    </form>
  </span>
- <span onclick='javascript:location.href="systemctl.php"'>
+ <span id='statusServices'>
   <span id=statusOITDI></span>
   <span id=statusOISched></span>
  </span>

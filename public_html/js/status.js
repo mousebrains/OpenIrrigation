@@ -41,6 +41,12 @@ function updateFilter(f) {
 
 $('#runScheduler').submit({'url': 'runScheduler.php'}, OI_processForm);
 
+// The service indicators open the systemctl page. A listener, not an inline
+// onclick, which the Content-Security-Policy (script-src 'self') blocks.
+$('#statusServices').css('cursor', 'pointer').on('click', () => {
+	window.location.href = 'systemctl.php';
+});
+
 // Hamburger menu: click/touch toggle (replaces hover-only)
 $('#topdropbtn').on('click', (e) => {
 	e.preventDefault();

@@ -1,8 +1,9 @@
-let indexInfo = {'active': new Set(), 'pending': new Set(), 'past': new Set(), 'all': new Set()};
+const noInfo = () => ({'active': new Set(), 'pending': new Set(), 'past': new Set(), 'all': new Set()});
+let indexInfo = noInfo(); // the states the rows are coloured for
 const dtInfo = {'hoursFuture': 12, 'hoursPast': 12};
 
 function procForm(event) {
-	const id = $(this).attr('id').slice(-2); // Form's id
+	const id = $(this).attr('id').slice(1); // Form's id is f<sensor> or g<sensor>
 	OI_processSubmit(event, 'indexProcess.php', $(this).serialize());
 	$(`#rt${id}`).val(''); // reset the value
 	$(`#${id}`).css('background-color', '#00A0DD'); // Set row color
@@ -140,6 +141,9 @@ function receivedStatus(event) {
 			$('#pocBlock').css('display', 'inline');
 		}
 		$('.indexForm').submit(procForm); // Attach to all forms
+		// The rebuilt rows are uncoloured (e.g. after an SSE reconnect), so
+		// adjustColors must set every state, not just the changes
+		indexInfo = noInfo();
 		if ('hoursPast' in data) {dtInfo['hoursPast'] = data['hoursPast'];}
 		if ('hoursFuture' in data) {dtInfo['hoursFuture'] = data['hoursFuture'];}
 	}

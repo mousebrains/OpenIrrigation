@@ -80,13 +80,20 @@ function mkInputField(a, x, form) {
 		return msg;
 	}
 	const val = rawVal === null ? "" : `value='${escapeHTML(rawVal)}'`;
+	const qPassword = a['inputtype'] === 'password';
 	let msg = `<input type='${a['inputtype']}'`;
-	if (a['inputtype'] === 'password') {msg += " autocomplete='on'";}
+	// Passwords are never sent here, so the field starts blank and blank
+	// means unchanged; keep the browser from autofilling a saved one.
+	if (qPassword) {msg += " autocomplete='new-password'";}
 	if (a['valmin'] !== null) {msg += ` min='${a['valmin']}'`;}
 	if (a['valmax'] !== null) {msg += ` max='${a['valmax']}'`;}
 	if (a['valstep'] !== null) {msg += ` step='${a['valstep']}'`;}
 	msg += ` name='${col}'${val}`;
-	if (a['placeholder'] !== '') {msg += ` placeholder='${escapeHTML(a['placeholder'])}'`;}
+	if (qPassword && x !== null) {
+		msg += " placeholder='unchanged if blank'";
+	} else if (a['placeholder'] !== '') {
+		msg += ` placeholder='${escapeHTML(a['placeholder'])}'`;
+	}
 	if (a['qrequired'] === true) {msg += ' required';}
 	msg += form;
 	if (x !== null) {msg += `<input type='hidden' name='${col}Prev'${val}${form}`;}
@@ -149,8 +156,17 @@ function buildBody(data) {
 	updateActions(tbl);
 }
 
+function confirmDelete(event) {
+	const name = $(this).closest('tr').find("input[name='name']").val();
+	if (!window.confirm(`Delete this ${myTableName} row${name ? ` '${name}'` : ''}?`)) {
+		event.preventDefault();
+		return;
+	}
+	OI_processForm.call(this, event);
+}
+
 function updateActions(obj) {
-	obj.find('.formDelete').submit({'url': 'tableRowDelete.php'}, OI_processForm);
+	obj.find('.formDelete').submit({'url': 'tableRowDelete.php'}, confirmDelete);
 	obj.find('.formUpdate').submit({'url': 'tableRowUpdate.php'}, OI_processForm);
 	obj.find('.formInsert').submit({'url': 'tableRowInsert.php'}, OI_processForm);
 	obj.find('input,select,textarea').change(inputChanged);
@@ -240,6 +256,7 @@ function receivedStatus(event) {
 			$(trID).remove();
 			return;
 		}
+		if (!data['data'] || !data['data'].length) {return;} // row gone again
 		if (data['action'] === 'INSERT') {
 			$('#trInsert').before(buildRow(data['data'][0], false));
 			$('#trInsert').replaceWith(buildRow(null, true));

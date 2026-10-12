@@ -202,12 +202,16 @@ function displayTimes(data) {
 function receivedStatus(event) {
 	const data = JSON.parse(event.data);
 	if ('burp' in data) { return; } // Nothing to do on burp messages
+	if (!('today' in data)) { return; } // e.g. an {error} frame: keep what is shown
+	// The station list comes only in the first frame of each connection
+	if ('info' in data) {myInfo.stations = data.info;}
+	if (!('stations' in myInfo)) { return; }
 	if (('info' in data)
-		|| (!('earliest' in myInfo) || (myInfo.earliest !== data.earliest))
-		|| (!('today' in myInfo) || (myInfo.today !== data.today))
-		|| (!('latest' in myInfo) || (myInfo.latest !== data.latest))) {
-		// rebuild the full table
-		buildTable(data.info, data.earliest, data.today, data.latest);
+		|| (myInfo.earliest !== data.earliest)
+		|| (myInfo.today !== data.today)
+		|| (myInfo.latest !== data.latest)) {
+		// rebuild the full table, e.g. when the date rolls over at midnight
+		buildTable(myInfo.stations, data.earliest, data.today, data.latest);
 	}
 	if ('active' in data) {displayTimes(data);}
 }
