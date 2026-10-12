@@ -7,7 +7,7 @@ Each service runs as the configured irrigation user and requires PostgreSQL.
 - **OITDI.service** -- TDI serial interface. Communicates with the Tucor TDI 2-wire controller board to operate valves and read sensors. Requires dialout group access for serial ports. Restarts every 10 seconds on failure.
 - **OIAgriMet.service** -- AgriMet data harvester. Fetches daily weather and evapotranspiration data. Also requires network-online.target. Restarts daily.
 - **OIDailyReport.service** -- Daily email report generator. Summarizes scheduled and historical irrigation. Requires postfix for email delivery. Restarts daily.
-- **OIFlowSensorWatch.service** -- Flow-sensor watchdog, run every 2 minutes by its timer. Emails 'lowFlow' subscribers once per stall when valves that should draw water have been on for a while but the POC flow sensor reads no flow. Requires postfix for email delivery.
+- **OIFlowSensorWatch.service** -- Flow-sensor watchdog, run every 2 minutes by its timer. Emails 'lowFlow' subscribers when valves that should draw water have been on for a while but the POC flow sensor reads no flow, and 'highFlow' subscribers when a lawn zone runs well above its clean baseline. Requires postfix for email delivery.
 
 ## Installation
 Service files contain template variables (`__USER__`, `__GROUP__`, `__DBNAME__`, `__LOGDIR__`) that are substituted during `make install`. See the top-level Makefile and `config` script.
