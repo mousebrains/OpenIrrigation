@@ -3,6 +3,29 @@
 --
 -- Nov-2016, Pat Welch, pat@mousebrains.com
 --
+-- FOR FRESH INSTALLS ONLY.  This file DROPs every table and domain (CASCADE)
+-- before recreating it, so loading it into an existing database destroys all
+-- of its data.  'make -C database mkdb' refuses to load it into a database
+-- that already has OpenIrrigation tables unless FORCE=1.  Existing databases
+-- are upgraded with the database/migrate_NNN.py scripts, run in order; see
+-- database/README.md.
+--
+-- History and telemetry (action, command, historical, the *Log tables,
+-- filterReading/filterStatus, ET) reference config rows ON DELETE RESTRICT:
+-- deleting a program, sensor, controller, site, POC or flow sensor that has
+-- runs or history fails with foreign_key_violation; hide it instead.
+--
+
+-- Applied database migrations; see database/README.md
+DROP TABLE IF EXISTS schemaMigration CASCADE;
+CREATE TABLE schemaMigration( -- one row per applied database migration
+	num INTEGER PRIMARY KEY CHECK (num > 0), -- NNN of migrate_NNN.py
+	appliedAt TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	source TEXT -- which script (or fresh install) recorded it
+	);
+-- A fresh install already includes every migration up to this one; bump it
+-- whenever a migration is added
+INSERT INTO schemaMigration(num, source) VALUES (14, 'fresh install');
 
 -- Domains are data types with constraints
 
@@ -166,7 +189,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder
 	('crop', 'name', 0, True, 'Crop', 'text', 'corn'),
 	('crop', 'plantdate', 2, False, 'Planting Date', 'date', '2019-08-15');
 INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,placeholder,valMin,valMax,valStep) VALUES
-	('crop', 'mad',    1, True, 'MAD (%)', 60, 10, 100, 5),
+	('crop', 'mad',    1, True, 'MAD (fraction)', 0.5, 0, 1, 0.05),
 	('crop', 'lini',   3, False, 'L init (days)', 47, 0, 365, 1),
 	('crop', 'ldev',   4, False, 'L dev (days)', 47, 0, 365, 1),
 	('crop', 'lmid',   5, False, 'L mid (days)', 47, 0, 365, 1),
@@ -565,7 +588,7 @@ CREATE TABLE EtStation( -- ET information for each station
 	depletion PERCENT, -- PAW in %
 	cycleTime TIME, -- ET estimated cycle time
 	soakTime TIME, -- ET estimated soak time
-	fracAdjust SMALLINT CHECK (fracAdjust BETWEEN 1 AND 400) -- % adjustment to ET rate 0-> no adjustment
+	fracAdjust SMALLINT CHECK (fracAdjust BETWEEN 1 AND 400) -- % of the ET rate, 100 or NULL -> no adjustment
 	);
 INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
 	('ETStation','station', 0, 'Station', 'station'),
@@ -577,7 +600,7 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType) VALUES
 	('ETStation', 'cycletime',20, 'ET cycle time', 'time'),
 	('ETStation', 'soaktime', 21, 'ET soak time', 'time');
 INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
-	('ETStation', 'fracadjust',           3, 'Adjustment % 0-None', 0, -200, 200, 5),
+	('ETStation', 'fracadjust',           3, 'ET adjustment (%, 100=none)', 100, 1, 400, 1),
 	('ETStation', 'userrootnorm',         6,'User Root Norm', '1.1', 0, 4, 0.05),
 	('ETStation', 'userinfiltrationrate', 7,'User Infil Rate (mm/Hr)', '1.1', 0, 500, 0.1),
 	('ETStation', 'usermad',              8, 'User MAD (%)', 60, 10, 100, 5),
@@ -594,7 +617,7 @@ CREATE TABLE ET( -- harvested ET information by date and station
 	id SERIAL PRIMARY KEY, -- id
 	t DATE NOT NULL, -- date of sample
 	station TEXT NOT NULL, -- station for this entry
-	code INTEGER REFERENCES params(id) ON DELETE CASCADE, -- code for this entry
+	code INTEGER REFERENCES params(id) ON DELETE RESTRICT, -- code for this entry
 	value FLOAT NOT NULL, -- value for this date/code pair
 	UNIQUE (station,code,t)
 	);
@@ -615,7 +638,7 @@ CREATE TABLE ETannual( -- day of year average ET information
 	id SERIAL PRIMARY KEY, -- id
 	doy INTEGER NOT NULL CHECK (doy BETWEEN 0 AND 366), -- day of year [0,366]
 	station TEXT NOT NULL, -- station for this entry
-	code INTEGER REFERENCES params(id) ON DELETE CASCADE, -- code for this entry
+	code INTEGER REFERENCES params(id) ON DELETE RESTRICT, -- code for this entry
 	value FLOAT NOT NULL, -- median value this doy/code pair
 	n INTEGER NOT NULL, -- number of entries for this doy/code pair
 	mn FLOAT, -- minimum value for this doy/code pair
@@ -673,7 +696,7 @@ CREATE OR REPLACE FUNCTION pocFlowID(address INTEGER, siteName TEXT, ctlName TEX
 -- Zee message log
 DROP TABLE IF EXISTS zeeLog;
 CREATE TABLE zeeLog( -- 1Z Unknown command log from TDI controller
-        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+        controller INTEGER REFERENCES controller(id) ON DELETE RESTRICT NOT NULL, -- which controller
 	timestamp TIMESTAMP WITH TIME ZONE NOT NULL, -- Time received
 	cmd TEXT NOT NULL, -- command being referred to
 	reason SMALLINT NOT NULL, -- reason, 0->Unknown Command, 1->too long, 2->too short
@@ -695,7 +718,7 @@ CREATE OR REPLACE FUNCTION zeeInsert(t TIMESTAMP WITH TIME ZONE, cmd TEXT, reaso
 -- Number message log
 DROP TABLE IF EXISTS numberLog;
 CREATE TABLE numberLog( -- 1N log entries from TDI controller, max # of stations?
-        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+        controller INTEGER REFERENCES controller(id) ON DELETE RESTRICT NOT NULL, -- which controller
 	timestamp TIMESTAMP WITH TIME ZONE NOT NULL, -- Time received
 	value SMALLINT NOT NULL, -- number returned
 	PRIMARY KEY (timestamp,controller)
@@ -711,7 +734,7 @@ CREATE OR REPLACE FUNCTION numberInsert(t TIMESTAMP WITH TIME ZONE, value INTEGE
 -- Version message results
 DROP TABLE IF EXISTS versionLog;
 CREATE TABLE versionLog( -- 1V log entries from TDI controller, firmware version
-        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+        controller INTEGER REFERENCES controller(id) ON DELETE RESTRICT NOT NULL, -- which controller
 	timestamp TIMESTAMP WITH TIME ZONE NOT NULL, -- Time received
 	value TEXT NOT NULL, -- version string returned
 	PRIMARY KEY (timestamp,controller)
@@ -727,7 +750,7 @@ CREATE OR REPLACE FUNCTION versionInsert(t TIMESTAMP WITH TIME ZONE, value TEXT,
 -- Error message results
 DROP TABLE IF EXISTS errorLog;
 CREATE TABLE errorLog( -- 1E log entries from TDI controller
-        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+        controller INTEGER REFERENCES controller(id) ON DELETE RESTRICT NOT NULL, -- which controller
 	timestamp TIMESTAMP WITH TIME ZONE NOT NULL, -- Time received
 	value SMALLINT NOT NULL, -- error code returned
 	PRIMARY KEY (timestamp,controller)
@@ -743,7 +766,7 @@ CREATE OR REPLACE FUNCTION errorInsert(t TIMESTAMP WITH TIME ZONE, value INTEGER
 -- Two message results
 DROP TABLE IF EXISTS twoLog;
 CREATE TABLE twoLog( -- 12 log entries from TDI controller, 2-wire path active?
-        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+        controller INTEGER REFERENCES controller(id) ON DELETE RESTRICT NOT NULL, -- which controller
 	timestamp TIMESTAMP WITH TIME ZONE NOT NULL, -- time code was added
 	addr SMALLINT NOT NULL, -- address
 	value SMALLINT NOT NULL, -- reading
@@ -761,7 +784,7 @@ CREATE OR REPLACE FUNCTION twoInsert(t TIMESTAMP WITH TIME ZONE, addr INTEGER, v
 -- Pee message results
 DROP TABLE IF EXISTS peeLog;
 CREATE TABLE peeLog( -- 1P log entries from TDI controller
-        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+        controller INTEGER REFERENCES controller(id) ON DELETE RESTRICT NOT NULL, -- which controller
 	timestamp TIMESTAMP WITH TIME ZONE NOT NULL, -- time code was added
 	addr SMALLINT NOT NULL, -- address
 	value INTEGER NOT NULL, -- reading
@@ -779,7 +802,7 @@ CREATE OR REPLACE FUNCTION peeInsert(t TIMESTAMP WITH TIME ZONE, addr INTEGER, v
 -- Current message results
 DROP TABLE IF EXISTS currentLog;
 CREATE TABLE currentLog( -- 1U log entries from TDI controller, voltage and current
-        controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which controller
+        controller INTEGER REFERENCES controller(id) ON DELETE RESTRICT NOT NULL, -- which controller
 	timestamp TIMESTAMP WITH TIME ZONE NOT NULL, -- time code was added
 	volts INTEGER NOT NULL, -- voltage in Volts*10
 	mAmps INTEGER NOT NULL, -- current in mAmps
@@ -805,7 +828,7 @@ $$;
 -- Sensor message results
 DROP TABLE IF EXISTS sensorLog;
 CREATE TABLE sensorLog( -- 1S log entries from TDI controller, flow sensor clicks
-        pocFlow INTEGER REFERENCES pocFlow(id) ON DELETE CASCADE NOT NULL, -- which flow sensor
+        pocFlow INTEGER REFERENCES pocFlow(id) ON DELETE RESTRICT NOT NULL, -- which flow sensor
 	timestamp TIMESTAMP WITH TIME ZONE NOT NULL, -- time code was added
 	value INTEGER NOT NULL, -- reading, Hertz*10
 	flow FLOAT NOT NULL, -- value processed into a physical value, units depend on K and offset
@@ -835,7 +858,7 @@ $$;
 DROP TABLE IF EXISTS filterReading CASCADE;
 CREATE TABLE filterReading( -- manual upstream/downstream gauge readings
 	id SERIAL PRIMARY KEY,
-	poc INTEGER REFERENCES poc(id) ON DELETE CASCADE DEFAULT 1, -- which POC
+	poc INTEGER REFERENCES poc(id) ON DELETE RESTRICT DEFAULT 1, -- which POC
 	timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- when read
 	upstreamPSI NONNEGFLOAT, -- upstream analog gauge reading
 	downstreamPSI NONNEGFLOAT, -- downstream analog gauge reading
@@ -867,7 +890,7 @@ CREATE TRIGGER filterReading_defaults_trigger BEFORE INSERT ON filterReading
 DROP TABLE IF EXISTS filterStatus CASCADE;
 CREATE TABLE filterStatus( -- computed filter degradation time series
 	id SERIAL PRIMARY KEY,
-	poc INTEGER REFERENCES poc(id) ON DELETE CASCADE, -- which POC
+	poc INTEGER REFERENCES poc(id) ON DELETE RESTRICT, -- which POC
 	timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP, -- when computed
 	degradation FLOAT, -- common-mode flow loss, percent
 	ensembleFlow FLOAT, -- current lawn-ensemble flow estimate (GPM)
@@ -883,7 +906,7 @@ CREATE INDEX filterStatus_ts_index ON filterStatus(poc, timestamp);
 -- Tee message results
 DROP TABLE IF EXISTS teeLog;
 CREATE TABLE teeLog( -- 1T log entries from TDI controller, pre/peak/post current tests
-        sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- which flow sensor
+        sensor INTEGER REFERENCES sensor(id) ON DELETE RESTRICT NOT NULL, -- which valve
 	timestamp TIMESTAMP WITH TIME ZONE NOT NULL, -- time code was added
 	code SMALLINT NOT NULL, -- failure code, 0->okay
 	pre  INTEGER CHECK (pre  BETWEEN 0 AND 65535), -- pre on current in mAmps
@@ -913,14 +936,14 @@ CREATE TABLE teeLog( -- 1T log entries from TDI controller, pre/peak/post curren
 DROP TABLE IF EXISTS action CASCADE;
 CREATE TABLE action( -- station on/off/test actions
 	id SERIAL PRIMARY KEY, -- unique record ID
-	sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- which sensor to work on
+	sensor INTEGER REFERENCES sensor(id) ON DELETE RESTRICT NOT NULL, -- which sensor to work on
 	addr INTEGER NOT NULL, -- sensor address field, for quick on/off determination
 	-- which controller, used for counting number of stations on for a given controller
-	controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, 
+	controller INTEGER REFERENCES controller(id) ON DELETE RESTRICT NOT NULL,
 	cmd INTEGER CONSTRAINT actCmdChk CHECK (cmd in(0,2)) NOT NULL, -- 0-On/Off 2-> Test 
 	tOn TIMESTAMP WITH TIME ZONE NOT NULL, -- When on/test action should occur
 	tOff TIMESTAMP WITH TIME ZONE NOT NULL, -- When off action should occur
-	program INTEGER REFERENCES program(id) ON DELETE CASCADE, -- generating program
+	program INTEGER REFERENCES program(id) ON DELETE RESTRICT, -- generating program
 	pgmStn INTEGER REFERENCES pgmStn(id) ON DELETE SET NULL, -- generating program station
 	pgmDate DATE, -- program date this command is for
 	cmdOn INTEGER, -- This is a forward reference to the command table, modified by alter later
@@ -943,10 +966,10 @@ CREATE INDEX action_index_onOff ON action(controller, cmdOn, cmdOff, addr);
 DROP TABLE IF EXISTS historical CASCADE;
 CREATE TABLE historical( -- history of actions take
 	id SERIAL PRIMARY KEY, -- unique record ID
-	sensor INTEGER REFERENCES sensor(id) ON DELETE CASCADE NOT NULL, -- which sensor to work on
+	sensor INTEGER REFERENCES sensor(id) ON DELETE RESTRICT NOT NULL, -- which sensor to work on
 	tOn TIMESTAMP WITH TIME ZONE NOT NULL, -- When on/test action should occur
 	tOff TIMESTAMP WITH TIME ZONE NOT NULL, -- When off action should occur
-	program INTEGER REFERENCES program(id) ON DELETE CASCADE, -- generating program
+	program INTEGER REFERENCES program(id) ON DELETE RESTRICT, -- generating program
 	pgmStn INTEGER REFERENCES pgmStn(id) ON DELETE SET NULL, -- generating program station
 	pgmDate DATE NOT NULL, -- program date this command is for
 	onCode SMALLINT, -- return code from on command
@@ -970,7 +993,7 @@ CREATE TABLE command( -- command to be executed by controller
 	id SERIAL PRIMARY KEY, -- id
 	name TEXT, -- station.name
 	addr INTEGER NOT NULL, -- sensor address field
-	controller INTEGER REFERENCES controller(id) ON DELETE CASCADE NOT NULL, -- which ctrl
+	controller INTEGER REFERENCES controller(id) ON DELETE RESTRICT NOT NULL, -- which ctrl
 	action INTEGER REFERENCES action(id) ON DELETE CASCADE NOT NULL, -- id in action
 	timestamp TIMESTAMP WITH TIME ZONE NOT NULL, -- when action should occur
 	cmd INTEGER CONSTRAINT cmdChk CHECK (cmd IN (0,1,2)) NOT NULL -- on=0, off=1, test=2
