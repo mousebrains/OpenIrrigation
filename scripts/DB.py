@@ -7,12 +7,16 @@ from MyBaseThread import MyBaseThread
 import logging # For typing
 import argparse # For typing
 import queue
+import collections
 import datetime
 import time
 import select
 import psycopg
 from psycopg import sql
 from psycopg.rows import dict_row
+
+# Seconds to wait for a connection, so a wedged server makes open() fail rather than hang
+CONNECT_TIMEOUT = 15
 
 class NoConnection(Exception):
     """ Raised when a usable database connection or cursor cannot be obtained """
@@ -80,7 +84,7 @@ class DB:
         for i in range(nTries): # Try multiple times
             try:
                 self.logger.info('Opening connection to %s', self.dbName)
-                self.db = psycopg.connect(dbname=self.dbName)
+                self.db = psycopg.connect(dbname=self.dbName, connect_timeout=CONNECT_TIMEOUT)
                 self.connectCount += 1
                 return self.db
             except Exception:
@@ -178,13 +182,24 @@ class DB:
         self.commit()
 
 class DBout(MyBaseThread):
-    """ Read from a queue and execute the SQL/args on the database """
+    """ Read from a queue and execute the SQL/args on the database
+
+    A write which fails because the database is down, or was restarted under
+    a stale connection, is kept and retried; up to BACKLOG_MAX of them are
+    held, oldest dropped first, while the database is away.
+    """
+    BACKLOG_MAX = 10000 # sensor and current readings come every 10 s, so about 14 hours
+    RETRY_SECS = 30 # seconds between tries while the database is away
+    HEARTBEAT_LIMIT = 300
+
     def __init__(self, args:argparse.Namespace, logger:logging.Logger, qExcept:queue.Queue):
         MyBaseThread.__init__(self, 'DBout', logger, qExcept)
         self.db = DB(args.db, logger) # my database object
         self.site = args.site
         self.controller = args.controller
         self.queue: queue.Queue = queue.Queue() # SQL+args to be written to DB
+        self.backlog: collections.deque = collections.deque() # (sql, args) waiting for the database
+        self.dropped = 0 # writes dropped because the backlog was full
 
     def put(self, sql:str , t:float, args:list | tuple) -> None:
         """ Store data in my queue """
@@ -204,27 +219,63 @@ class DBout(MyBaseThread):
         logger = self.logger
         logger.info('Starting')
         q = self.queue
+        tRetry = 0.0 # While the database is away, don't try again before this
         while True:
-            items = q.get()
+            self.beat()
+            try: # Wake up to retry any backlog, else now and then to beat
+                items = q.get(timeout=max(0, tRetry - time.time()) if self.backlog else 60)
+            except queue.Empty:
+                items = False # Nothing new
             if items is None:
                 q.task_done()
+                self.flush() # One last try
+                if self.backlog:
+                    logger.warning('Dropping %s writes at shutdown', len(self.backlog))
                 return
-            if len(items) == 3:
-                (sql, t, args) = items
-                a = [datetime.datetime.fromtimestamp(t).astimezone()]
-                a.extend(args)
-                a.append(self.site)
-                a.append(self.controller)
-            else: # 2 items
-                (sql, a) = items
-            try:
-                self.logger.debug('sql=%s args=%s', sql, a)
-                if self.db.execute(sql, a): # Execute the SQL
-                    self.db.commit() # succeeded, so commit the updates
-                else:
-                    self.db.rollback() # failed, so rollback any updates
-            finally:
+            if items:
+                if len(items) == 3:
+                    (sql, t, args) = items
+                    a = [datetime.datetime.fromtimestamp(t).astimezone()]
+                    a.extend(args)
+                    a.append(self.site)
+                    a.append(self.controller)
+                else: # 2 items
+                    (sql, a) = items
+                self.backlog.append((sql, a))
                 q.task_done() # Indicate we're done with this task
+                if len(self.backlog) > self.BACKLOG_MAX:
+                    self.backlog.popleft()
+                    self.dropped += 1
+                    if (self.dropped % 1000) == 1:
+                        logger.warning('Dropped %s writes, the database has been away too long',
+                                self.dropped)
+            if self.backlog and (time.time() >= tRetry) and not self.flush():
+                tRetry = time.time() + self.RETRY_SECS
+                logger.warning('%s writes waiting for the database, trying again in %s seconds',
+                        len(self.backlog), self.RETRY_SECS)
+
+    def flush(self) -> bool:
+        """ Write the backlog in order: True when it is empty, False when the database is away """
+        while self.backlog:
+            (sql, a) = self.backlog[0]
+            if self.write(sql, a) is None:
+                return False
+            self.backlog.popleft()
+        return True
+
+    def write(self, sql:str, a:list | tuple) -> bool | None:
+        """ Execute and commit: True when written, False when the statement failed
+        on a working connection (it is dropped), None when the database is away """
+        for _i in range(2): # The cached connection, then, if the probe revives it, again
+            self.logger.debug('sql=%s args=%s', sql, a)
+            if self.db.execute(sql, a) and self.db.commit():
+                return True
+            if self.db:
+                self.db.rollback() # failed, so rollback any updates
+            if not self.db.alive(): # Reconnects a stale connection
+                return None
+        self.logger.error('Dropping sql=%s args=%s', sql, a)
+        return False
 
 class Listen:
     """ Listen on a PostgreSQL connection for a notification using the LISTEN SQL extension
@@ -252,7 +303,8 @@ class Listen:
             except Exception: pass
             self.conn = None
         try:
-            self.conn = psycopg.connect(dbname=self.dbName, autocommit=True)
+            self.conn = psycopg.connect(dbname=self.dbName, autocommit=True,
+                    connect_timeout=CONNECT_TIMEOUT)
             self.conn.execute(sql.SQL('LISTEN {}').format(sql.Identifier(self.channel)))
             return True
         except Exception:
