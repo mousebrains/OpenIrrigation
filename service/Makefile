@@ -13,6 +13,7 @@ SERVICES+= OISched.service
 SERVICES+= OIDailyReport.service
 SERVICES+= OIDatabaseMaintenance.service
 SERVICES+= OIFilterMonitor.service
+SERVICES+= OIFlowSensorWatch.service
 
 # Timers
 TIMERS = OIAgriMet.timer
@@ -20,6 +21,7 @@ TIMERS+= OIAgriMetStats.timer
 TIMERS+= OIDailyReport.timer
 TIMERS+= OIDatabaseMaintenance.timer
 TIMERS+= OIFilterMonitor.timer
+TIMERS+= OIFlowSensorWatch.timer
 
 SRC = $(SERVICES) $(TIMERS)
 

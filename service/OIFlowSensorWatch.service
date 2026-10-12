@@ -1,0 +1,28 @@
+# This file is part of OpenIrrigation
+#
+# this service checks that the POC flow sensor shows flow while valves that
+# should be drawing water are on, and emails 'lowFlow' subscribers if not
+#
+# man systemd.unit for parameters
+# man systemd.service for parameters
+# man systemd.exec for parameters
+
+[Unit]
+Description=OpenIrrigation Flow Sensor Watchdog
+Requires=postgresql.service
+After=postgresql.service
+Requires=postfix.service
+After=postfix.service
+After=network.target
+
+[Service]
+# Resource containment and hardening (1GB Pi: a leak must not take down the host)
+MemoryMax=256M
+NoNewPrivileges=yes
+PrivateTmp=yes
+Type=oneshot
+User=__USER__
+Group=__GROUP__
+# The state file (last stall alerted) lives here too
+WorkingDirectory=__LOGDIR__
+ExecStart=__BINDIR__/FlowSensorWatch.py --db=__DBNAME__ --logfile=__LOGDIR__/FlowSensorWatch.log
