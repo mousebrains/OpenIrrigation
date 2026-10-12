@@ -131,6 +131,7 @@ def write_archive(cur, archive_dir: str, table: str, column: str, first, last, e
     path = archive_name(archive_dir, table, first, last)
     fd, tmp = tempfile.mkstemp(prefix=f".{table}.", suffix=".tmp", dir=archive_dir)
     try:
+        os.fchmod(fd, 0o640)  # mkstemp's 0600 would hide it from the group
         with os.fdopen(fd, "wb") as raw:
             with gzip.GzipFile(filename=os.path.basename(path)[:-3], mode="wb", fileobj=raw) as gz:
                 copy_batch(cur, table, column, first, last, gz)

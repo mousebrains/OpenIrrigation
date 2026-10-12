@@ -99,6 +99,7 @@ def test_prune_table_archives_then_commits_each_bounded_batch(fake, tmp_path):
     assert files == ["currentlog.20240908T120000Z.20240908T120400Z.csv.gz",
                      "currentlog.20240908T120500Z.20240908T120900Z.csv.gz",
                      "currentlog.20240908T121000Z.20240908T121100Z.csv.gz"]
+    assert (os.stat(tmp_path / files[0]).st_mode & 0o777) == 0o640
     rows = archived(tmp_path / files[0])
     assert rows[0] == ["timestamp", "value"]
     assert [r[1] for r in rows[1:]] == ["0", "1", "2", "3", "4"]

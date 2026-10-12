@@ -115,6 +115,7 @@ def saveCSV(conn, tbl, dirname, dbname, logger):
   logger.info('Dumping %s', fn)
   fd, tmp = tempfile.mkstemp(prefix="." + fn.name + ".", suffix=".tmp", dir=dirname)
   try:
+    os.fchmod(fd, 0o640) # mkstemp's 0600 would hide it from the group
     with os.fdopen(fd, "wb") as raw:
       with gzip.GzipFile(filename=fn.name[:-3], mode="wb", fileobj=raw) as gz:
         with conn.cursor() as cur, cur.copy(

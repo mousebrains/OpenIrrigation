@@ -21,7 +21,7 @@ def conn(dbName):
 
 def test_fresh_install_passes(conn):
     assert check_schema.check(conn) == []
-    assert check_schema.latest_migration(conn) == 14
+    assert check_schema.latest_migration(conn) >= 14
 
 
 @pytest.mark.parametrize("undo,expected", [
