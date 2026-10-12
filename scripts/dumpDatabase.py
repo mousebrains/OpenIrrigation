@@ -1,33 +1,24 @@
 #! /usr/bin/env python3
 #
-# Dump out the irrigation database and schema
-#
-# N.B. This script uses the "COPY TO" SQL feature which is done on
-#      the server as that user, typically postgres.
-#      So you will need to open up permissions in the target directory
-#      for that user to write to. For example, if
-#
-#      --dir=/home/irrigation/Backup
-#
-#      then you can set the ACL using
-#
-#      setfacl --modify=user:postgres:7 /home/irrigation/Backup
-#
-#      to see the result you can use
-#
-#      getfacl /home/irrigation/Backup
+# Back up the irrigation database: the schema and the configuration tables
+# with pg_dump, then each telemetry/history table as a gzip'd CSV written by
+# client-side COPY ... TO STDOUT, so no superuser or server file access is
+# needed.  Nothing is deleted; retention is databaseMaintenance.py's job,
+# which archives rows to CSV before deleting them.
 #
 # Aug-2018, Pat Welch, pat@mousebrains.com
 #
 import getpass
+import gzip
+import os
 import socket
 import sys
 import logging
 import logging.handlers
 import argparse
+import tempfile
 import psycopg
 from psycopg import sql
-import datetime
 from pathlib import Path
 import subprocess
 import smtplib
@@ -56,16 +47,28 @@ class BufferingSMTPHandler(logging.handlers.BufferingHandler):
         self.handleError(None)
       self.buffer = []
 
+def runCommand(cmd, logger, what):
+  """Run cmd, log its output, and return True if it succeeded"""
+  try:
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+  except OSError as e:
+    logger.error('%s failed: %s', what, e)
+    return False
+  output = str(result.stdout, 'utf-8')
+  if result.returncode != 0:
+    logger.error('%s failed (exit %s): %s', what, result.returncode, output)
+    return False
+  if len(output) > 0:
+    logger.warning('%s: %s', what, output)
+  return True
+
 def doRsync(dirname, args, logger):
   cmd = ["/usr/bin/rsync", "--archive", "--quiet", dirname.as_posix(), args.rsyncto]
-  a = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-  a = str(a.stdout, 'utf-8')
-  if len(a) > 0:
-    logger.warning(a)
+  return runCommand(cmd, logger, 'rsync')
 
 def saveSchema(dirname, dbname, logger):
   fn = dirname.joinpath(dbname + ".schema.sql")
-  args = ["/usr/bin/pg_dump",
+  cmd = ["/usr/bin/pg_dump",
           "--file=" + fn.as_posix(),
           "--format=p",
           "--schema=public",
@@ -74,26 +77,20 @@ def saveSchema(dirname, dbname, logger):
           "--no-privileges",
           "--dbname=" + dbname]
   logger.info("Saving schema %s", fn)
-  a = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-  a = str(a.stdout, 'utf-8')
-  if len(a) > 0:
-    logger.warning(a)
+  return runCommand(cmd, logger, 'pg_dump schema')
 
 def saveData(dirname, dbname, names, logger):
   fn = dirname.joinpath(dbname + ".data.sql")
-  args = ["/usr/bin/pg_dump",
+  cmd = ["/usr/bin/pg_dump",
           "--file=" + fn.as_posix(),
           "--format=p",
           "--data-only",
           "--dbname=" + dbname]
   for name in names:
-    args.append("--table=" + name)
+    cmd.append("--table=" + name)
 
   logger.info("Saving data %s", fn)
-  a = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-  a = str(a.stdout, 'utf-8')
-  if len(a) > 0:
-    logger.info(a)
+  return runCommand(cmd, logger, 'pg_dump data')
 
 
 def getTableNames(cur, ktables, logger):
@@ -111,96 +108,80 @@ def getTableNames(cur, ktables, logger):
     touse[tbl] = ktables[tbl]
   return touse
 
-def saveMonthly(cur, tbl, dirname, tname, logger):
-  # Dump data through 21 days ago
-  now = datetime.datetime.now(datetime.timezone.utc)
-  maxdate = now - \
-            datetime.timedelta(days=21,
-                               microseconds=now.microsecond,
-                               seconds=now.second,
-                               minutes=now.minute)
-
-  col = sql.Identifier(tname)
-  table = sql.Identifier(tbl)
-  cur.execute(
-      sql.SQL("SELECT min({col}),max({col}) FROM {tbl} WHERE {col} < %s;").format(
-          col=col, tbl=table),
-      (maxdate,))
-  (stime,etime) = cur.fetchone()
-
-  if stime is None: # No records
-    return
-
-  stime = stime.replace(microsecond=0, second=0, minute=0)
-  etime = etime.replace(microsecond=0, second=0, minute=0) + datetime.timedelta(hours=1)
-
-  fn = dirname.joinpath("{}.{}.{}.csv".format(tbl, stime.isoformat(), etime.isoformat()))
-
+def saveCSV(conn, tbl, dirname, dbname, logger):
+  """Copy all of tbl to <dbname>.<tbl>.csv.gz, replacing the previous copy only
+  once the new one is complete"""
+  fn = dirname.joinpath("{}.{}.csv.gz".format(dbname, tbl))
   logger.info('Dumping %s', fn)
-
-  # First copy matching rows to file, then delete them.
-  # If the COPY fails, the DELETE never runs, keeping data safe.
-
-  cur.execute(
-      sql.SQL("COPY (SELECT * FROM {tbl} WHERE {col} >= %s AND {col} < %s)"
-              " TO %s WITH (FORMAT 'csv', HEADER TRUE);").format(
-          tbl=table, col=col),
-      (stime, etime, fn.as_posix()))
-
-  cur.execute(
-      sql.SQL("DELETE FROM {tbl} WHERE {col} >= %s AND {col} < %s;").format(
-          tbl=table, col=col),
-      (stime, etime))
+  fd, tmp = tempfile.mkstemp(prefix="." + fn.name + ".", suffix=".tmp", dir=dirname)
+  try:
+    with os.fdopen(fd, "wb") as raw:
+      with gzip.GzipFile(filename=fn.name[:-3], mode="wb", fileobj=raw) as gz:
+        with conn.cursor() as cur, cur.copy(
+            sql.SQL("COPY {tbl} TO STDOUT WITH (FORMAT csv, HEADER)").format(
+              tbl=sql.Identifier(tbl))) as copy:
+          for data in copy:
+            gz.write(data)
+      raw.flush()
+      os.fsync(raw.fileno())
+    os.replace(tmp, fn)
+  except BaseException:
+    if os.path.exists(tmp):
+      os.unlink(tmp)
+    raise
+  finally:
+    conn.rollback() # end the read-only transaction
 
 def mkHandler(ch, qVerbose, level):
   ch.setLevel(logging.DEBUG if qVerbose else level)
   ch.setFormatter(logging.Formatter('%(asctime)s: %(threadName)s:%(levelname)s - %(message)s'))
   return ch
 
+# pg_dump: configuration and hand-entered data, saved by pg_dump --data-only
+# csv: telemetry and history, each saved as a gzip'd CSV
+# ignore: transient, or fetched from/rebuilt from the outside world
 knownTables = {
-  'event': 'skip',
   'action': 'ignore', # Dynamic actions to be executed
-  'tableinfo': 'skip',
-  'sensor': 'skip',
   'command': 'ignore', # Commands to  be executed
-  'simulate': 'skip',
-  'scheduler': 'ignore', # Scheduler times
-  'params': 'skip',
-  'weblist': 'skip',
-  'pgmdow': 'skip',
-  'eventdow': 'skip',
-  'crop': 'skip',
-  'soil': 'skip',
-  'usr': 'skip',
-  'email': 'skip',
-  'emailreports': 'skip',
-  'site': 'skip',
-  'controller': 'skip',
-  'poc': 'skip',
-  'pocmv': 'skip',
-  'pocpump': 'skip',
-  'pocflow': 'skip',
-  'station': 'skip',
-  'groupstation': 'skip',
-  'groups': 'skip',
+  'processstate': 'ignore', # Recent process status for the web pages
+  'simulate': 'pg_dump',
+  'tableinfo': 'pg_dump',
+  'sensor': 'pg_dump',
+  'params': 'pg_dump',
+  'weblist': 'pg_dump',
+  'pgmdow': 'pg_dump',
+  'crop': 'pg_dump',
+  'soil': 'pg_dump',
+  'usr': 'pg_dump',
+  'email': 'pg_dump',
+  'emailreports': 'pg_dump',
+  'site': 'pg_dump',
+  'controller': 'pg_dump',
+  'poc': 'pg_dump',
+  'pocmv': 'pg_dump',
+  'pocpump': 'pg_dump',
+  'pocflow': 'pg_dump',
+  'station': 'pg_dump',
+  'etstation': 'pg_dump',
+  'program': 'pg_dump',
+  'pgmstn': 'pg_dump',
+  'filterreading': 'pg_dump', # Hand-entered gauge readings; cannot be recreated
+  'filterstatus': 'pg_dump', # Computed filter state history
+  'changelog': 'pg_dump', # Audit trail of user changes
+  'schemamigration': 'pg_dump', # Applied migrations
   'et': 'ignore', # Fetched from the outside world
   'etannual': 'ignore', # Built from et
-  'etstation': 'skip',
-  'program': 'skip',
-  'pgmstn': 'skip',
-  'currentlog': 'monthly',
-  'sensorlog': 'monthly',
-  'teelog': 'monthly',
-  'numberlog': 'monthly',
-  'peelog': 'monthly',
-  'twolog': 'monthly',
-  'zeelog': 'monthly',
-  'errorlog': 'monthly',
-  'versionlog': 'monthly',
-  'historical': 'historical',
+  'currentlog': 'csv',
+  'sensorlog': 'csv',
+  'teelog': 'csv',
+  'numberlog': 'csv',
+  'peelog': 'csv',
+  'twolog': 'csv',
+  'zeelog': 'csv',
+  'errorlog': 'csv',
+  'versionlog': 'csv',
+  'historical': 'csv',
   }
-
-timeKeys = {'monthly': 'timestamp', 'historical': 'toff'}
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--db', help='ET database name', required=True)
@@ -235,30 +216,36 @@ if args.log is not None:
 if args.email is not None:
   logger.addHandler(mkHandler(BufferingSMTPHandler(args), args.verbose, logging.WARN))
 
+ok = True
 try:
   dirname = Path(args.dir).resolve()
+  dirname.mkdir(parents=True, exist_ok=True)
 
-  saveSchema(dirname, args.db, logger)
-  toSave = []
+  with psycopg.connect("dbname=" + args.db) as conn:
+    with conn.cursor() as cur:
+      tables = getTableNames(cur, knownTables, logger)
+    conn.rollback()
 
-  with psycopg.connect("dbname=" + args.db) as conn, conn.cursor() as cur:
-    tables = getTableNames(cur, knownTables, logger)
-    for key in tables:
-      val = tables[key]
-      if val in timeKeys:
+    # The configuration first: a failure exporting a log table must not cost it
+    ok = saveSchema(dirname, args.db, logger) and ok
+    toSave = sorted(key for key in tables if tables[key] == 'pg_dump')
+    ok = saveData(dirname, args.db, toSave, logger) and ok
+
+    for key in sorted(tables):
+      if tables[key] == 'csv':
         if not args.noLoggingTables:
-          saveMonthly(cur, key, dirname, timeKeys[val], logger)
-          conn.commit()
-      elif val == 'skip': # Will be saved as part of pg_dump
-        toSave.append(key)
-      elif val == 'ignore': # Just ignore
-        pass # Skip is dumped elsewhere, ignore is ignored totally
-      else:
-        logger.error('Unsupported action, %s for %s', val, key)
-
-  saveData(dirname, args.db, toSave, logger)
+          try:
+            saveCSV(conn, key, dirname, args.db, logger)
+          except Exception:
+            logger.exception('Dumping %s failed', key)
+            ok = False
+      elif tables[key] not in ('pg_dump', 'ignore'):
+        logger.error('Unsupported action, %s for %s', tables[key], key)
 
   if args.rsyncto is not None:
-    doRsync(dirname, args, logger)
+    ok = doRsync(dirname, args, logger) and ok
 except Exception:
   logger.exception(str(args))
+  ok = False
+
+sys.exit(0 if ok else 1)
