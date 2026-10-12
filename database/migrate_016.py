@@ -12,7 +12,8 @@ Idempotent migration: alerting and monitoring fixes.
                                     (station.lowFlowFrac overrides).
   * params FLOWWATCH.lowFlowMinutes - ... sustained for this many minutes.
   * params FLOWWATCH.remindHours - repeat a no-flow alarm this often while
-                                    the same stall lasts.
+                                    the same stall lasts; at most one
+                                    low-flow email per POC this often.
   * params FILTER.forecastMinDays - days since a cleaning before the
                                     days-to-service forecast is shown.
   * tableInfo labels for station.measuredFlow ("manual": nothing writes

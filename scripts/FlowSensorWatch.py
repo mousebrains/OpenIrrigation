@@ -39,10 +39,14 @@
 #
 # Runs from the OIFlowSensorWatch systemd timer. A no-flow alarm is emailed
 # once per stall (until the sensor logs a new reading), then again every
-# remindHours while the same stall lasts; low and high flow once per run.
-# With no subscribers the email goes to root (Notify.sendReport). A failed
-# send is retried on the next run. The episode keys are kept in a small state
-# file. Every FLOWWATCH param is checked before anything else; a bad one, like
+# remindHours while the same stall lasts; high flow once per run. Low flow is
+# emailed at most once per POC per remindHours: a plugged filter makes every
+# lawn zone low, and ten emails a night would teach the reader to ignore them.
+# Each email lists every zone low in the episode so far; zones low in between
+# are logged and listed in the next one. The episode ends once no zone has
+# run low for remindHours. With no subscribers the email goes to root
+# (Notify.sendReport). A failed send is retried on the next run. The episodes
+# are kept in a small state file. Every FLOWWATCH param is checked before anything else; a bad one, like
 # any other failure, is emailed to the 'systemd' subscribers, the same error
 # at most once a day. --dry-run (and --at, to evaluate a past moment) print
 # without emailing or touching the state file.
@@ -70,7 +74,7 @@ PARAMS = {
     "lowFlowMinutes": (4, 0, 1440),     # ... sustained this long
     "highFlowPct": (130, 100, 1000),    # high flow: % of the cleanFlow baseline
     "highFlowMinutes": (4, 0, 1440),    # ... sustained this long
-    "remindHours": (20, 1, 8760),       # repeat a no-flow alarm while it lasts
+    "remindHours": (20, 1, 8760),       # no-flow reminder / low-flow email period
 }
 # Repeat the same failure email at most this often (the timer runs every 2 min)
 ERROR_REMIND = datetime.timedelta(hours=24)
@@ -282,6 +286,18 @@ def alerted(state, slot) -> tuple:
     return (val, None)
 
 
+def lowEpisode(state, slot, at, remind) -> dict:
+    """The low-flow episode recorded for `slot`: {"sent": ISO time of the
+    last email or None, "zones": {zone: its latest low run}}. A new, empty
+    one once no zone has run low for `remind` (or for any other value)."""
+    ep = state.get(slot)
+    if isinstance(ep, dict) and isinstance(ep.get("zones"), dict) and ep["zones"]:
+        seen = max(datetime.datetime.fromisoformat(z["t"]) for z in ep["zones"].values())
+        if at - seen < remind:
+            return ep
+    return {"sent": None, "zones": {}}
+
+
 def _local(t) -> str:
     return t.astimezone().strftime("%Y-%m-%d %H:%M:%S %Z") if t else "never"
 
@@ -338,15 +354,6 @@ def message(kind, name, a, remindHours=PARAMS["remindHours"][0], reminder=False)
                 "Likely causes: the flow-sensor impeller is stalled or fouled, a"
                 " valve did not open, the water supply is shut off, or sensor"
                 " wiring. If the heads are running, it is the sensor.\n\n" + again)
-    if kind == "low":
-        return ("lowFlow", f"OpenIrrigation: low flow on {valves}",
-                f"{valves} has run at {_gpm(a['flow'])} to {_gpm(a['peak'])} for"
-                f" at least the last few minutes, against a clean baseline of"
-                f" {a['expected']:.2f} GPM (alarm limit {a['limit']:.2f} GPM). It"
-                f" has been on {a['minutes']:.0f} minutes (since {_local(a['since'])}).\n\n"
-                "Likely causes: a plugged inline filter, a valve not opening fully,"
-                " low supply pressure, or a fouled flow-sensor impeller reading"
-                " low.\n\nThis is sent once per run.\n")
     return ("highFlow", f"OpenIrrigation: high flow on {valves}",
             f"{valves} has run at {_gpm(a['flow'])} to {_gpm(a['peak'])} for"
             f" at least the last few minutes, against a clean baseline of"
@@ -355,6 +362,43 @@ def message(kind, name, a, remindHours=PARAMS["remindHours"][0], reminder=False)
             "Likely causes: a broken or missing head, a broken lateral or"
             " pipe, or a hose bib downstream of the flow sensor in use during"
             " the run.\n\nThis is sent once per run.\n")
+
+
+def lowMessage(name, zones, params, reminder=False) -> tuple:
+    """(webList key, subject, body) for a low-flow episode: every zone low so
+    far, with its highest reading over the alarm window against its clean
+    baseline."""
+    rows = sorted(zones.items(), key=lambda kv: kv[1]["t"])
+    table = [f"  {'zone':<24} {'measured':>9}  {'clean':>9}  {'%':>4}  low at"]
+    for (zone, z) in rows:
+        table.append(f"  {zone[:24]:<24} {z['flow']:5.2f} GPM  {z['expected']:5.2f} GPM"
+                     f"  {100.0 * z['flow'] / z['expected']:3.0f}%"
+                     f"  {_local(datetime.datetime.fromisoformat(z['t']))}")
+    what = rows[0][0] if len(rows) == 1 else f"{len(rows)} lawn zones"
+    hours = params["remindHours"]
+    return ("lowFlow", f"OpenIrrigation: low flow on {what}" + (" (reminder)" if reminder else ""),
+            f"These lawn zones on the {name} flow sensor ran below their low-flow"
+            f" limit ({params['lowFlowPct']:g}% of the clean baseline, unless the"
+            f" station sets its own) for at least {params['lowFlowMinutes']:g}"
+            " minutes:\n\n" + "\n".join(table) + "\n\n"
+            "Likely causes: a plugged inline filter (when several zones are low"
+            " together), a valve not opening fully (one zone), low supply"
+            " pressure, or a fouled flow-sensor impeller reading low.\n\n"
+            f"At most one low-flow email is sent every {hours:g} hours: zones"
+            " that run low in between are logged and listed in the next one. The"
+            f" list starts afresh once no zone has run low for {hours:g} hours.\n")
+
+
+def sendAlarm(cur, report, subject, body, args, logger) -> bool:
+    """Email it (root if nobody subscribes); False if the send failed, so the
+    caller leaves its state alone and the next run retries."""
+    try:
+        addrs = Notify.sendReport(cur, report, subject, body, logger, mailFrom=args.mailFrom)
+    except Exception:
+        logger.exception("Failed to send the '%s' email: %s", report, subject)
+        return False
+    logger.warning("Emailed %d address(es) for the '%s' report", len(addrs), report)
+    return True
 
 
 def checkPOC(cur, fs, at, params) -> list:
@@ -382,6 +426,32 @@ def checkPOC(cur, fs, at, params) -> list:
     return out
 
 
+def lowFlow(state, slot, key, alarm, text, at, remind, fs, params, readOnly,
+            cur, args, logger) -> bool:
+    """Record a low-flow run in its POC's episode and email the episode if
+    none went out in the last `remind`. True if the state changed."""
+    ep = lowEpisode(state, slot, at, remind)
+    zone = ", ".join(alarm["valves"])
+    newRun = ep["zones"].get(zone, {}).get("run") != key
+    sent = datetime.datetime.fromisoformat(ep["sent"]) if ep.get("sent") else None
+    due = sent is None or at - sent >= remind
+    if not (newRun or due):
+        logger.info("Already alerted (low): %s", text)
+        return False
+    logger.warning("LOW%s: %s", "" if due else " (for the next low-flow email)", text)
+    if readOnly:
+        return False
+    if newRun:
+        ep["zones"][zone] = dict(run=key, t=at.isoformat(), flow=alarm["peak"],
+                                 expected=alarm["expected"])
+    state[slot] = ep
+    if due:
+        (report, subject, body) = lowMessage(fs["name"], ep["zones"], params, sent is not None)
+        if sendAlarm(cur, report, subject, body, args, logger):
+            ep["sent"] = at.isoformat()
+    return True
+
+
 def run(args, logger):
     params = checkParams(Params.load(args.db, args.group, logger) or {}, args.group)
     at = datetime.datetime.fromisoformat(args.at) if args.at else utcnow()
@@ -400,6 +470,10 @@ def run(args, logger):
             for (kind, key, alarm) in alarms:
                 text = describe(kind, fs["name"], alarm)
                 slot = f"{kind}:{fs['poc']}"
+                if kind == "low":
+                    changed |= lowFlow(state, slot, key, alarm, text, at, remind,
+                                       fs, params, readOnly, cur, args, logger)
+                    continue
                 (prevKey, sent) = alerted(state, slot)
                 reminder = key == prevKey
                 if reminder and (kind != "noflow" or (sent is not None and at - sent < remind)):
@@ -410,13 +484,8 @@ def run(args, logger):
                     continue
                 (report, subject, body) = message(kind, fs["name"], alarm,
                                                   params["remindHours"], reminder)
-                try:
-                    addrs = Notify.sendReport(cur, report, subject, body, logger,
-                                              mailFrom=args.mailFrom)
-                except Exception:
-                    logger.exception("Failed to send the %s email", kind)
+                if not sendAlarm(cur, report, subject, body, args, logger):
                     continue  # leave the episode un-alerted so the next run retries
-                logger.warning("Emailed %d address(es) for the '%s' report", len(addrs), report)
                 state[slot] = {"key": key, "sent": at.isoformat()}
                 changed = True
     if changed:

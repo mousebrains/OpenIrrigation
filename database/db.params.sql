@@ -51,6 +51,6 @@ INSERT INTO params (grp,name,val) VALUES
 	('FLOWWATCH', 'highFlowMinutes', 4), -- high flow must persist this long
 	('FLOWWATCH', 'lowFlowPct', 50), -- low flow: % of a lawn zone's cleanFlow baseline
 	('FLOWWATCH', 'lowFlowMinutes', 4), -- low flow must persist this long
-	('FLOWWATCH', 'remindHours', 20); -- repeat a no-flow alarm this often while it lasts
+	('FLOWWATCH', 'remindHours', 20); -- no-flow reminder and low-flow email period (hours)
 	
 -- SELECT * FROM params ORDER BY grp,name;

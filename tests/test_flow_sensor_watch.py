@@ -336,7 +336,7 @@ class TestRun:
 
     @pytest.fixture
     def env(self, monkeypatch, tmp_path):
-        env = types.SimpleNamespace(alarms=[], sent=[], fail=False, now=mins(10))
+        env = types.SimpleNamespace(alarms=[], sent=[], bodies=[], fail=False, now=mins(10))
         monkeypatch.setattr(W.Params, "load", lambda db, grp, logger: {}, raising=False)
         monkeypatch.setattr(W.DB, "DB", lambda db, logger: FakeDB())
         monkeypatch.setattr(W, "flowSensors", lambda cur: [self.FS])
@@ -347,6 +347,7 @@ class TestRun:
             if env.fail:
                 raise OSError("postfix down")
             env.sent.append((key, subject))
+            env.bodies.append(body)
             return ["root"]
         monkeypatch.setattr(W.Notify, "sendReport", sendReport, raising=False)
         env.args = types.SimpleNamespace(db="x", group="FLOWWATCH", state=str(tmp_path / "state"),
@@ -358,8 +359,12 @@ class TestRun:
         return ("noflow", W.episodeKey(1, ZERO_BEFORE[0]),
                 W.noFlowAlarm([valve()], ZERO_BEFORE, mins(10), PARAMS))
 
-    def low(self, key="1@run1"):
-        return ("low", key, W.lowFlowAlarm([valve()], steady(5.05), mins(10), PARAMS))
+    def low(self, key="1@run1", name="Cesped rosales sur", flow=5.05):
+        return ("low", key, W.lowFlowAlarm([valve(name)], steady(flow), mins(10), PARAMS))
+
+    def at(self, env, hours):
+        env.now = mins(10) + datetime.timedelta(hours=hours)
+        W.run(env.args, env.logger)
 
     def test_emails_once_per_episode(self, env):
         env.alarms = [self.noflow()]
@@ -381,14 +386,56 @@ class TestRun:
         W.run(env.args, env.logger)
         assert len(env.sent) == 2 and env.sent[1][1].endswith("(reminder)")
 
-    def test_low_flow_once_per_run_never_reminded(self, env):
+    def test_plugged_filter_night_is_one_email(self, env):
+        """Every lawn zone low, one after another: one email for the first;
+        the rest are logged and listed in the next email, a night later."""
+        env.alarms = [self.low("1@a", "Cesped A")]
+        self.at(env, 0)
+        self.at(env, 0.05)                      # same run, 3 min later
+        for (i, zone) in enumerate("BCDEFGHIJ"):
+            env.alarms = [self.low(f"1@{zone}", f"Cesped {zone}", 4.0 + i / 10)]
+            self.at(env, 0.5 * (i + 1))
+        assert env.sent == [("lowFlow", "OpenIrrigation: low flow on Cesped A")]
+        zones = W.loadState(env.args.state)["low:1"]["zones"]
+        assert len(zones) == 10
+
+        env.alarms = [self.low("1@a2", "Cesped A")]   # next night, still plugged
+        self.at(env, 20)
+        assert env.sent[1] == ("lowFlow", "OpenIrrigation: low flow on 10 lawn zones (reminder)")
+        assert all(f"Cesped {z} " in env.bodies[1] for z in "ABCDEFGHIJ")
+        assert "4.80 GPM  12.62 GPM   38%" in env.bodies[1]   # Cesped J
+
+    def test_low_episode_starts_afresh(self, env):
+        """No zone low for remindHours: the next low zone opens a new episode."""
+        env.alarms = [self.low("1@a", "Cesped A")]
+        self.at(env, 0)
+        env.alarms = [self.low("1@b", "Cesped B")]
+        self.at(env, 21)
+        assert env.sent[1] == ("lowFlow", "OpenIrrigation: low flow on Cesped B")
+        assert "Cesped A" not in env.bodies[1]
+
+    def test_low_failed_send_is_retried(self, env):
+        env.alarms = [self.low("1@a", "Cesped A")]
+        env.fail = True
+        self.at(env, 0)
+        assert W.loadState(env.args.state)["low:1"]["sent"] is None
+        env.fail = False
+        self.at(env, 0.05)
+        assert env.sent == [("lowFlow", "OpenIrrigation: low flow on Cesped A")]
+
+    def test_low_dry_run(self, env):
         env.alarms = [self.low()]
-        W.run(env.args, env.logger)
-        env.now = mins(10) + datetime.timedelta(days=2)
-        W.run(env.args, env.logger)
-        assert env.sent == [("lowFlow", "OpenIrrigation: low flow on Cesped rosales sur")]
-        env.alarms = [self.low("1@run2")]
-        W.run(env.args, env.logger)
+        env.args.dry_run = True
+        self.at(env, 0)
+        assert env.sent == [] and not os.path.exists(env.args.state)
+
+    def test_high_still_once_per_run(self, env):
+        high = ("high", "1@run1", W.highFlowAlarm([valve()], steady(17.5), mins(10), PARAMS))
+        env.alarms = [high]
+        self.at(env, 0)
+        self.at(env, 48)
+        env.alarms = [("high", "1@run2", high[2])]
+        self.at(env, 49)
         assert len(env.sent) == 2
 
     def test_failed_send_is_retried(self, env):
@@ -407,14 +454,17 @@ class TestRun:
         assert env.sent == [] and not os.path.exists(env.args.state)
 
     def test_legacy_state(self, env):
-        """A bare key from before reminders: the stall is reminded at once,
-        a run's high/low alarm is not re-sent."""
+        """Bare keys from before reminders: the stall is reminded at once, a
+        run's high alarm is not re-sent. (Low flow is new: any old value just
+        starts an episode.)"""
         (_, key, _) = self.noflow()
-        W.saveState(env.args.state, {"noflow:1": key, "low:1": "1@run1"})
-        env.alarms = [self.noflow(), self.low()]
+        high = ("high", "1@run1", W.highFlowAlarm([valve()], steady(17.5), mins(10), PARAMS))
+        W.saveState(env.args.state, {"noflow:1": key, "high:1": "1@run1", "low:1": "1@run1"})
+        env.alarms = [self.noflow(), high, self.low()]
         W.run(env.args, env.logger)
         assert [s for (_, s) in env.sent] == \
-            ["OpenIrrigation: no flow from the Outside flow sensor (reminder)"]
+            ["OpenIrrigation: no flow from the Outside flow sensor (reminder)",
+             "OpenIrrigation: low flow on Cesped rosales sur"]
 
     def test_bad_param_fails_before_the_database(self, env, monkeypatch):
         monkeypatch.setattr(W.Params, "load", lambda db, grp, logger: {"noFlowGPM": [0, 5]},
@@ -482,7 +532,10 @@ class TestMessages:
         assert W.message("noflow", "Outside", stale)[1] == \
             "OpenIrrigation: the Outside flow sensor has stopped reporting"
         assert W.message("high", "Outside", high)[0] == "highFlow"
-        assert W.message("low", "Outside", low)[0] == "lowFlow"
+        zones = {"Cesped A": {"t": mins(10).isoformat(), "flow": 5.05, "expected": 12.62}}
+        (report, subject, body) = W.lowMessage("Outside", zones, PARAMS)
+        assert report == "lowFlow" and subject == "OpenIrrigation: low flow on Cesped A"
+        assert "5.05 GPM  12.62 GPM   40%" in body and "every 20 hours" in body
         assert "every 20 hours" in W.message("noflow", "Outside", noflow, 20.0)[2]
         for (kind, a) in (("noflow", noflow), ("noflow", stale), ("high", high), ("low", low)):
             assert W.describe(kind, "Outside", a).startswith("Outside: ")
