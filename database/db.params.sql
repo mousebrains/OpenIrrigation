@@ -41,6 +41,10 @@ INSERT INTO params (grp,name,val) VALUES
 	('FILTER', 'warnPct', 10), -- nav-bar amber threshold (flow loss %)
 	('FILTER', 'servicePct', 18), -- nav-bar red / email threshold (flow loss %)
 	('FILTER', 'emailDebounceHours', 24), -- min hours between service emails
-	('FILTER', 'serviceVolumeGal', 20000); -- volume (gal) threshold for "service it"
+	('FILTER', 'serviceVolumeGal', 20000), -- volume (gal) threshold for "service it"
+-- Flow-sensor watchdog parameters (FlowSensorWatch.py)
+	('FLOWWATCH', 'graceMinutes', 6), -- minutes valves must be on before zero flow alarms
+	('FLOWWATCH', 'minExpectedGPM', 2), -- only check when open valves should draw this much
+	('FLOWWATCH', 'noFlowGPM', 0.5); -- a reading at or below this is "no flow"
 	
 -- SELECT * FROM params ORDER BY grp,name;

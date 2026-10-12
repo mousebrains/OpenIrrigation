@@ -7,6 +7,7 @@ These scripts run as systemd services (see `../service/`):
 - TDIserver.py -- Serial interface to the Tucor TDI 2-wire controller board. Handles valve on/off commands, flow/voltage/current monitoring, and database synchronization.
 - AgriMet.py -- Fetches daily weather and evapotranspiration (ET) data from AgriMet and stores it in the database.
 - dailyReport.py -- Generates and emails a daily summary of scheduled and historical irrigation activity.
+- FlowSensorWatch.py -- Flow-sensor watchdog (OIFlowSensorWatch timer, every 2 minutes). Alarms when open valves should be drawing water but the POC flow sensor reads no flow, e.g. a stalled impeller; emails 'lowFlow' subscribers once per stall. `--dry-run`, or `--at TIME` to evaluate a past moment.
 
 ## Utility Scripts
 - dumpDatabase.py -- Backs up the database schema and data using PostgreSQL COPY.

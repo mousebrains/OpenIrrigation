@@ -1,0 +1,11 @@
+[Unit]
+Description=OpenIrrigation Flow Sensor Watchdog Timer
+
+[Timer]
+# Every 2 minutes: with the 6-minute grace (FLOWWATCH.graceMinutes) a stalled
+# sensor is reported 6-8 minutes after the valves open.
+OnCalendar=*:0/2
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
