@@ -3,6 +3,15 @@
 # Build a daily report for sending by email of what should happen today,
 # and what happened yesterday.
 #
+# "Yesterday" is the runs that started in the --hoursBack before the report
+# time (including any still on), "today" the runs scheduled to start in the
+# --hoursForward after it. So the 06:00 report lists last night's runs as
+# done and tonight's as pending, and each run is in exactly one day's
+# "yesterday". --refTime pins the boundary to a time of day instead.
+#
+# It goes to the 'daily' subscribers only: with none it is skipped, not sent
+# to root like the alerts, as it is routine.
+#
 # Dec-2019, Pat Welch, pat@mousebrains.com
 #
 
@@ -33,24 +42,39 @@ def loadRows(db:DB.DB, sql:str, args:tuple, logger:logging.Logger) -> dict[str, 
         raise
     return a
 
+def reportTime(refTime:str | None, now:datetime.datetime) -> datetime.datetime:
+    """ The boundary between "yesterday" and "today": the report time itself,
+    or with refTime the most recent such local time of day at or before now """
+    if refTime is None:
+        return now
+    t = datetime.datetime.combine(now.date(), datetime.time.fromisoformat(refTime)).astimezone()
+    return t if t <= now else t - datetime.timedelta(days=1)
+
+# hours are bound as a float times an interval: make_interval(hours => %s)
+# fails for a Python float (no make_interval(double precision))
+
 def getHistorical(db:DB.DB, t0:datetime.datetime, args:argparse.Namespace,
                    logger:logging.Logger) -> dict:
+    """ Runs that started in [t0 - hoursBack, t0), finished or still on """
     sql = "SELECT"
     sql+= " station.name AS stn"
     sql+= ",program.name AS pgm"
     sql+= ",DATE_TRUNC('second', SUM(tOff-tOn)) AS dt"
-    sql+= " FROM historical"
-    sql+= " INNER JOIN program ON historical.program=program.id"
-    sql+= " INNER JOIN station ON historical.sensor=station.sensor"
-    sql+= " WHERE tOff>=(%s - make_interval(hours => %s))"
-    sql+= " AND tOn>=(%s - make_interval(hours => %s))"
+    sql+= " FROM (SELECT sensor,program,tOn,tOff FROM historical"
+    sql+= " UNION ALL SELECT sensor,program,tOn,tOff FROM action"
+    sql+= " WHERE cmd=0 AND onCode IS NOT NULL) AS run" # on at report time
+    sql+= " INNER JOIN program ON run.program=program.id"
+    sql+= " INNER JOIN station ON run.sensor=station.sensor"
+    sql+= " WHERE tOn>=(%s - %s * INTERVAL '1 hour')"
+    sql+= " AND tOn<%s"
     sql+= " GROUP BY station.name,program.name"
     sql+= " ORDER BY station.name,program.name"
     sql+= ";"
-    return loadRows(db, sql, (t0, args.hoursBack, t0, args.hoursBack), logger)
+    return loadRows(db, sql, (t0, args.hoursBack, t0), logger)
 
 def getPending(db:DB.DB, t0:datetime.datetime, args:argparse.Namespace,
                logger:logging.Logger) -> dict:
+    """ Runs scheduled to start in [t0, t0 + hoursForward) """
     sql = "SELECT"
     sql+= " station.name AS stn"
     sql+= ",program.name AS pgm"
@@ -58,12 +82,12 @@ def getPending(db:DB.DB, t0:datetime.datetime, args:argparse.Namespace,
     sql+= " FROM action"
     sql+= " INNER JOIN program ON action.program=program.id"
     sql+= " INNER JOIN station ON action.sensor=station.sensor"
-    sql+= " WHERE tOn<=(%s + make_interval(hours => %s))"
-    sql+= " AND tOn>=%s"
+    sql+= " WHERE cmd=0 AND tOn>=%s"
+    sql+= " AND tOn<(%s + %s * INTERVAL '1 hour')"
     sql+= " GROUP BY station.name,program.name"
     sql+= " ORDER BY station.name,program.name"
     sql+= ";"
-    return loadRows(db, sql, (t0, args.hoursForward, t0), logger)
+    return loadRows(db, sql, (t0, t0, args.hoursForward), logger)
 
 def sum_durations(items:list) -> str:
     dt = datetime.timedelta(seconds=0)
@@ -185,24 +209,19 @@ def sendTable(tbl:str, nPast:int, nFut:int, args:argparse.Namespace,
         logger.error('SMTP send failed to %s', args.mailTo)
         raise
 
-def getEmailTo(db:DB.DB) -> list:
-    sql = "SELECT email.email FROM email"
-    sql+= " INNER JOIN emailReports ON email.id=emailReports.email"
-    sql+= " INNER JOIN webList on emailReports.report=webList.id"
-    sql+= " WHERE webList.grp='reports' AND webList.key='daily';"
-    a = list()
+def getEmailTo(db:DB.DB) -> list | None:
+    """ The 'daily' subscribers, None if there are none.  The report is HTML,
+    which Notify.sendReport (text/plain) can't send, so only its recipient
+    lookup is shared; like sendReport(fallback=False) there is no root fallback """
     with db.cursor() as cur:
-        cur.execute(sql)
-        for row in cur:
-            a.append(row[0])
-    return a if len(a) else None
+        return Notify.recipients(cur, 'daily') or None
 
 def doit(t0:datetime.datetime, args:argparse.Namespace, logger:logging.Logger) -> None:
     with DB.DB(args.db, logger) as db:
         if args.mailTo is None:
             args.mailTo = getEmailTo(db)
             if args.mailTo is None:
-                logger.warning('No email recipients found, skipping daily report')
+                logger.warning("No 'daily' email subscribers, skipping the daily report")
                 return
 
         historical = getHistorical(db, t0, args, logger)
@@ -219,7 +238,8 @@ def main():
     parser.add_argument('--mailFrom', type=str, help='email source')
     parser.add_argument('--hoursBack', default=24, type=float, help='How many hours to look back')
     parser.add_argument('--hoursForward', default=24, type=float, help='How many hours to look forward')
-    parser.add_argument('--refTime', default='00:00:00', type=str, help='Where to break the day at')
+    parser.add_argument('--refTime', type=str,
+                        help='Break the day at this local time (HH:MM) instead of the report time')
     MyLogger.addArgs(parser) # Add logger related options
 
     args = parser.parse_args()
@@ -236,8 +256,7 @@ def main():
                            'emails may be rejected', fqdn)
 
         logger.info('Args=%s', args)
-        t0 = datetime.time.fromisoformat(args.refTime)
-        t = datetime.datetime.combine(datetime.date.today(), t0)
+        t = reportTime(args.refTime, datetime.datetime.now().astimezone())
 
         for attempt in range(2):
             try:

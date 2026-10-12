@@ -202,29 +202,45 @@ class TestSendTable:
 # ---------------------------------------------------------------------------
 
 class TestGetEmailTo:
-    def test_returns_list(self):
+    """The 'daily' subscribers via Notify.recipients, with no root fallback."""
+    def db(self):
         mock_db = MagicMock()
         mock_cursor = MagicMock()
         mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
         mock_cursor.__exit__ = MagicMock(return_value=False)
-        mock_cursor.__iter__ = MagicMock(return_value=iter([
-            ('a@b.com',), ('c@d.com',),
-        ]))
         mock_db.cursor.return_value = mock_cursor
+        return mock_db
 
-        result = dailyReport.getEmailTo(mock_db)
-        assert result == ['a@b.com', 'c@d.com']
+    def test_returns_list(self, monkeypatch):
+        seen = []
+        monkeypatch.setattr(dailyReport.Notify, 'recipients',
+                            lambda cur, key: seen.append(key) or ['a@b.com', 'c@d.com'],
+                            raising=False)
+        assert dailyReport.getEmailTo(self.db()) == ['a@b.com', 'c@d.com']
+        assert seen == ['daily']
 
-    def test_returns_none_when_empty(self):
-        mock_db = MagicMock()
-        mock_cursor = MagicMock()
-        mock_cursor.__enter__ = MagicMock(return_value=mock_cursor)
-        mock_cursor.__exit__ = MagicMock(return_value=False)
-        mock_cursor.__iter__ = MagicMock(return_value=iter([]))
-        mock_db.cursor.return_value = mock_cursor
+    def test_returns_none_when_empty(self, monkeypatch):
+        monkeypatch.setattr(dailyReport.Notify, 'recipients', lambda cur, key: [], raising=False)
+        assert dailyReport.getEmailTo(self.db()) is None
 
-        result = dailyReport.getEmailTo(mock_db)
-        assert result is None
+
+# ---------------------------------------------------------------------------
+# reportTime
+# ---------------------------------------------------------------------------
+
+class TestReportTime:
+    NOW = datetime.datetime(2026, 10, 11, 6, 0, 20).astimezone()
+
+    def test_default_is_the_report_time(self):
+        assert dailyReport.reportTime(None, self.NOW) == self.NOW
+
+    def test_ref_time_today(self):
+        t = dailyReport.reportTime('06:00', self.NOW)
+        assert t == datetime.datetime(2026, 10, 11, 6, 0).astimezone()
+
+    def test_ref_time_later_than_now_is_yesterday(self):
+        t = dailyReport.reportTime('07:00', self.NOW)
+        assert t == datetime.datetime(2026, 10, 10, 7, 0).astimezone()
 
 
 # ---------------------------------------------------------------------------
@@ -252,7 +268,7 @@ class TestDoit:
         with caplog.at_level(logging.WARNING):
             dailyReport.doit(t0, args, logger)
 
-        assert 'No email recipients' in caplog.text
+        assert "No 'daily' email subscribers" in caplog.text
         mock_send.assert_not_called()
 
     @patch('dailyReport.sendTable')
