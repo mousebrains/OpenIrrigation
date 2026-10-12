@@ -17,7 +17,7 @@ import sys
 import DB
 import MyLogger
 import Params
-from filterCommon import cleanSince, isLawn, loadStations, runFlow, soloRuns
+from filterCommon import cleanSince, isLawn, loadStations, numericParams, runFlow, soloRuns
 
 
 def computeBaselines(cur, since, minRuns):
@@ -78,7 +78,7 @@ def main():
     logger = MyLogger.mkLogger(args, __name__, fmt="%(asctime)s: %(levelname)s: %(message)s")
     try:
         params = Params.load(args.db, args.group, logger) or {}
-        minRuns = int(params.get("minSoloRuns", 5))
+        minRuns = int(numericParams(params, args.group, {"minSoloRuns": (5, 1, 1000)})["minSoloRuns"])
         with DB.DB(args.db, logger) as db:
             cur = db.cursor(qDict=True)
             since = cleanSince(cur, args.since, logger)
