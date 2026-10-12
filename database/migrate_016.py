@@ -103,6 +103,14 @@ def migrate(db, dry_run):
                             (new, tbl, col))
                 applied.append(f"tableInfo({tbl},{col}): label '{old}' -> '{new}'")
 
+        # Record this migration in the ledger (migrate_014)
+        cur.execute("INSERT INTO schemaMigration(num, source) VALUES (16, 'migrate_016.py')"
+                    " ON CONFLICT (num) DO NOTHING;")
+        if cur.rowcount:
+            applied.append("schemaMigration: recorded 16")
+        else:
+            skipped.append("schemaMigration: 16 already recorded")
+
     print("=== Migration 016 ===")
     for msg in applied:
         print(f"  APPLIED: {msg}")

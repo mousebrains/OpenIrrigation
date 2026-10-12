@@ -28,8 +28,8 @@ and rolls back.  check_schema.py fails if any migration's objects are missing
 and prints the newest migration recorded in the schemaMigration table.
 
 The schemaMigration ledger starts at migration 014: older migrations are not
-recorded on upgraded databases, and a fresh install records the newest
-migration its db.*.sql files already include.
+recorded on upgraded databases, and a fresh install records every number from
+014 up to the newest migration its db.*.sql files already include.
 
 ### Writing migration NNN
 1. Make the change both in the db.*.sql files (fresh installs) and in
@@ -38,7 +38,7 @@ migration its db.*.sql files already include.
    the owner of tableinfo (see migrate_008.py).
 2. In the same transaction, record it:
    `INSERT INTO schemaMigration(num, source) VALUES (NNN, 'migrate_NNN.py') ON CONFLICT (num) DO NOTHING;`
-3. Bump the fresh-install row in db.schema.sql to NNN.
+3. Bump the upper bound of the fresh-install generate_series in db.schema.sql to NNN.
 4. Teach check_schema.py about the new objects.
 
 CI applies every migration twice to a fresh install and then runs

@@ -23,9 +23,10 @@ CREATE TABLE schemaMigration( -- one row per applied database migration
 	appliedAt TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	source TEXT -- which script (or fresh install) recorded it
 	);
--- A fresh install already includes every migration up to this one; bump it
--- whenever a migration is added
-INSERT INTO schemaMigration(num, source) VALUES (15, 'fresh install');
+-- A fresh install already includes every migration up to the newest; bump the
+-- upper bound whenever a migration is added
+INSERT INTO schemaMigration(num, source)
+	SELECT n, 'fresh install' FROM generate_series(14, 16) AS n;
 
 -- Domains are data types with constraints
 
