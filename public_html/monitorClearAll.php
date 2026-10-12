@@ -6,8 +6,9 @@ csrfRequireValidPost();
 require_once 'php/DB1.php';
 $db = DB::getInstance();
 
-if ($db->query("DELETE FROM action WHERE cmdOn IS NOT NULL;"))
-	exit($db->mkMsg(true, "Removed all pending actions"));
-
-echo $db->dbMsg("Failed to remove all pending actions");
-?>
+try {
+	$n = $db->query("DELETE FROM action WHERE cmdOn IS NOT NULL;")->rowCount();
+} catch (PDOException $e) {
+	exit($db->errMsg($e, "Failed to remove all pending actions"));
+}
+echo $db->mkMsg(true, "Removed all pending actions ($n)");

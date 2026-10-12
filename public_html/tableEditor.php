@@ -13,12 +13,17 @@
 </head>
 <body>
 <?php
-if (empty($_GET['tbl'])) {exit("<h1>tbl parameter not supplied</h1>\n</body>\n</html>\n");}
+$tblParam = $_GET['tbl'] ?? null;
+if (!is_string($tblParam) || $tblParam === '') {exit("<h1>tbl parameter not supplied</h1>\n</body>\n</html>\n");}
 
 require_once 'php/DB1.php';
 $db = DB::getInstance();
-$tbl = $_GET['tbl'];
-if (!$db->tableExists($tbl)) {exit("<h1>Table, " . htmlspecialchars($tbl, ENT_QUOTES, 'UTF-8') . ", does not exist</h1>\n</body>\n</html>\n");}
+try {
+	$tbl = $db->tableName($tblParam);
+} catch (PDOException $e) {
+	exit("<h1>Database error</h1>\n</body>\n</html>\n");
+}
+if ($tbl === null) {exit("<h1>Table, " . htmlspecialchars($tblParam, ENT_QUOTES, 'UTF-8') . ", is not editable</h1>\n</body>\n</html>\n");}
 echo '<div id="oi-config" data-table-name="' . htmlspecialchars($tbl, ENT_QUOTES, 'UTF-8') . '" hidden></div>';
 
 require_once 'php/navBar.php';

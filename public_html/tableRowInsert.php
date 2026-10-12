@@ -5,79 +5,72 @@ csrfRequireValidPost();
 require_once 'php/DB1.php';
 $db = DB::getInstance();
 
-if (empty($_POST['tableName']) || !is_string($_POST['tableName']))
+$tblParam = $_POST['tableName'] ?? null;
+if (!is_string($tblParam) || $tblParam === '')
 	exit($db->mkMsg(false, 'No table name supplied'));
 
-$tbl = $_POST['tableName'];
-if (!$db->tableExists($tbl)) exit($db->mkMsg(false, "Table, $tbl, does not exist"));
+try {
+	$tbl = $db->tableName($tblParam);
+	if ($tbl === null) exit($db->mkMsg(false, "Table, $tblParam, is not editable"));
 
-$cols = $db->tableColumns($tbl);
-$keys = [];
-$markers = [];
-$vals = [];
+	$keys = [];
+	$markers = [];
+	$vals = [];
+	$logVals = [];
 
-foreach ($cols as $key) {
-	if (array_key_exists($key, $_POST)) {
-		if (!is_string($_POST[$key])) exit($db->mkMsg(false, "Invalid value for $key"));
-		$val = $_POST[$key] === '' ? NULL : $_POST[$key];
-		$keys[] = $db->quoteIdent($key);
-		$markers[] = '?';
-		$vals[] = $val;
+	foreach ($db->tableColumns($tbl) as $key => $type) {
+		if (array_key_exists($key, $_POST)) {
+			if (!is_string($_POST[$key])) exit($db->mkMsg(false, "Invalid value for $key"));
+			$val = $_POST[$key] === '' ? NULL : $_POST[$key];
+			$logVals[] = ($type === 'password' && $val !== NULL) ? '(set)' : $val;
+			if ($type === 'password' && $val !== NULL) $val = password_hash($val, PASSWORD_DEFAULT);
+			$keys[] = $db->quoteIdent($key);
+			$markers[] = '?';
+			$vals[] = $val;
+		}
 	}
-}
 
-if (empty($vals)) exit($db->mkMsg(false, "No columns found in $tbl"));
+	if (empty($vals)) exit($db->mkMsg(false, "No columns found in $tbl"));
 
-$db->beginTransaction();
+	// Secondary tables (e.g. a program's days of the week) for this table
+	$sql = "SELECT col,secondaryKey,secondaryValue FROM tableInfo"
+		. " WHERE tbl=? AND secondaryKey IS NOT NULL;";
+	$sec = $db->loadRows($sql, [$tbl]);
+	foreach ($sec as $row) {
+		$postKey = $row['col'];
+		if (!empty($_POST[$postKey]) && (!is_array($_POST[$postKey])
+				|| count(array_filter($_POST[$postKey], 'is_string')) !== count($_POST[$postKey])))
+			exit($db->mkMsg(false, "Invalid secondary values"));
+	}
 
-$sql = "INSERT INTO " . $db->quoteIdent($tbl) . " (" . implode(',', $keys) . ") VALUES (" . implode(',', $markers) . ")"
-	. " RETURNING id;";
+	$db->beginTransaction();
 
-$stmt = $db->prepare($sql); // Prepare the statement
-if ($stmt === false) exit($db->dbMsg("Error preparing $sql"));
-if (!$stmt->execute($vals)) exit($db->dbMsg("Error executing $sql"));
-$idRow = $stmt->fetch(PDO::FETCH_NUM);
-if ($idRow === false) exit($db->dbMsg("Error fetching id from $sql"));
-$id = $idRow[0];
+	$sql = "INSERT INTO " . $db->quoteIdent($tbl) . " (" . implode(',', $keys) . ") VALUES (" . implode(',', $markers) . ")"
+		. " RETURNING id;";
+	$id = $db->query($sql, $vals)->fetchColumn();
 
-$comment = ["Inserted into $tbl (" . implode(',', $keys) . ')->(' . implode(',', $vals) . ')'];
+	$comment = ["Inserted into $tbl (" . implode(',', $keys) . ')->(' . implode(',', $logVals) . ')'];
 
-// Check if secondary tables exist for this table
-$sql = "SELECT col,secondaryKey,secondaryValue FROM tableInfo"
-       . " WHERE tbl=? AND secondaryKey IS NOT NULL;";
-$sec = $db->loadRows($sql, [$tbl]);
-
-if (!empty($sec)) {
-	foreach($sec as $row) {
+	foreach ($sec as $row) {
 		$stbl = $db->quoteIdent($row['col']);
 		$key0 = $db->quoteIdent($row['secondarykey']);
 		$key1 = $db->quoteIdent($row['secondaryvalue']);
 		$postKey = $row['col'];
 		if (!empty($_POST[$postKey])) { // Something to be stored
-			if (!is_array($_POST[$postKey])) exit($db->mkMsg(false, "Invalid secondary values"));
 			$sql = "INSERT INTO $stbl ($key0, $key1) VALUES(?,?);";
 			foreach ($_POST[$postKey] as $sid) {
-				if (!$db->query($sql, [$id, $sid])) {
-					exit($db->dbMsg("Failed to insert secondary"));
-				}
+				$db->query($sql, [$id, $sid]);
 				$comment[] = "Inserted into $stbl $key0=$id $key1=$sid";
 			}
 		}
 	}
-}
 
-$db->commit();
+	// The changeLog records commit, or roll back, with the change itself
+	foreach ($comment as $msg) $db->audit($msg);
+
+	$db->commit();
+} catch (PDOException $e) {
+	exit($db->errMsg($e, "Insert into $tblParam failed"));
+}
 
 echo $db->mkMsg(true, "Inserted into $tbl");
-
-// Insert changeLog records
-$db->beginTransaction();
-$sql = 'INSERT INTO changeLog (ipAddr,description) VALUES (?,?);';
-$stmt = $db->prepare($sql);
-if ($stmt === false) exit($db->dbMsg("Error preparing $sql"));
-
-foreach ($comment as $row) {
-	if (!$stmt->execute([$_SERVER['REMOTE_ADDR'], $row]))
-		exit($db->dbMsg("Error executing $sql"));
-}
-$db->commit();

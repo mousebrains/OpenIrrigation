@@ -34,24 +34,21 @@
 <?php
 require_once 'php/DB1.php';
 $db = DB::getInstance();
-if (!$db->isConnected()) {
-	echo "<option value=''>Database error</option>";
-} else {
+try {
 	$a = $db->loadRows(
 		"SELECT p.id, p.val FROM params p"
 		. " WHERE p.grp='ET'"
 		. " AND EXISTS (SELECT 1 FROM ETannual WHERE code = p.id)"
 		. " ORDER BY p.val;", []);
-	if (empty($a) && $db->getError()) {
-		echo "<option value=''>Query error</option>";
-	} else {
-		foreach ($a as $item) {
-			$id = htmlspecialchars($item['id'], ENT_QUOTES, 'UTF-8');
-			$val = htmlspecialchars($item['val'], ENT_QUOTES, 'UTF-8');
-			$sel = ($item['val'] === 'ET (in/day)') ? ' selected' : '';
-			echo "<option value='$id'$sel>$val</option>";
-		}
+	foreach ($a as $item) {
+		$id = htmlspecialchars((string) $item['id'], ENT_QUOTES, 'UTF-8');
+		$val = htmlspecialchars((string) $item['val'], ENT_QUOTES, 'UTF-8');
+		$sel = ($item['val'] === 'ET (in/day)') ? ' selected' : '';
+		echo "<option value='$id'$sel>$val</option>";
 	}
+} catch (PDOException $e) {
+	error_log("ET.php: " . $e->getMessage());
+	echo "<option value=''>Database error</option>";
 }
 ?>
 </select>
