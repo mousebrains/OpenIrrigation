@@ -15,7 +15,18 @@ SQL+= db.soil.sql
 SQL+= db.crop.sql
 SQL+= db.changelog.sql
 
-.PHONY: all install uninstall clean freshdb mkRoles dropRoles mkdb dropdb createdb dumpdb mkSite
+.PHONY: all install uninstall clean freshdb freshdbGuard dumpIfExists
+.PHONY: mkRoles dropRoles mkdb dropdb createdb dumpdb mkSite
+
+# freshdb's steps must run in order
+.NOTPARALLEL:
+
+# Set FORCE=1 to let freshdb and mkdb destroy an existing database
+FORCE ?=
+
+# pg_dump of $(DBNAME) into a new, timestamped directory
+DUMPDIR := dump.$(DBNAME).$(shell date +%Y%m%dT%H%M%S)
+PGDUMP = pg_dump --format=directory --compress=9 --file=$(DUMPDIR) --dbname=$(DBNAME)
 
 all:
 
@@ -34,7 +45,27 @@ uninstall:
 clean:
 	rm -f .drop.role.sql .make.role.sql .make.tables.sql
 
-freshdb: dropdb dropRoles mkRoles createdb mkdb
+# Drops the database and roles, so it needs FORCE=1 and dumps the database first
+freshdb: freshdbGuard
+	$(MAKE) dumpIfExists
+	$(MAKE) dropdb dropRoles mkRoles createdb mkdb
+
+freshdbGuard:
+	@ if [ "$(FORCE)" != 1 ]; then \
+		echo "freshdb DROPS database $(DBNAME), all its data, and its roles." >&2; \
+		echo "Rerun as 'make freshdb FORCE=1'; it pg_dumps $(DBNAME) first." >&2; \
+		echo "To upgrade an existing database run the database/migrate_NNN.py scripts instead." >&2; \
+		exit 1; \
+	fi
+
+dumpIfExists:
+	@ if sudo -u postgres psql --quiet --tuples-only --no-align \
+		--command "SELECT 1 FROM pg_database WHERE datname='$(DBNAME)';" | grep -q 1; then \
+		echo "Dumping $(DBNAME) into $(CURDIR)/$(DUMPDIR) before dropping it"; \
+		$(PGDUMP) || exit 1; \
+	else \
+		echo "$(DBNAME) does not exist; nothing to dump"; \
+	fi
 
 mkRoles: .make.role.sql
 	@ echo Creating roles
@@ -59,7 +90,16 @@ dropRoles: .drop.role.sql
 	@ for i in $(ROLES); do echo "CREATE ROLE $$i IN ROLE $(PARENTROLE) LOGIN INHERIT;" >>$@; done
 
 
+# db.schema.sql DROPs every table first, so refuse a database that has any
 mkdb: .make.tables.sql
+	@ n=$$(psql --quiet --tuples-only --no-align --dbname=$(DBNAME) --command \
+		"SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename IN \
+		('tableinfo','site','sensor','program','action','historical','sensorlog');") || exit 1; \
+	if [ "$$n" != 0 ] && [ "$(FORCE)" != 1 ]; then \
+		echo "$(DBNAME) already has OpenIrrigation tables; loading the schema would DROP them and all their data." >&2; \
+		echo "Upgrade it with the database/migrate_NNN.py scripts, or rerun with FORCE=1." >&2; \
+		exit 1; \
+	fi
 	@ echo Loading schema into $(DBNAME)
 	@ psql --quiet --file=$< $(DBNAME)
 	
@@ -86,5 +126,5 @@ createdb: mkRoles
 		--command "COMMENT ON DATABASE $(DBNAME) IS 'Irrigation database';"
 
 dumpdb:
-	mkdir -p dump.$(DBNAME)
-	pg_dump --format=directory --compress=9 --file=dump.$(DBNAME) --dbname=$(DBNAME)
+	$(PGDUMP)
+	@ echo Dumped $(DBNAME) into $(CURDIR)/$(DUMPDIR)
