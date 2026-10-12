@@ -2,7 +2,8 @@
 #
 # Compute the inline-filter status and write a filterStatus row:
 #   - flow-side degradation: the common-mode flow loss across the lawn (cesped)
-#     ensemble (recent solo-run flow vs each valve's station.cleanFlow baseline).
+#     ensemble (recent solo-run flow vs each valve's station.cleanFlow baseline;
+#     "recent" never reaches back past the last cleaning).
 #   - odometer: cumulative POC volume (gallons) since the last cleaning.
 #   - gauge side: filter resistance R_f and last measured dP from filterReading.
 #   - forecast + state (clean | watch | service), emailing 'filter' subscribers
@@ -36,12 +37,24 @@ def utcnow():
     return datetime.datetime.now(datetime.timezone.utc)
 
 
-def flowDegradation(cur, logger):
+def recentStart(now, since):
+    """Start of the "current flow" window: RECENT_DAYS back, but never before the
+    last cleaning -- runs through the old, dirty filter would drag the ensemble
+    down and raise a false service alert right after a cleaning."""
+    start = now - datetime.timedelta(days=RECENT_DAYS)
+    if since is None:
+        return start
+    if since.tzinfo is None:  # naive --since override: interpret as local time
+        since = since.astimezone()
+    return max(start, since)
+
+
+def flowDegradation(cur, since, logger):
     """Common-mode degradation % across qFilterSensor valves that have a
     cleanFlow baseline and ran recently. (None, None, None) if no data yet."""
     stations = loadStations(cur)
     poc1 = set(stations)
-    runs = soloRuns(cur, poc1, utcnow() - datetime.timedelta(days=RECENT_DAYS))
+    runs = soloRuns(cur, poc1, recentStart(utcnow(), since))
     ratios, curFlows, baseFlows = [], [], []
     for sensor, row in stations.items():
         if not row["qfiltersensor"] or not row["cleanflow"]:
@@ -136,7 +149,7 @@ def run(args, logger):
         cur = db.cursor(qDict=True)
         since = cleanSince(cur, args.since, logger)
 
-        degradation, ensembleFlow, baselineFlow = flowDegradation(cur, logger)
+        degradation, ensembleFlow, baselineFlow = flowDegradation(cur, since, logger)
         rf, estDP = gaugeState(cur, since)
         gallons = round(volumeSince(cur, since), 0) if since is not None else None
         fcast = forecast(cur, since, gallons, params)
