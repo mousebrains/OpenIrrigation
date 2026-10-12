@@ -16,4 +16,4 @@ Group=__GROUP__
 WorkingDirectory=__LOGDIR__
 Nice=10
 IOSchedulingClass=idle
-ExecStart=__BINDIR__/databaseMaintenance.py --db=__DBNAME__ --telemetry-days=__TELEMETRYRETENTIONDAYS__ --history-days=__HISTORYRETENTIONDAYS__ --audit-days=__AUDITRETENTIONDAYS__ --logfile=__LOGDIR__/DatabaseMaintenance.log
+ExecStart=__BINDIR__/databaseMaintenance.py --db=__DBNAME__ --archive-dir=__ARCHIVEDIR__ --telemetry-days=__TELEMETRYRETENTIONDAYS__ --history-days=__HISTORYRETENTIONDAYS__ --audit-days=__AUDITRETENTIONDAYS__ --logfile=__LOGDIR__/DatabaseMaintenance.log

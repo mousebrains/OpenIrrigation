@@ -19,7 +19,15 @@ SQL+= db.changelog.sql
 
 all:
 
+# databaseMaintenance archives expired rows here before deleting them
 install:
+	@ if [ -z "$(ARCHIVEDIR)" ]; then \
+		echo "WARNING: ARCHIVEDIR is not set; rerun ./config." \
+		     "Retention maintenance will refuse to delete anything." >&2; \
+	else \
+		$(INSTALL) --directory --mode=0750 $(ARCHIVEDIR) && \
+		chown $(USER):$(GROUP) $(ARCHIVEDIR); \
+	fi
 
 uninstall:
 

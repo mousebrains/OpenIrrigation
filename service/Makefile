@@ -51,6 +51,7 @@ $(SERVICEDIR)/%: % ../Makefile.params
 	sed -e 's?__USER__?$(USER)?g' \
 	    -e 's?__GROUP__?$(GROUP)?g' \
 	    -e 's?__LOGDIR__?$(LOGDIR)?g' \
+	    -e 's?__ARCHIVEDIR__?$(ARCHIVEDIR)?g' \
 	    -e 's?__BINDIR__?$(BINDIR)?g' \
 	    -e 's?__DBDIR__?$(DBDIR)?g' \
 	    -e 's?__DBNAME__?$(DBNAME)?g' \
