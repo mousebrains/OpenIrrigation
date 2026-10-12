@@ -25,7 +25,7 @@ CREATE TABLE schemaMigration( -- one row per applied database migration
 	);
 -- A fresh install already includes every migration up to this one; bump it
 -- whenever a migration is added
-INSERT INTO schemaMigration(num, source) VALUES (14, 'fresh install');
+INSERT INTO schemaMigration(num, source) VALUES (15, 'fresh install');
 
 -- Domains are data types with constraints
 

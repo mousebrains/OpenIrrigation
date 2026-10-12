@@ -168,6 +168,14 @@ def migrate(db, dry_run):
                 as_parent(cur, parent, definition)
                 applied.append(f"{name}: replaced")
 
+        # Step 3: record this migration in the ledger (migrate_014)
+        cur.execute("INSERT INTO schemaMigration(num, source) VALUES (15, 'migrate_015.py')"
+                    " ON CONFLICT (num) DO NOTHING;")
+        if cur.rowcount:
+            applied.append("schemaMigration: recorded 15")
+        else:
+            skipped.append("schemaMigration: 15 already recorded")
+
     print("=== Migration 015 ===")
     for msg in applied:
         print(f"  APPLIED: {msg}")
