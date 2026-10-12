@@ -4,6 +4,8 @@
 #
 
 include ../Makefile.params
+# Makefile.params from before ./config knew --archiveDir: use its default
+ARCHIVEDIR ?= $(PREFIX)/archive
 
 SQL = db.schema.sql
 SQL+= db.site.sql # Trigger when inserting into site, insert a manual program

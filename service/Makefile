@@ -3,6 +3,8 @@
 #
 
 include ../Makefile.params
+# Makefile.params from before ./config knew --archiveDir: use its default
+ARCHIVEDIR ?= $(PREFIX)/archive
 
 # Long-running daemons
 DAEMONS = OITDI.service
