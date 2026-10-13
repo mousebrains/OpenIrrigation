@@ -9,7 +9,7 @@ include ../Makefile.params
 all:
 
 install:
-	./setup.sh --user=$(USER) --webroot=$(WEBDIR)
+	./setup.sh --user=$(USER) --webroot=$(WEBDIR) --webuser=$(WEBUSER) --dbname=$(DBNAME)
 
 clean:
 

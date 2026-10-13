@@ -48,35 +48,45 @@ $(function() {
 		const ytd = (rows && rows.ytd) || [];
 		const prev = (rows && rows.prev) || [];
 
-		// annual: [doy, q10, value, q90]  (FETCH_NUM indices 0-3)
+		// Everything is drawn on this year's calendar. A day of year is a
+		// different date in leap and other years (day 60 is Feb 29 or Mar 1),
+		// so convert each with its own year and then move it to this year.
+		const year = new Date().getFullYear();
+		const daysThisYear = (new Date(year, 1, 29).getMonth() === 1) ? 366 : 365;
+		const onThisYear = function(y, doy) { // ms on this year's calendar, or null
+			const d = new Date(y, 0, doy);
+			const t = new Date(year, d.getMonth(), d.getDate());
+			return (t.getMonth() === d.getMonth()) ? t.getTime() : null; // drops Feb 29
+		};
+
+		// annual: [doy, q10, value, q90]  (FETCH_NUM indices 0-3), a
+		// climatology over all years, so its day of year is taken as this year's
 		let q90Pts = [];
 		let medPts = [];
 		let q10Pts = [];
 
 		for (let i = 0; i < annual.length; i++) {
 			const doy = Number(annual[i][0]);
-			const d = new Date(2024, 0, doy);
-			const t = d.getTime();
+			if (doy > daysThisYear) {continue;}
+			const t = new Date(year, 0, doy).getTime();
 
 			q10Pts.push({ x: t, y: Number(annual[i][1]) });
 			medPts.push({ x: t, y: Number(annual[i][2]) });
 			q90Pts.push({ x: t, y: Number(annual[i][3]) });
 		}
 
-		// ytd: [doy, value]
+		// ytd: [doy, value] in this year
 		const ytdPts = [];
 		for (let j = 0; j < ytd.length; j++) {
 			const ytdDoy = Number(ytd[j][0]);
-			const ytdD = new Date(2024, 0, ytdDoy);
-			ytdPts.push({ x: ytdD.getTime(), y: Number(ytd[j][1]) });
+			ytdPts.push({ x: new Date(year, 0, ytdDoy).getTime(), y: Number(ytd[j][1]) });
 		}
 
 		// prev: [doy, value] — previous year from today's DOY onward
 		const prevPts = [];
 		for (let k = 0; k < prev.length; k++) {
-			const prevDoy = Number(prev[k][0]);
-			const prevD = new Date(2024, 0, prevDoy);
-			prevPts.push({ x: prevD.getTime(), y: Number(prev[k][1]) });
+			const t = onThisYear(year - 1, Number(prev[k][0]));
+			if (t !== null) {prevPts.push({ x: t, y: Number(prev[k][1]) });}
 		}
 
 		// Apply 7-day centered moving average (halfWin=3 -> 7-point window)

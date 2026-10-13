@@ -11,11 +11,8 @@ class ProcessDB {
 	private PDOStatement $getRecords;
 
 	function __construct(string $dbName) {
-		try {
-			$db = new PDO("pgsql:dbname=$dbName;");
-		} catch (\PDOException $e) {
-			throw $e;
-		}
+		$db = new PDO("pgsql:dbname=$dbName;", null, null,
+			[PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 		$this->db = $db;
 
 		$this->getRecords = $db->prepare(
@@ -28,7 +25,7 @@ class ProcessDB {
 
 	/** @return array<string, mixed> */
 	function notifications(int $dt): array {
-		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
+		$a = DB::waitNotify($this->db, $dt);
 		if (!$a) return [];
 		return ['channel' => $a['message'], 'payload' => $a['payload']];
 	} // notifications
@@ -42,18 +39,17 @@ class ProcessDB {
 } // DB
 
 $delay = 25 * 1000; // 25 seconds between burps; keeps iOS WiFi power-save from dropping idle connection
-require_once 'php/config.php';
-$dbName = OI_DBNAME;
+require_once 'php/DB1.php';
+$dbName = DB::dbName();
 
 try {
 	$db = new ProcessDB($dbName);
+	$tPrev = time();
+	echo "data: " . json_encode($db->fetchInfo(0)) . "\n\n";
 } catch (\PDOException $e) {
 	echo "data: " . json_encode(["error" => "Database connection failed"]) . "\n\n";
 	exit;
 }
-
-$tPrev = time();
-echo "data: " . json_encode($db->fetchInfo(0)) . "\n\n";
 
 while (!connection_aborted()) { # Wait until client disconnects
 	if (ob_get_length()) {ob_flush();} // Flush output buffer
@@ -70,5 +66,6 @@ while (!connection_aborted()) { # Wait until client disconnects
 		echo "data: " . json_encode($info) . "\n\n";
 	} catch (\Exception $e) {
 		echo "data: " . json_encode(["error" => "Database error"]) . "\n\n";
+		break; // Dead DB connection would busy-loop; let EventSource reconnect
 	}
 }

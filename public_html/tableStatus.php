@@ -14,10 +14,21 @@ function tableInfo(DB $db, string $name): array {
 	return $db->loadRows($sql, [$name]);
 }
 
+// What the editor is sent of each row: its id, qHide (rows the editor
+// hides) and tableInfo's columns, but never a password column's value.
+function selectColumns(DB $db, string $tbl): string {
+	$a = ['id'];
+	if ($db->hasColumn($tbl, 'qhide')) $a[] = 'qhide';
+	foreach ($db->tableColumns($tbl) as $col => $type) {
+		if ($type !== 'password') $a[] = $db->quoteIdent($col);
+	}
+	return implode(',', array_unique($a));
+}
+
 /** @param array<mixed> $args
  * @return array<int, array<string, mixed>> */
 function tableRows(DB $db, string $name, ?string $orderBy, ?string $where, array $args): array {
-	$sql = "SELECT * FROM " . $db->quoteIdent($name);
+	$sql = "SELECT " . selectColumns($db, $name) . " FROM " . $db->quoteIdent($name);
 	if ($where !== null) $sql .= ' WHERE ' . $where;
 	if ($orderBy !== null) $sql .= $orderBy;
 	$sql .= ";";
@@ -114,52 +125,63 @@ function fetchRow(DB $db, string $tbl, string $action, string $id): array { // F
 	return $info;
 }
 
-if (empty($_GET['tbl'])) {exit(mkMsg(false, 'No tbl parameter supplied'));}
+$tblParam = $_GET['tbl'] ?? null;
+if (!is_string($tblParam) || $tblParam === '') {exit(mkMsg(false, 'No tbl parameter supplied'));}
 
 require_once 'php/DB1.php';
 $db = DB::getInstance();
 
-if (!$db->isConnected()) {exit(mkMsg(false, 'Database connection failed'));}
-
-$tbl = $_GET['tbl'];
-if (!$db->tableExists($tbl)) {exit(mkMsg(false, "Table, $tbl, does not exist"));}
-
-if (empty($_GET['orderby'])) {
-	$orderBy = '';
-} else {
-	$cols = $db->tableColumns($tbl);
-	$a = [];
-	foreach (explode(',', $_GET['orderby']) as $key) {
-		$col = trim(strtolower($key)); // Validate, then use the validated form
-		if (!in_array($col, $cols)) {
-			exit(mkMsg(false, "Column, $key, unknown"));
-		}
-		$a[] = $col;
-	}
-	$orderBy = " ORDER BY " . implode(",", $a);
+// A database error is transient: send it as an error frame and end the
+// stream, so EventSource reconnects. A message frame makes the editor stop.
+function dbError(): never {
+	echo "data: " . json_encode(["error" => "Database error"]) . "\n\n";
+	exit;
 }
 
-$db->listen(strtolower($tbl) . "_update");
+try {
+	$tbl = $db->tableName($tblParam);
+	if ($tbl === null) {exit(mkMsg(false, "Table, $tblParam, is not editable"));}
 
-$info = fetchInfo($db, $tbl, $orderBy, Null, []);
-$info['info'] = tableInfo($db, $tbl);
+	$orderBy = null;
+	if (isset($_GET['orderby']) && $_GET['orderby'] !== '') {
+		if (!is_string($_GET['orderby'])) {exit(mkMsg(false, 'Invalid orderby'));}
+		$cols = $db->tableColumns($tbl);
+		$a = [];
+		foreach (explode(',', $_GET['orderby']) as $key) {
+			$col = trim(strtolower($key)); // Validate, then use the validated form
+			if (!array_key_exists($col, $cols) || $cols[$col] === 'password') {
+				exit(mkMsg(false, "Column, $key, unknown"));
+			}
+			$a[] = $db->quoteIdent($col);
+		}
+		$orderBy = " ORDER BY " . implode(",", $a);
+	}
 
-while (!connection_aborted()) { # Wait until client disconnects
-	echo "data: " . json_encode($info) . "\n\n";
-	if (ob_get_length()) {ob_flush();} // Flush output buffer
-	flush();
-	// 25-second burp keeps iOS WiFi power-save from dropping idle connection
-	$notifications = $db->notifications(25000);
-	if ($notifications === false) { // no notifications
-		$info = ['burp' => 0];
-		continue;
-	} // if notifications
-	$items = explode(' ', $notifications['payload']);
-	if (count($items) != 3) { // Invalid notification
-		$info = ['burp' => 0];
-		continue;
-	} // if
-	$action = $items[1];
-	$id = $items[2];
-	$info = fetchRow($db, $tbl, $action, $id);
+	$db->listen(strtolower($tbl) . "_update");
+
+	$info = fetchInfo($db, $tbl, $orderBy, Null, []);
+	$info['info'] = tableInfo($db, $tbl);
+} catch (PDOException $e) {
+	dbError();
+}
+
+try {
+	while (!connection_aborted()) { # Wait until client disconnects
+		echo "data: " . json_encode($info) . "\n\n";
+		if (ob_get_length()) {ob_flush();} // Flush output buffer
+		flush();
+		// 25-second burp keeps iOS WiFi power-save from dropping idle connection
+		$notifications = $db->notifications(25000);
+		$payload = $notifications === false ? null : ($notifications['payload'] ?? null);
+		$items = is_string($payload) ? explode(' ', $payload) : [];
+		if (count($items) != 3) { // No or invalid notification
+			$info = ['burp' => 0];
+			continue;
+		} // if
+		$action = $items[1];
+		$id = $items[2];
+		$info = fetchRow($db, $tbl, $action, $id);
+	}
+} catch (PDOException $e) {
+	dbError(); // Dead DB connection would busy-loop; let EventSource reconnect
 }

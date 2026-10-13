@@ -7,7 +7,7 @@ include ../Makefile.params
 
 SRC = favicon.png
 SRC+= index.php indexProcess.php indexStatus.php
-SRC+= status.php 
+SRC+= status.php csrfToken.php
 SRC+= reportDaily.php reportDailyStatus.php
 SRC+= monitor.php monitorStatus.php
 SRC+= monitorActiveOff.php monitorPendingRemove.php 
@@ -15,19 +15,23 @@ SRC+= monitorClearAll.php monitorAllOff.php monitorPocOff.php
 SRC+= tableEditor.php tableStatus.php
 SRC+= tableRowInsert.php tableRowDelete.php tableRowUpdate.php
 SRC+= flowGraph.php flowGraphData.php
-SRC+= ET.php etDaily.php etAnnual.php
+SRC+= ET.php etAnnual.php
 SRC+= systemctl.php
 SRC+= processState.php processStatus.php
 SRC+= runScheduler.php
 
 DEST = $(SRC:%=$(WEBDIR)/%)
 
+# Files earlier versions installed, removed from the webroot on install
+OBSOLETE = etDaily.php
+
 .PHONY: all install uninstall clean php_lint
 
 all::
 
-install:: 
+install::
 	$(INSTALL) --target-directory=$(WEBDIR) $(SRC)
+	$(RM) $(OBSOLETE:%=$(WEBDIR)/%)
 	chown -R $(USER):$(GROUP) $(WEBDIR)
 
 clean::

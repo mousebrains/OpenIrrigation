@@ -6,13 +6,14 @@ csrfRequireValidPost();
 require_once 'php/DB1.php';
 $db = DB::getInstance();
 
-if (empty($_POST['id']) || !is_string($_POST['id'])) exit($db->mkMsg(false, "No ID supplied"));
-if (!ctype_digit($_POST['id'])) exit($db->mkMsg(false, "Invalid ID"));
+$id = $_POST['id'] ?? null;
+if (!is_string($id) || $id === '') exit($db->mkMsg(false, "No ID supplied"));
+if (!ctype_digit($id)) exit($db->mkMsg(false, "Invalid ID"));
 
-$id = $_POST['id'];
-
-if ($db->query('DELETE FROM action WHERE id=(?) AND (cmdOn IS NOT NULL);', [$id]))
-	exit($db->mkMsg(true, "Removed pending record, $id, from actions"));
-
-echo $db->mkMsg(false, "Failed to remove pending record, $id");
-?>
+try {
+	$n = $db->query('DELETE FROM action WHERE id=(?) AND (cmdOn IS NOT NULL);', [$id])->rowCount();
+} catch (PDOException $e) {
+	exit($db->errMsg($e, "Failed to remove pending record, $id"));
+}
+if ($n === 0) exit($db->mkMsg(false, "Pending record, $id, not found; it has already started or been removed"));
+echo $db->mkMsg(true, "Removed pending record, $id, from actions");

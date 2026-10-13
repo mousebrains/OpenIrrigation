@@ -9,6 +9,7 @@
 
 import datetime
 import logging
+import types
 from typing import NamedTuple, Optional
 from SchedAction import Action
 from SchedCumTime import CumTime
@@ -265,10 +266,7 @@ def _get_sensor(stn):
         return stn._sensor
 
     # Create a lightweight sensor-like object from station attributes
-    class SensorProxy:
-        pass
-
-    s = SensorProxy()
+    s = types.SimpleNamespace()
     s.id = stn.sensor
     s.name = stn.name
     s.station = getattr(stn, 'station', None)

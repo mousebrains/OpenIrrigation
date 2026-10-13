@@ -59,19 +59,14 @@ I have Apple devices on my network so I install zeroconf/bonjour:
     - cd /etc/nginx/certs
     - sudo chmod 600 *
     - sudo chmod 700 .
-- nginx configuration
-  - If using SSL create a file in /etc/nginx/snippets, I use [ssl.conf.](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/nginx/snippets/ssl.conf)
-  - Modify /etc/nginx/sites-enabled/default to suite your needs. Here is my [example.](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/nginx/sites-available/default). I redirect all http traffic to https, enable php-fpm, load the SSL key and certificate, enable http2, and point the root at /home/irrigation/public_html.
-  - Change the username that nginx runs as in /etc/nginx/nginx.conf. www-data will need to be changed to your user. I use a username of irrigation. Here is my [example.](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/nginx/nginx.conf)
-  - Check for typos using the command
-    - sudo nginx -t
-- php-fpm configuration involves modifying the /etc/php/8.4/fpm/pool.d/www.conf file. Here is my [example](https://github.com/mousebrains/OpenIrrigation/blob/master/webserver/php-fpm/www.conf)
-    - Change user and group to the same user nginx is running as. There are four locations, (user|group) and listen.(owner|group). I use irrigation for both.
-    - Change "pm =" line to "pm = ondemand"
-    - Change `pm.max_children` to 8, `pm.process_idle_timeout` to 30s, and `pm.max_requests` to 250.
-    - Each open browser tab uses a PHP-FPM worker for its status stream; if many tabs are open, buttons may queue until a tab is closed or `pm.max_children` is raised.
-- Restart the webserver and php-fpm.
-  - sudo systemctl restart nginx php8.4-fpm
+- nginx and php-fpm configuration: `sudo make install` (see [INSTALL.md](INSTALL.md)) runs
+  [webserver/setup.sh](webserver/setup.sh), which configures both. See
+  [webserver/README.md](webserver/README.md) for what it changes.
+  - nginx and php-fpm run as their own Unix user, `oiweb` by default, which can read but not
+    write the web files. setup.sh creates it; its database role is created by `make freshdb`
+    (on an existing install, see webserver/README.md).
+  - The Server-Sent Events status streams get their own php-fpm pool, so open browser tabs
+    cannot hold up page loads and button presses.
 ---
 ## PostgreSQL installation
 Install PostgreSQL

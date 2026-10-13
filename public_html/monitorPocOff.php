@@ -6,13 +6,15 @@ csrfRequireValidPost();
 require_once 'php/DB1.php';
 $db = DB::getInstance();
 
-if (empty($_POST['poc']) || !is_string($_POST['poc'])) exit($db->mkMsg(false, 'No POC supplied'));
-if (!ctype_digit($_POST['poc'])) exit($db->mkMsg(false, 'Invalid POC'));
+$poc = $_POST['poc'] ?? null;
+if (!is_string($poc) || $poc === '') exit($db->mkMsg(false, 'No POC supplied'));
+if (!ctype_digit($poc)) exit($db->mkMsg(false, 'Invalid POC'));
 
-$poc = $_POST['poc'];
 $dt = 60;
 
-if ($db->query("SELECT poc_off(?,?)", [$poc, $dt]))
-	exit($db->mkMsg(true, "Turned POC($poc) off for $dt minutes"));
-echo $db->dbMsg("Failed to turn off POC($poc) for $dt minutes");
-?>
+try {
+	$db->query("SELECT poc_off(?,?)", [$poc, $dt]);
+} catch (PDOException $e) {
+	exit($db->errMsg($e, "Failed to turn off POC($poc) for $dt minutes"));
+}
+echo $db->mkMsg(true, "Turned POC($poc) off for $dt minutes");

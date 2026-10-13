@@ -73,7 +73,7 @@ jobs:
     - name: Install dependencies
       run: pip install -r requirements-dev.txt
     - name: Run tests
-      run: python -m pytest tests/ -x -q --cov=scripts --cov-report=term-missing --cov-fail-under=25
+      run: python -m pytest tests/ -x -q --cov=scripts --cov-report=term-missing --cov-fail-under=60
 
   sql-tests:
     # The SQL functions, triggers and migrations against a real PostgreSQL 17:

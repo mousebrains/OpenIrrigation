@@ -25,7 +25,8 @@ class ReportDB {
 	private PDOStatement $getTodayTargets;
 
 	public function __construct(string $dbName) {
-		$db = new PDO("pgsql:dbname=$dbName;");
+		$db = new PDO("pgsql:dbname=$dbName;", null, null,
+			[PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 		$this->db = $db;
 
 		$this->getPast = $db->prepare("SELECT "
@@ -105,7 +106,7 @@ class ReportDB {
 
 	/** @return array<string, mixed> */
 	public function notifications(int $dt): array {
-		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
+		$a = DB::waitNotify($this->db, $dt);
 		if (!$a) return [];
 		// A bulk change (a scheduler run rewrites hundreds of action rows)
 		// fires one NOTIFY per row; drain the queue so the burst coalesces
@@ -187,17 +188,16 @@ class ReportDB {
 } // DB
 
 $delay = 25 * 1000; // 25 seconds between burps; keeps iOS WiFi power-save from dropping idle connection
-require_once 'php/config.php';
-$dbName = OI_DBNAME;
+require_once 'php/DB1.php';
+$dbName = DB::dbName();
 
 try {
 	$db = new ReportDB($dbName);
+	echo "data: " . $db->fetchInitial() . "\n\n";
 } catch (\PDOException $e) {
 	echo "data: " . json_encode(["error" => "Database connection failed"]) . "\n\n";
 	exit;
 }
-
-echo "data: " . $db->fetchInitial() . "\n\n";
 
 while (!connection_aborted()) { // Wait until client disconnects
 	if (ob_get_length()) {ob_flush();} // Flush output buffer

@@ -87,12 +87,17 @@ PHP SSE endpoints (e.g., `indexStatus.php`, `monitorStatus.php`, `tableStatus.ph
 
 ### Action Endpoint Pattern
 
-Action endpoints validate input, perform the operation, and return JSON via `exit()`:
+Action endpoints validate input (as strings: `?id[]=1` makes an array), perform the operation, and return JSON via `exit()`:
 ```php
 $db = DB::getInstance();
-if (empty($_POST['id'])) exit($db->mkMsg(false, "No ID supplied"));
-if ($db->query($sql, [$id])) exit($db->mkMsg(true, "Done"));
-exit($db->dbMsg("Something failed"));
+$id = $_POST['id'] ?? null;
+if (!is_string($id) || !ctype_digit($id)) exit($db->mkMsg(false, "Invalid ID"));
+try {
+	$db->query($sql, [$id]);
+} catch (PDOException $e) {
+	exit($db->errMsg($e, "Something failed"));
+}
+exit($db->mkMsg(true, "Done"));
 ```
 
 ## Key Conventions
@@ -103,10 +108,12 @@ exit($db->dbMsg("Something failed"));
 - `$db->loadRows($sql, $args)` → `PDO::FETCH_ASSOC` arrays
 - `$db->loadRowsNum($sql, $args)` → `PDO::FETCH_NUM` arrays
 - Each `?` needs its own entry in the args array, even if the same value is reused
-- `$db->mkMsg(bool, string)` logs to `changeLog` and returns JSON `{"success":..., "message":...}`
-- `$db->dbMsg($msg)` — shorthand for `mkMsg(false, $msg + DB error)`
+- Errors are exceptions (`PDO::ERRMODE_EXCEPTION`): catch `PDOException`; there are no `=== false` returns
+- `$db->mkMsg(bool, string)` returns JSON `{"success":..., "message":...}`; successes are logged to `changeLog`, failures only to the PHP error log
+- `$db->errMsg(PDOException, $what)` — rolls back and returns the failure JSON (unique and foreign-key violations get readable messages)
 - `$db->listen($channel)` / `$db->notifications($delay_ms)` — for SSE endpoints
 - `$db->quoteIdent($name)` — validates SQL identifiers (regex, not quoting)
+- `$db->tableName($tbl)` / `$db->tableColumns($tbl)` — the generic table endpoints may only touch tables and columns listed in `tableInfo`
 
 ### Python / DB.py
 - Uses psycopg v3 with `LISTEN/NOTIFY` for event-driven scheduling

@@ -24,7 +24,8 @@ class StatusDB {
 	private PDOStatement $getFilter;
 
 	function __construct(string $dbName) {
-		$db = new PDO("pgsql:dbname=$dbName;");
+		$db = new PDO("pgsql:dbname=$dbName;", null, null,
+			[PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 		$this->db = $db;
 		$this->getController = $db->prepare("SELECT id,name FROM controller;");
 		$this->getPOC = $db->prepare("SELECT sensor,name FROM pocFlow;");
@@ -53,7 +54,7 @@ class StatusDB {
 
 	/** @return array<string, mixed> */
 	function notifications(int $dt): array {
-		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
+		$a = DB::waitNotify($this->db, $dt);
 		if (!$a) return [];
 		// A bulk change (a scheduler run rewrites hundreds of action rows)
 		// fires one NOTIFY per row; drain the queue so the burst coalesces
@@ -198,21 +199,32 @@ class StatusDB {
 } // DB
 
 $delay = 25 * 1000; // 25 seconds between burps; keeps iOS WiFi power-save from dropping idle connection
-require_once 'php/config.php';
-$dbName = OI_DBNAME;
+require_once 'php/DB1.php';
+$dbName = DB::dbName();
 
-$db = new StatusDB($dbName);
-
-echo "data: " . $db->fetchInitial() . "\n\n";
+try {
+	$db = new StatusDB($dbName);
+	echo "data: " . $db->fetchInitial() . "\n\n";
+} catch (\PDOException $e) {
+	// An error frame on a 200 stream, not an HTTP 500: EventSource gives up
+	// for good on an HTTP error but reconnects after a stream that ends.
+	echo "data: " . json_encode(["error" => "Database connection failed"]) . "\n\n";
+	exit;
+}
 $tPrev = time();
 
 while (!connection_aborted()) { # Wait until client disconnects
 	if (ob_get_length()) {ob_flush();} // Flush output buffer
 	flush();
-	$info = array_merge(
-		$db->notifications($delay),
-		$db->fetchData()
-	);
+	try {
+		$info = array_merge(
+			$db->notifications($delay),
+			$db->fetchData()
+		);
+	} catch (\PDOException $e) {
+		echo "data: " . json_encode(["error" => "Database error"]) . "\n\n";
+		break; // Dead DB connection would busy-loop; let EventSource reconnect
+	}
 	if (($tPrev + 120) <= time()) { // Send system status
 		$b = $db->fetchSystemctl();
 		if (!empty($b)) $info['system'] = $b;

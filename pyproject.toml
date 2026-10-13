@@ -40,3 +40,5 @@ ignore_missing_imports = true
 no_strict_optional = true
 warn_return_any = true
 warn_unused_configs = true
+# Type-check the bodies of unannotated functions too
+check_untyped_defs = true

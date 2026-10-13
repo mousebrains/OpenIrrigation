@@ -22,7 +22,9 @@ function updateFilter(f) {
 		return;
 	}
 	let label = 'Filter';
-	if (f.degradation !== null && f.degradation !== undefined) {
+	if (f.state === 'sensor') { // lawn runs read no flow: the filter can't be judged
+		label += ' ?';
+	} else if (f.degradation !== null && f.degradation !== undefined) {
 		label += ` ${f.degradation}%`;
 	} else if (f.estDP !== null && f.estDP !== undefined) {
 		label += ` ${f.estDP}PSI`;
@@ -30,6 +32,7 @@ function updateFilter(f) {
 		label += ` ${f.state}`;
 	}
 	const tip = [];
+	if (f.state === 'sensor') {tip.push('recent lawn runs read no flow; check the flow sensor');}
 	if (f.degradation !== null && f.degradation !== undefined) {tip.push(`flow degradation ${f.degradation}%`);}
 	if (f.estDP !== null && f.estDP !== undefined) {tip.push(`est dP ${f.estDP} PSI`);}
 	if (f.gallons !== null && f.gallons !== undefined) {tip.push(`${f.gallons} gal since clean`);}
@@ -40,6 +43,12 @@ function updateFilter(f) {
 }
 
 $('#runScheduler').submit({'url': 'runScheduler.php'}, OI_processForm);
+
+// The service indicators open the systemctl page. A listener, not an inline
+// onclick, which the Content-Security-Policy (script-src 'self') blocks.
+$('#statusServices').css('cursor', 'pointer').on('click', () => {
+	window.location.href = 'systemctl.php';
+});
 
 // Hamburger menu: click/touch toggle (replaces hover-only)
 $('#topdropbtn').on('click', (e) => {

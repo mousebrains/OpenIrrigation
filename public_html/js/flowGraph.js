@@ -1,33 +1,33 @@
 $(function() {
 	let chart = null;
 	let stationData = [];
+	let lastRequest = 0; // only the newest request may draw the chart
 
 	function fetchAndRender(hours) {
+		const request = ++lastRequest;
 		$.ajax({
 			type: 'POST',
 			url: 'flowGraphData.php',
 			data: { hours: hours },
 			dataType: 'json'
 		}).done(function(data) {
+			if (request !== lastRequest) {return;} // a later button was clicked
 			if (data.success === false) {
 				OI_toast(data.message, true);
 				return;
 			}
 			stationData = data.stations || [];
-			renderChart(data.flow || [], hours);
+			const midnights = (data.midnights || []).map((m) => Number(m) * 1000);
+			renderChart(data.flow || [], midnights, hours);
 		}).fail(function(jqXHR, textStatus) {
+			if (request !== lastRequest) {return;}
 			OI_toast('Request failed: ' + textStatus, true);
 		});
 	}
 
-	// Next local midnight strictly after epoch milliseconds t
-	function nextMidnight(t) {
-		const d = new Date(t);
-		d.setHours(24, 0, 0, 0);
-		return d.getTime();
-	}
-
-	function renderChart(flow, hours) {
+	// midnights: epoch ms at which the server resets the cumulative volume,
+	// i.e. midnight in the database's time zone, which need not be ours
+	function renderChart(flow, midnights, hours) {
 		if (chart) {
 			chart.destroy();
 			chart = null;
@@ -41,19 +41,20 @@ $(function() {
 			const f = Number(row[1]);
 			const v = Number(row[2]);
 			if (prev) {
-				// The server resets cumulative volume at each local
-				// midnight; insert the day-end value and a zero at every
+				// The server resets cumulative volume at each of its
+				// midnights; insert the day-end value and a zero at every
 				// midnight crossed so the reset draws as a vertical drop
 				// instead of a slow ramp to the next day's first reading
 				let vol = prev.vol;
 				let from = prev.t;
-				for (let m = nextMidnight(prev.t); m <= t; m = nextMidnight(m)) {
+				midnights.forEach(function(m) {
+					if (m <= prev.t || m > t) {return;}
 					vol += prev.flow * (m - from) / 60000;
 					volPoints.push({x: m, y: vol});
 					volPoints.push({x: m, y: 0});
 					vol = 0;
 					from = m;
-				}
+				});
 			}
 			points.push({x: t, y: f});
 			volPoints.push({x: t, y: v});
@@ -143,7 +144,8 @@ $(function() {
 									}
 								}
 								if (!active.length) {return '';}
-								return '\nStations: ' + active.map(escapeHTML).join(', ');
+								// Canvas text, not HTML: no escaping, or & shows as &amp;
+								return '\nStations: ' + active.join(', ');
 							}
 						}
 					},

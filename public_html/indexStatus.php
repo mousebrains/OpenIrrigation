@@ -21,11 +21,8 @@ class IndexDB {
 	private PDOStatement $getPOCs;
 
 	function __construct(string $dbName) {
-		try {
-			$db = new PDO("pgsql:dbname=$dbName;");
-		} catch (\PDOException $e) {
-			throw $e;
-		}
+		$db = new PDO("pgsql:dbname=$dbName;", null, null,
+			[PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 		$this->db = $db;
 		$this->hoursPast = 24; # How many hours into the past to look for events
 		$this->hoursFuture = 24; # How many hours into the future to look for pending
@@ -77,7 +74,7 @@ class IndexDB {
 
 	/** @return array<string, mixed> */
 	function notifications(int $dt): array {
-		$a = $this->db->pgsqlGetNotify(PDO::FETCH_ASSOC, $dt);
+		$a = DB::waitNotify($this->db, $dt);
 		if (!$a) return [];
 		// A bulk change (a scheduler run rewrites hundreds of action rows)
 		// fires one NOTIFY per row; drain the queue so the burst coalesces
@@ -154,17 +151,16 @@ class IndexDB {
 } // DB
 
 $delay = 25 * 1000; // 25 seconds between burps; keeps iOS WiFi power-save from dropping idle connection
-require_once 'php/config.php';
-$dbName = OI_DBNAME;
+require_once 'php/DB1.php';
+$dbName = DB::dbName();
 
 try {
 	$db = new IndexDB($dbName);
+	echo "data: " . $db->fetchInitial() . "\n\n";
 } catch (\PDOException $e) {
 	echo "data: " . json_encode(["error" => "Database connection failed"]) . "\n\n";
 	exit;
 }
-
-echo "data: " . $db->fetchInitial() . "\n\n";
 
 while (!connection_aborted()) { # Wait until client disconnects
 	if (ob_get_length()) {ob_flush();} // Flush output buffer

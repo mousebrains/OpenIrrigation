@@ -3,12 +3,19 @@
 function csrfStartSession(): void {
 	if (session_status() === PHP_SESSION_ACTIVE) return;
 
-	session_start([
+	$options = [
 		'cookie_httponly' => true,
 		'cookie_samesite' => 'Strict',
 		'cookie_secure' => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
 		'use_strict_mode' => true,
-	]);
+	];
+	if (session_start($options)) return;
+	// The browser's session file exists but cannot be read, e.g. one written
+	// by the previous php-fpm user after the pool moved to its own user (see
+	// webserver/README.md). Start a new session rather than none at all.
+	$id = session_create_id();
+	if ($id !== false) session_id($id);
+	session_start($options);
 }
 
 function csrfToken(): string {
