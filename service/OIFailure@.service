@@ -1,0 +1,32 @@
+# This file is part of OpenIrrigation
+#
+# Template unit started by OnFailure=OIFailure@%n.service in the other OI
+# units: emails the 'systemd' subscribers (root if there are none, or if the
+# database is down) that unit %i failed, with its systemctl status. A unit
+# that keeps failing is reported at most once per --holdoff hours.
+#
+# Not enabled or started directly. It has no OnFailure= of its own, so a
+# failure to report can't loop.
+#
+# man systemd.unit for parameters
+# man systemd.service for parameters
+# man systemd.exec for parameters
+
+[Unit]
+Description=OpenIrrigation failure email for %i
+# Ordering only, no Requires=/Wants=: the report must still go out (to root)
+# when PostgreSQL is what failed, and must not start it
+After=postgresql.service postfix.service
+
+[Service]
+# Resource containment and hardening (1GB Pi: a leak must not take down the host)
+MemoryMax=128M
+NoNewPrivileges=yes
+PrivateTmp=yes
+Type=oneshot
+TimeoutStartSec=2min
+User=__USER__
+Group=__GROUP__
+# The per-unit holdoff stamp files live here too
+WorkingDirectory=__LOGDIR__
+ExecStart=__BINDIR__/notifyFailure.py --db=__DBNAME__ --unit=%i --logfile=__LOGDIR__/notifyFailure.log

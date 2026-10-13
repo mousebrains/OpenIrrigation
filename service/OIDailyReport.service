@@ -8,6 +8,8 @@
 
 [Unit]
 Description=OpenIrrigation Daily Report Generator
+# Email the 'systemd' subscribers (root if none) when this unit fails
+OnFailure=OIFailure@%n.service
 Requires=postgresql.service
 After=postgresql.service
 Requires=postfix.service
@@ -20,6 +22,9 @@ MemoryMax=256M
 NoNewPrivileges=yes
 PrivateTmp=yes
 Type=oneshot
+# A oneshot has no start timeout by default; a hung run must not hold the
+# unit forever. A run is two attempts 60 s apart, each SMTP send 30 s at most.
+TimeoutStartSec=10min
 User=__USER__
 Group=__GROUP__
 WorkingDirectory=__LOGDIR__

@@ -17,6 +17,8 @@ After=postgresql.service
 # Never stop retrying: an extended DB/serial outage must not leave the
 # irrigation controller permanently down on an unattended appliance.
 StartLimitIntervalSec=0
+# Email 'systemd' subscribers when it fails (rate-limited by OIFailure@)
+OnFailure=OIFailure@%n.service
 
 [Service]
 # Resource containment and hardening (1GB Pi: a leak must not take down the host)

@@ -1,19 +1,24 @@
 #
-# Install scripts into appropriate directories for a Raspbian Buster system
-# with a user/group
+# Install the systemd units for a Debian system with a user/group
 #
 
 include ../Makefile.params
+# Makefile.params from before ./config knew --archiveDir: use its default
+ARCHIVEDIR ?= $(PREFIX)/archive
 
-# Services (oneshot units triggered by timers, plus long-running daemons)
-SERVICES = OITDI.service
-SERVICES+= OIAgriMet.service
-SERVICES+= OIAgriMetStats.service
-SERVICES+= OISched.service
-SERVICES+= OIDailyReport.service
-SERVICES+= OIDatabaseMaintenance.service
-SERVICES+= OIFilterMonitor.service
-SERVICES+= OIFlowSensorWatch.service
+# Long-running daemons
+DAEMONS = OITDI.service
+DAEMONS+= OISched.service
+
+# Oneshot units, each run by its timer
+ONESHOTS = OIAgriMet.service
+ONESHOTS+= OIAgriMetStats.service
+ONESHOTS+= OIDailyReport.service
+ONESHOTS+= OIDatabaseMaintenance.service
+ONESHOTS+= OIFilterMonitor.service
+ONESHOTS+= OIFlowSensorWatch.service
+
+SERVICES = $(DAEMONS) $(ONESHOTS)
 
 # Timers
 TIMERS = OIAgriMet.timer
@@ -23,18 +28,27 @@ TIMERS+= OIDatabaseMaintenance.timer
 TIMERS+= OIFilterMonitor.timer
 TIMERS+= OIFlowSensorWatch.timer
 
+# Templates, started by other units (OnFailure=) and never enabled themselves
+TEMPLATES = OIFailure@.service
+
 SRC = $(SERVICES) $(TIMERS)
 
-DEST = $(SRC:%=$(SERVICEDIR)/%)
+DEST = $(SRC:%=$(SERVICEDIR)/%) $(TEMPLATES:%=$(SERVICEDIR)/%)
 
 .PHONY: all install install-services install-logs uninstall clean start stop restart status reload enable disable
 
 all:
 
-install: install-services install-logs
+install: install-logs install-services
 
+# Enable the daemons and timers so a newly added timer survives a reboot, and
+# start the timers. Starting a timer that is already running does nothing; a
+# newly added timer first runs its service when it next elapses. The daemons
+# keep running the old code until 'make restart'.
 install-services: $(DEST)
 	systemctl --no-pager daemon-reload
+	systemctl --no-pager enable $(DAEMONS)
+	systemctl --no-pager enable --now $(TIMERS)
 
 install-logs:
 	$(INSTALL) --directory $(LOGDIR)
@@ -43,10 +57,12 @@ install-logs:
 clean:
 
 uninstall:
-	-systemctl --no-pager disable --now $(TIMERS) OITDI.service OISched.service
+	-systemctl --no-pager disable --now $(TIMERS) $(DAEMONS)
 	$(RM) $(DEST)
 	systemctl --no-pager daemon-reload
 
+# systemd runs units as root, so their files must be root-owned and not
+# writable by the service user
 $(SERVICEDIR)/%: % ../Makefile.params
 	sed -e 's?__USER__?$(USER)?g' \
 	    -e 's?__GROUP__?$(GROUP)?g' \
@@ -62,22 +78,33 @@ $(SERVICEDIR)/%: % ../Makefile.params
 	    -e 's?__AUDITRETENTIONDAYS__?$(AUDITRETENTIONDAYS)?g' \
 	    -e 's?__SIMULATE__?$(SIMULATE)?g' \
 	    <$< >$@
-	chown -R $(USER):$(GROUP) $(@D)
+	chown root:root $@
+	chmod 0644 $@
 
 reload:
 	systemctl --no-pager daemon-reload
 
+# Restart the daemons, and the timers that are running (to pick up schedule
+# changes). Restarting every unit would run each oneshot at once -- an extra
+# daily report per deploy -- and start timers that were left stopped. The
+# oneshots load their new code on their next run.
+# Restarting (or stopping and starting) a timer can still run its service at
+# once. A Persistent= timer runs it if a run was missed while the timer was
+# stopped. A timer without Persistent= (OIFlowSensorWatch) runs it if it has
+# elapsed since the timer was last started, which for a 2-minute timer is
+# almost always: one extra, harmless flow-sensor check per restart.
 restart: reload
-	systemctl --no-pager restart $(SRC)
+	systemctl --no-pager restart $(DAEMONS)
+	systemctl --no-pager try-restart $(TIMERS)
 
 enable:
-	systemctl --no-pager enable $(TIMERS) OITDI.service OISched.service
+	systemctl --no-pager enable $(TIMERS) $(DAEMONS)
 
 disable:
-	systemctl --no-pager disable $(TIMERS) OITDI.service OISched.service
+	systemctl --no-pager disable $(TIMERS) $(DAEMONS)
 
 start:
-	systemctl --no-pager start $(TIMERS) OITDI.service OISched.service
+	systemctl --no-pager start $(TIMERS) $(DAEMONS)
 
 stop:
 	systemctl --no-pager list-unit-files $(SRC) --no-legend | awk '{print $$1}' | xargs -r systemctl --no-pager stop

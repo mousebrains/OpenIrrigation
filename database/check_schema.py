@@ -48,6 +48,7 @@ CRITICAL_COLUMNS = [
     ("station", "cleanflow", "double precision"),  # migrate_008
     ("station", "qfiltersensor", "boolean"),  # migrate_008
     ("filterstatus", "gallonssinceclean", "double precision"),  # migrate_009
+    ("filterstatus", "notified", "timestamp with time zone"),  # migrate_016
 ]
 
 # (index_name, table_name)

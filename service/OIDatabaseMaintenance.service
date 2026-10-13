@@ -4,6 +4,8 @@
 Description=OpenIrrigation Database Retention Maintenance
 Requires=postgresql.service
 After=postgresql.service
+# Email 'systemd' subscribers if a run fails (e.g. it can't archive)
+OnFailure=OIFailure@%n.service
 
 [Service]
 # Resource containment and hardening (1GB Pi: a leak must not take down the host)
@@ -11,6 +13,8 @@ MemoryMax=256M
 NoNewPrivileges=yes
 PrivateTmp=yes
 Type=oneshot
+# Archiving is bounded by --max-rows-per-table; never hang the timer
+TimeoutStartSec=1h
 User=__USER__
 Group=__GROUP__
 WorkingDirectory=__LOGDIR__

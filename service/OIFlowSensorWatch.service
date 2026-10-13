@@ -1,8 +1,9 @@
 # This file is part of OpenIrrigation
 #
 # this service checks the POC flow sensor against the valves that are open:
-# no flow when there should be ('lowFlow' subscribers), or a lawn zone well
-# above its clean baseline ('highFlow' subscribers)
+# no flow when there should be, a sensor that stopped reporting, or a lawn
+# zone well below its clean baseline ('lowFlow' subscribers), or well above
+# it ('highFlow' subscribers); root gets them if nobody subscribes
 #
 # man systemd.unit for parameters
 # man systemd.service for parameters
@@ -10,6 +11,8 @@
 
 [Unit]
 Description=OpenIrrigation Flow Sensor Watchdog
+# Email the 'systemd' subscribers (root if none) when this unit fails
+OnFailure=OIFailure@%n.service
 Requires=postgresql.service
 After=postgresql.service
 Requires=postfix.service
@@ -22,8 +25,11 @@ MemoryMax=256M
 NoNewPrivileges=yes
 PrivateTmp=yes
 Type=oneshot
+# A oneshot has no start timeout by default. A run takes seconds; a hung one
+# is killed before the next 2-minute run is due.
+TimeoutStartSec=90s
 User=__USER__
 Group=__GROUP__
-# The state file (last stall alerted) lives here too
+# The state file (alarms already emailed) lives here too
 WorkingDirectory=__LOGDIR__
 ExecStart=__BINDIR__/FlowSensorWatch.py --db=__DBNAME__ --logfile=__LOGDIR__/FlowSensorWatch.log

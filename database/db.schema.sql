@@ -23,9 +23,10 @@ CREATE TABLE schemaMigration( -- one row per applied database migration
 	appliedAt TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	source TEXT -- which script (or fresh install) recorded it
 	);
--- A fresh install already includes every migration up to this one; bump it
--- whenever a migration is added
-INSERT INTO schemaMigration(num, source) VALUES (15, 'fresh install');
+-- A fresh install already includes every migration up to the newest; bump the
+-- upper bound whenever a migration is added
+INSERT INTO schemaMigration(num, source)
+	SELECT n, 'fresh install' FROM generate_series(14, 16) AS n;
 
 -- Domains are data types with constraints
 
@@ -453,10 +454,10 @@ CREATE TABLE station( -- irrigation station information
 	maxCycleTime POSFLOAT DEFAULT 1000, -- maximum cycle time (min)
 	soakTime NONNEGFLOAT DEFAULT 0, -- minimum soak time (min)
 	maxCoStations POSINTEGER DEFAULT NULL, -- number of stn at same time
-	measuredFlow NONNEGFLOAT, -- measured flow in GPM
+	measuredFlow NONNEGFLOAT, -- user-entered measured flow in GPM (never written by the software); scheduler flow budget when set
 	userFlow NONNEGFLOAT, -- user input in GPM
-	lowFlowFrac PERCENT DEFAULT NULL, -- % of meas/user flow for alert
-	highFlowFrac SMALLINT DEFAULT NULL CHECK (highFlowFrac BETWEEN 100 AND 1000), -- % of meas/user flow for alert
+	lowFlowFrac PERCENT DEFAULT NULL, -- low-flow alarm, % of clean flow (NULL: FLOWWATCH.lowFlowPct; 0: off)
+	highFlowFrac SMALLINT DEFAULT NULL CHECK (highFlowFrac BETWEEN 100 AND 1000), -- high-flow alarm, % of clean flow (NULL: FLOWWATCH.highFlowPct)
 	flowDelayOn NONNEGINTEGER DEFAULT 60, -- delay after on before flow alerts (s)
 	flowDelayOff NONNEGINTEGER DEFAULT 10, -- delay after off before flow alerts (s)
 	cleanFlow NONNEGFLOAT, -- clean-filter baseline flow in GPM (filter feature)
@@ -476,10 +477,10 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 	('station', 'soaktime',      3,'Soak Time (min)', 10, 0, 1000, 0.1),
 	('station', 'maxcycletime',  4,'Max Cycle Time (min)', 10, 0, 1000, 0.1),
 	('station', 'mincycletime',  5,'Min Cycle Time (min)', 10, 0, 1000, 0.1),
-	('station', 'lowflowfrac',   6,'Low flow (%)', 10, 0, 100, NULL),
-	('station', 'highflowfrac',  7,'High flow (%)', 200, 100, 500, NULL),
+	('station', 'lowflowfrac',   6,'Low flow (% of clean flow)', 10, 0, 100, NULL),
+	('station', 'highflowfrac',  7,'High flow (% of clean flow)', 200, 100, 500, NULL),
 	('station', 'maxcostations', 8,'Max # co-stations', 200, 0, 1000, NULL),
-	('station', 'measuredflow',  9,'Measured Flow (GPM)', 200, 0, 1000, 0.1),
+	('station', 'measuredflow',  9,'Measured Flow (GPM, manual)', 200, 0, 1000, 0.1),
 	('station', 'userflow',     10,'User Flow (GPM)', 200, 0, 1000, 0.1),
 	('station', 'station',      11,'Station #', 10, 0, 1000, NULL),
 	('station', 'sortorder',    12,'Sorting Order', 10, 0, 1000, NULL),
@@ -899,7 +900,8 @@ CREATE TABLE filterStatus( -- computed filter degradation time series
 	estDP FLOAT, -- estimated/most-recent filter dP (PSI), NULL until calibrated
 	Rf FLOAT, -- filter resistance dP/flow^2, from latest gauge reading
 	forecastDays FLOAT, -- estimated days until the service threshold, NULL if stable
-	state TEXT -- 'clean' | 'watch' | 'service'
+	state TEXT, -- 'clean' | 'watch' | 'service' | 'sensor' (the lawn runs read no flow)
+	notified TIMESTAMP WITH TIME ZONE -- when this run emailed the service alert, NULL if it didn't
 	);
 CREATE INDEX filterStatus_ts_index ON filterStatus(poc, timestamp);
 

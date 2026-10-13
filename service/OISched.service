@@ -8,6 +8,8 @@
 
 [Unit]
 Description=OpenIrrigation Scheduler
+# Email the 'systemd' subscribers (root if none) when this unit fails
+OnFailure=OIFailure@%n.service
 Requires=postgresql.service
 After=postgresql.service
 
