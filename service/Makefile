@@ -42,9 +42,9 @@ all:
 install: install-logs install-services
 
 # Enable the daemons and timers so a newly added timer survives a reboot, and
-# start the timers. Starting a timer doesn't run its service until it next
-# elapses (or at once, for a Persistent= timer that missed a run while
-# stopped). The daemons keep running the old code until 'make restart'.
+# start the timers. Starting a timer that is already running does nothing; a
+# newly added timer first runs its service when it next elapses. The daemons
+# keep running the old code until 'make restart'.
 install-services: $(DEST)
 	systemctl --no-pager daemon-reload
 	systemctl --no-pager enable $(DAEMONS)
@@ -88,6 +88,11 @@ reload:
 # changes). Restarting every unit would run each oneshot at once -- an extra
 # daily report per deploy -- and start timers that were left stopped. The
 # oneshots load their new code on their next run.
+# Restarting (or stopping and starting) a timer can still run its service at
+# once. A Persistent= timer runs it if a run was missed while the timer was
+# stopped. A timer without Persistent= (OIFlowSensorWatch) runs it if it has
+# elapsed since the timer was last started, which for a 2-minute timer is
+# almost always: one extra, harmless flow-sensor check per restart.
 restart: reload
 	systemctl --no-pager restart $(DAEMONS)
 	systemctl --no-pager try-restart $(TIMERS)
