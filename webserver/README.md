@@ -74,8 +74,10 @@ to `ROLES`. An existing install needs it created once by hand.
         make all
         sudo make install
 
-   Read `setup.sh`'s output: it should end with
-   `nginx and php-fpm will run as oiweb` and no WARNING lines.
+   Read `setup.sh`'s output: it should say
+   `nginx and php-fpm will run as oiweb` (before it validates the nginx
+   and php-fpm configuration and ends with `Done.`) and have no WARNING
+   lines.
 
 4. Optional: remove the PHP session files the old user left. Pages cope
    without this (a browser whose session file is unreadable gets a new
