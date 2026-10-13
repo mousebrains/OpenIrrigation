@@ -1118,56 +1118,115 @@ END;
 $$;
 
 -- When an on command completes
+-- Returns FALSE when the action no longer exists, e.g. it was deleted while the
+-- on was in flight; the valve is then on with no off, so the caller turns it off.
 DROP FUNCTION IF EXISTS command_on_done;
 CREATE OR REPLACE FUNCTION command_on_done(
         cmdID  command.id%TYPE, -- Command record to operate on
-        t TIMESTAMP WITH TIME ZONE, -- actual time off operation
+        t TIMESTAMP WITH TIME ZONE, -- actual time on operation
         codigo INTEGER, -- on command code
         preCur INTEGER,
         peakCur INTEGER,
         postCur INTEGER)
-RETURNS VOID LANGUAGE plpgSQL AS $$
+RETURNS BOOLEAN LANGUAGE plpgSQL AS $$
 DECLARE actID action.id%TYPE; -- id field in action table
 DECLARE sensorID sensor.id%TYPE; -- id field in sensor table
 DECLARE offID action.cmdOff%TYPE; -- id field in command table of off command
+DECLARE onTime action.tOn%TYPE; -- scheduled on time
 DECLARE offTime action.tOff%TYPE; -- adjusted timestamp
+DECLARE nextOn action.tOn%TYPE; -- this valve's next pending on time
 DECLARE pgmStnID pgmStn.id%TYPE; -- program station id
 DECLARE nPgmStn BIGINT; -- Number of instances of this pgmStn in action table
 BEGIN
 	DELETE FROM command WHERE id=cmdID RETURNING action INTO actID;
+	IF actID IS NULL THEN
+		RETURN FALSE; -- The action was deleted while the on was in flight
+	END IF;
+	-- A late on still gets its full run time, so push tOff back by the delay...
+	SELECT sensor,tOn,GREATEST(tOff,t+(tOff-tOn)),cmdOff,pgmStn
+		INTO sensorID,onTime,offTime,offID,pgmStnID FROM action WHERE id=actID;
+	-- ...but not into this valve's next action: that on would then come before
+	-- this off, which would end both runs
+	SELECT MIN(tOn) INTO nextOn FROM action
+		WHERE sensor=sensorID AND id<>actID AND cmd=0 AND cmdOn IS NOT NULL AND tOn>=onTime;
+	IF nextOn < offTime THEN
+		offTime = GREATEST(nextOn, t+INTERVAL '1 second');
+	END IF;
 	-- Update tOn, adjust tOff, and set onCode,pre,peak,post
 	UPDATE action SET
 		tOn=t,
-		tOff=GREATEST(tOff,t+(tOff-tOn)),
+		tOff=offTime,
 		onCode=codigo,pre=preCur,peak=peakCur,post=postCur
 		WHERE id=actID;
-	-- I tried using RETURNING but with PostgreSQL 11 it didn't work
-	-- RETURNING tOff,cmdOff AS offTime,offID;
 	-- Adjust the command off time
-	SELECT tOff,cmdOff,pgmStn INTO offTime,offID,pgmStnID FROM action WHERE id=actID;
 	UPDATE command SET timestamp=offTime WHERE id=offID;
 	-- No need to send notification since TDIvalve will query next time to wakeup
+	IF t > onTime+INTERVAL '10 seconds' THEN
+		-- The later tOff can run into another valve's slot, e.g. the next solo
+		-- lawn zone's, so have the scheduler place the pending actions again
+		PERFORM(SELECT scheduler_notify('Late on(' || actID::text || ') by '
+			|| date_trunc('second', t-onTime)::text));
+	END IF;
 	SELECT COUNT(*) INTO nPgmstn FROM action WHERE pgmStn=pgmStnID; -- How many other instances of this pgmStn are in action
 	IF nPgmStn < 2 THEN -- If I'm the only one
 		-- Drop corresponding pgmStn record for single shot actions
-		DELETE FROM pgmStn WHERE id=pgmStnID AND qSingle; 
+		DELETE FROM pgmStn WHERE id=pgmStnID AND qSingle;
 	END IF;
+	RETURN TRUE;
 END;
 $$;
 
--- When an on command completes unsuccesfully
+-- When an on command was sent but not confirmed
+-- The valve may well be on, so keep the off and bring it forward to now.  Once
+-- the controller confirms the off, command_off_done moves the action to
+-- historical with onCode=codigo.  Returns the off command's id, NULL when the
+-- action no longer exists (the caller then turns the valve off itself).
 DROP FUNCTION IF EXISTS command_on_failed;
 CREATE OR REPLACE FUNCTION command_on_failed(
 	cmdID  command.id%TYPE, -- Command record to operate on
 	codigo INTEGER) -- on command code
-RETURNS VOID LANGUAGE plpgSQL AS $$
+RETURNS INTEGER LANGUAGE plpgSQL AS $$
 DECLARE actID action.id%TYPE; -- id field in action table
 DECLARE offID command.id%TYPE; -- id of off command for this on command
+DECLARE offTime action.tOff%TYPE; -- when to turn the valve off, now
+DECLARE pgmStnID pgmStn.id%TYPE; -- program station id
+BEGIN
+	DELETE FROM command WHERE id=cmdID RETURNING action INTO actID;
+	IF actID IS NULL THEN
+		RETURN NULL; -- The action was deleted while the on was in flight
+	END IF;
+	UPDATE action SET tOff=GREATEST(CURRENT_TIMESTAMP, tOn+INTERVAL '1 second'), onCode=codigo
+		WHERE id=actID
+		RETURNING tOff,cmdOff,pgmStn INTO offTime,offID,pgmStnID;
+	UPDATE command SET timestamp=offTime WHERE id=offID;
+	PERFORM(SELECT command_notify(offTime));
+	-- A single shot (manual) program station is not run again
+	IF (SELECT COUNT(*) FROM action WHERE pgmStn=pgmStnID) < 2 THEN
+		DELETE FROM pgmStn WHERE id=pgmStnID AND qSingle;
+	END IF;
+	RETURN offID;
+END;
+$$;
+
+-- When an on command was never sent, e.g. too many valves are already on
+-- The valve was not turned on, so move the action straight to historical
+DROP FUNCTION IF EXISTS command_on_refused;
+CREATE OR REPLACE FUNCTION command_on_refused(
+	cmdID  command.id%TYPE, -- Command record to operate on
+	codigo INTEGER) -- on command code
+RETURNS VOID LANGUAGE plpgSQL AS $$
+DECLARE actID action.id%TYPE; -- id field in action table
+DECLARE pgmStnID pgmStn.id%TYPE; -- program station id
 BEGIN
 	SELECT action INTO actID FROM command WHERE id=cmdID;
-	SELECT cmdOff INTO offID FROM action WHERE id=actID;
-	PERFORM(SELECT command_on_done(cmdID, CURRENT_TIMESTAMP, codigo, NULL, NULL, NULL));
-	PERFORM(SELECT command_off_failed(offID,codigo));
+	INSERT INTO historical(sensor,tOn,tOff,program,pgmStn,pgmDate,onCode,offCode)
+		SELECT sensor,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP,program,pgmStn,pgmDate,codigo,codigo
+			FROM action WHERE id=actID;
+	DELETE FROM action WHERE id=actID RETURNING pgmStn INTO pgmStnID; -- and its commands
+	-- A single shot (manual) program station is not run again
+	IF NOT EXISTS (SELECT 1 FROM action WHERE pgmStn=pgmStnID) THEN
+		DELETE FROM pgmStn WHERE id=pgmStnID AND qSingle;
+	END IF;
 END;
 $$;
 
@@ -1196,19 +1255,25 @@ CREATE OR REPLACE FUNCTION command_off_done(
 RETURNS VOID LANGUAGE plpgSQL AS $$
 DECLARE actID action.id%TYPE; -- id field in action table
 DECLARE sensorID sensor.id%TYPE; -- id field in sensor table
+DECLARE offTime command.timestamp%TYPE; -- when this off was due
+DECLARE onID action.id%TYPE; -- an action which is on
 BEGIN
-	SELECT action INTO actID FROM command WHERE id=cmdID;
+	SELECT action,timestamp INTO actID,offTime FROM command WHERE id=cmdID;
 	SELECT sensor INTO sensorID FROM action WHERE id=actID;
-	-- For all actions with this sensor id, which are on, turn them off
-	FOR actID IN SELECT id FROM action
-			WHERE sensor=sensorID AND cmdOn IS NULL AND cmdOff IS NOT NULL
+	-- The valve is off, so close this action and every other one of this sensor
+	-- which is on, except one whose on came after this off was due: that is
+	-- the valve's next run, which this off does not end.
+	FOR onID IN SELECT id FROM action
+			WHERE sensor=sensorID
+			AND (id=actID OR (cmdOn IS NULL AND cmdOff IS NOT NULL AND tOn<offTime))
 	LOOP
-		PERFORM(SELECT action_copy_to_historical(actID,t,codigo));
+		PERFORM(SELECT action_copy_to_historical(onID,t,codigo));
 	END LOOP;
 END;
 $$;
 
 -- When an off command did not complete properly
+-- TDIvalve no longer calls this: an off is retried until it is confirmed
 DROP FUNCTION IF EXISTS command_off_failed;
 CREATE OR REPLACE FUNCTION command_off_failed(
 	cmdID  command.id%TYPE, -- Command record to operate on

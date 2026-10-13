@@ -28,6 +28,7 @@ def sim(logger):
     args.simBadChk1 = 0
     args.simDelayFrac = 0
     args.simDelayMaxSecs = 0
+    args.simReplyDelay = 0
     args.simResend = False
     qExcept = queue.Queue()
     return TDISimul(0, args, logger, qExcept)
@@ -251,3 +252,29 @@ class TestStateManagement:
         sim.wirePaths[0] = False
         sim.cmdPathTwo(b'02', b'0001', '{:02X}')
         assert sim.wirePaths[0] is True
+
+
+class TestAgainstSerial:
+    """TDIserial talking to the simulator over a pty, as TDIserver --simulate does"""
+    def test_slow_replies(self, sim, logger, monkeypatch):
+        """With the reply 1.1 s after the ACK, longer than TDIserial used to wait"""
+        import os
+        import pty
+        import tty
+        import TDIserial
+        from tdi_fakes import PtyPort
+        monkeypatch.setattr(TDIserial, 'REPLY_WAIT', 3)
+        monkeypatch.setattr(TDIserial.serial, 'SerialException', OSError, raising=False)
+        (master, slave) = pty.openpty()
+        tty.setraw(slave)
+        sim.fd = master
+        sim.args.simReplyDelay = 1.1
+        sim.start()
+        ser = TDIserial.Serial(PtyPort(slave), logger, queue.Queue())
+        try:
+            assert ser.transact(b'0A2200')[1][:6] == b'1A2200'
+            assert ser.transact(b'0D22')[1] == b'1D2200'
+        finally:
+            sim.shutdown()
+            os.close(slave)
+            os.close(master)

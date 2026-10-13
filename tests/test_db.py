@@ -46,6 +46,7 @@ class FakeConn:
         self.closed = closed
         self.executed = []
         self.rollbacks = 0
+        self.commits = 0
 
     def cursor(self, **kwargs):
         # Deliberately succeeds even when the server is gone: creating a cursor
@@ -54,6 +55,9 @@ class FakeConn:
 
     def rollback(self):
         self.rollbacks += 1
+
+    def commit(self):
+        self.commits += 1
 
     def close(self):
         self.closed = True
@@ -208,3 +212,76 @@ class TestCursorRaises:
         db = DB.DB('testdb', logger)
 
         db.updateState('TDI', 'some failure')  # must not raise
+
+
+class TestDBout:
+    """DBout used to try each write once, so the first sensorLog/currentLog write
+    after every PostgreSQL restart was lost."""
+
+    @staticmethod
+    def mkDBout(logger):
+        import argparse
+        import queue
+        args = argparse.Namespace(db='testdb', site='site', controller='ctl')
+        return DB.DBout(args, logger, queue.Queue())
+
+    def test_write_after_a_restart_is_retried(self, logger, monkeypatch, noSleep):
+        fresh = FakeConn()
+        mkConnector(monkeypatch, fresh)
+        out = self.mkDBout(logger)
+        out.db.db = FakeConn(failOnExecute=True) # went stale across the restart
+
+        assert out.write('SELECT sensorInsert(%s);', [1]) is True
+        assert fresh.executed == ['SELECT 1;', 'SELECT sensorInsert(%s);']
+        assert fresh.commits == 1
+
+    def test_writes_wait_for_the_database_in_order(self, logger, monkeypatch, noSleep):
+        mkConnector(monkeypatch) # down
+        out = self.mkDBout(logger)
+        out.backlog.extend([('SELECT a();', []), ('SELECT b();', [])])
+        assert out.flush() is False
+        assert len(out.backlog) == 2 # kept, not dropped
+
+        conn = FakeConn()
+        mkConnector(monkeypatch, conn) # back
+        assert out.flush() is True
+        assert conn.executed[-2:] == ['SELECT a();', 'SELECT b();']
+        assert not out.backlog
+
+    def test_a_bad_statement_is_dropped(self, logger, monkeypatch, noSleep):
+        """A failure on a working connection is the statement, not an outage"""
+        class SyntaxCursor(FakeCursor):
+            def execute(self, sql, args=None):
+                super().execute(sql, args)
+                if 'broken' in sql:
+                    raise RuntimeError('syntax error')
+
+        conn = FakeConn()
+        conn.cursor = lambda **kwargs: SyntaxCursor(conn)
+        mkConnector(monkeypatch)
+        out = self.mkDBout(logger)
+        out.db.db = conn
+        assert out.write('SELECT broken(;', []) is False
+        assert out.db.db is conn # the connection was fine, so it was kept
+
+    def test_run_writes_then_stops(self, logger, monkeypatch, noSleep):
+        conn = FakeConn()
+        mkConnector(monkeypatch, conn)
+        out = self.mkDBout(logger)
+        out.put('SELECT sensorInsert(%s,%s,%s,%s);', 1.0, [0, 42])
+        out.putShort('SELECT processState_insert(%s,%s);', ('TDI', 'Running'))
+        out.shutdown()
+        out.runMain()
+        assert conn.executed[-2:] == ['SELECT sensorInsert(%s,%s,%s,%s);',
+                                      'SELECT processState_insert(%s,%s);']
+        assert conn.commits == 2
+
+    def test_backlog_is_bounded(self, logger, monkeypatch, noSleep):
+        mkConnector(monkeypatch) # down throughout
+        out = self.mkDBout(logger)
+        out.BACKLOG_MAX = 3
+        for i in range(5):
+            out.putShort('SELECT w(%s);', (i,))
+        out.queue.put(None)
+        out.runMain()
+        assert [a for (_sql, a) in out.backlog] == [(2,), (3,), (4,)]

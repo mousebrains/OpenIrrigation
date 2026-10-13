@@ -69,6 +69,8 @@ def mkArgs(parser): # Add simulation related options
             help='controller fraction to delay message')
     grp.add_argument('--simDelayMaxSecs', type=float, default=0,
             help='controller max seconds to delay message sending')
+    grp.add_argument('--simReplyDelay', type=float, default=0,
+            help='seconds between the ACK and the reply, as a busy controller takes (4-6 s seen)')
 
 class TDISimul(MyBaseThread):
     def __init__(self, fd, args, logger, qExcept):
@@ -173,7 +175,7 @@ class TDISimul(MyBaseThread):
         time.sleep(dt0) # Delay before sending ACK
         os.write(self.fd, ACK + b'\r') # Acknowledge a well formated message
         if not reply: return True
-        time.sleep(dt1) # Wait a specified amount of time
+        time.sleep(dt1 + self.args.simReplyDelay) # Wait a specified amount of time
         self.logger.debug('Sending %s in response to %s', reply, msg)
         os.write(self.fd, SYNC + self.mkMessage(reply) + b'\r') # Send the message, '\r' extra
 

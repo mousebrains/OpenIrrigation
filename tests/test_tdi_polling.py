@@ -187,3 +187,30 @@ class TestChannelChangeDetection:
         poll.procReply(1.0, b'1200FF', [0, 0xFF])
         poll.procReply(2.0, b'1200FF', [0, 0xFF])
         assert mock_dbout.put.call_count == 1
+
+
+# ── Requests through the serial thread ──────────────────────────────
+
+class TestPollRequests:
+    def test_unanswered_request_is_abandoned(self, logger, mock_dbout, monkeypatch):
+        """Each request has its own reply slot, so a late reply can't answer the next one."""
+        import TDIbase
+        monkeypatch.setattr(TDIbase.random, 'uniform', lambda a, b: 0)
+        monkeypatch.setattr(TDIbase, 'POLL_TIMEOUT', 0.1)
+        poll = make_poll(ErrorPoll, logger, mock_dbout, {'errorPeriod': 0})
+        slots = []
+
+        def put(msg, slot, priority=None, final=False):
+            assert msg == b'0E'
+            slots.append(slot)
+            if len(slots) == 2:
+                slots[0].put(1.0, b'1E07') # The first one's reply, late
+                slot.put(2.0, b'1E05')
+            elif len(slots) == 3:
+                poll.shutdown()
+        poll.serial.put.side_effect = put
+        poll.runMain()
+
+        assert slots[0].abandoned
+        assert not slots[1].abandoned
+        mock_dbout.put.assert_called_once_with(poll.msgHandler.sql, 2.0, [5])

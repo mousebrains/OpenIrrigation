@@ -2,7 +2,7 @@
 # and for event driven messages
 
 from MyBaseThread import MyBaseThread
-from TDIserial import SerialSender
+from TDIserial import SerialSender, Reply
 import queue
 import random
 from typing import Any
@@ -85,15 +85,10 @@ class TDICodec: # construct/deconstruct TDI protocol messages
         return args
 
 
-class MessageHandler(TDICodec): # TDICodec with a reply queue for polling threads
+class MessageHandler(TDICodec): # TDICodec with the SQL for a polling thread's readings
     def __init__(self, logger, cmd, argInfo, replyInfo, sql):
         super().__init__(logger, cmd, argInfo, replyInfo)
         self.sql = sql
-        self.queue = queue.Queue()
-
-    def put(self, t, args): self.queue.put((t, args))
-    def get(self, timeout=None): return self.queue.get(timeout=timeout)
-    def task_done(self): return self.queue.task_done()
 
 def is_zee_reply(reply):
     """Check if a reply is a Zee (1Z) error message. Returns True if so."""
@@ -124,6 +119,8 @@ def parseZee(msg, logger): # Parse and build reply for 1Z messages
 
 
 
+POLL_TIMEOUT = 60 # seconds a poll waits for the serial thread, which puts valve commands first
+
 class Base(MyBaseThread):
     REQUIRED_PARAMS: list[str] = []  # Subclasses override with their required param keys
     def __init__(self, logger, qExcept, serial: SerialSender, dbOut, label, dt, cmd, argInfo, replyInfo,
@@ -136,6 +133,7 @@ class Base(MyBaseThread):
         self.zeeSQL = zeeSQL
         self.args: list = []
         self.previous: Any = None
+        self.slot: Reply | None = None # Where the reply being waited for will arrive
 
     def addArgs(self, arg):
         self.args.append(arg)
@@ -143,7 +141,9 @@ class Base(MyBaseThread):
     def shutdown(self) -> None:
         """Wake any pending reply wait while requesting shutdown."""
         super().shutdown()
-        self.msgHandler.put(None, None)
+        slot = self.slot
+        if slot is not None:
+            slot.put(None, None)
 
     def runMain(self): # Called on thread start
         serial = self.serial
@@ -163,15 +163,19 @@ class Base(MyBaseThread):
                 if not self.should_run:
                     return
                 msg = msgHandler.buildMessage(item)
-                serial.put(msg, self.msgHandler)
+                slot = Reply() # A reply of its own, so a late one can't answer the next request
+                self.slot = slot
+                serial.put(msg, slot)
                 try:
-                    (t, reply) = self.msgHandler.get(timeout=30)
+                    (t, reply) = slot.get(timeout=POLL_TIMEOUT)
                 except queue.Empty:
+                    slot.abandon() # Valve commands kept the line busy; don't send it late
                     logger.warning('Timeout waiting for serial reply to %s', msg)
                     if self.wait_for_shutdown(dt):
                         return
                     continue
-                self.msgHandler.task_done()
+                finally:
+                    self.slot = None
                 if not self.should_run:
                     return
                 if not reply:
