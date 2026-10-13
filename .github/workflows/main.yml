@@ -3,8 +3,8 @@ name: CI
 on:
   push:
     branches: [ master ]
+  # Every PR, including ones stacked on another PR's branch
   pull_request:
-    branches: [ master ]
 
 jobs:
   pre-commit:
@@ -57,26 +57,60 @@ jobs:
     - name: Install dependencies
       run: pip install -r requirements-dev.txt
     - name: Run ruff
-      run: ruff check scripts/
+      run: ruff check scripts/ database/ tests/ tests_sql/
 
   pytest:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # oldest supported (pyproject) and what Debian 13 on the Pi runs
+        python-version: ['3.11', '3.13']
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
-        python-version: '3.12'
+        python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: pip install -r requirements-dev.txt
     - name: Run tests
       run: python -m pytest tests/ -x -q --cov=scripts --cov-report=term-missing --cov-fail-under=25
+
+  sql-tests:
+    # The SQL functions, triggers and migrations against a real PostgreSQL 17:
+    # a fresh install, every migration applied twice, check_schema.py, and the
+    # tests in tests_sql/.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          # throwaway container reachable only from this job: no password
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      OI_TEST_PG: '1'
+      PGHOST: localhost
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGTZ: America/Los_Angeles
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+    - name: Install dependencies
+      run: pip install -r requirements-dev.txt
+    - name: Run SQL tests
+      run: python -m pytest tests_sql -q
 
   phpstan:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - name: Install PHPStan
-      run: composer global require phpstan/phpstan
+      run: composer global require phpstan/phpstan:2.3.1  # pinned: an unpinned upgrade broke CI (#18)
     - name: Run PHPStan
       run: ~/.composer/vendor/bin/phpstan analyse --configuration phpstan.neon
 

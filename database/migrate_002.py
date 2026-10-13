@@ -41,23 +41,30 @@ def migrate(db, dry_run):
     skipped = []
 
     with db.cursor() as cur:
-        # Step 1: Add stddev column to ETannual
-        if column_exists(cur, "etannual", "stddev"):
-            skipped.append("etannual.stddev: column already exists")
+        # migrate_003 replaced stddev with the quantile columns; once it has run
+        # (or on a fresh install, which starts with them) there is nothing to do,
+        # and re-adding stddev's tableInfo row would collide with 'mn' at
+        # displayOrder 5.
+        if column_exists(cur, "etannual", "mn"):
+            skipped.append("etannual: superseded by migrate_003 (mn/q10/q90/mx present)")
         else:
-            cur.execute("ALTER TABLE etannual ADD COLUMN stddev FLOAT;")
-            applied.append("etannual.stddev: added FLOAT column")
+            # Step 1: Add stddev column to ETannual
+            if column_exists(cur, "etannual", "stddev"):
+                skipped.append("etannual.stddev: column already exists")
+            else:
+                cur.execute("ALTER TABLE etannual ADD COLUMN stddev FLOAT;")
+                applied.append("etannual.stddev: added FLOAT column")
 
-        # Step 2: Add tableInfo row for stddev
-        if tableinfo_row_exists(cur, "ETannual", "stddev"):
-            skipped.append("tableInfo(ETannual,stddev): row already exists")
-        else:
-            cur.execute(
-                "INSERT INTO tableinfo"
-                "(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep)"
-                " VALUES('ETannual','stddev',5,'Std Dev (in/day)','0.05',0,20,0.001);",
-            )
-            applied.append("tableInfo(ETannual,stddev): inserted row")
+            # Step 2: Add tableInfo row for stddev
+            if tableinfo_row_exists(cur, "ETannual", "stddev"):
+                skipped.append("tableInfo(ETannual,stddev): row already exists")
+            else:
+                cur.execute(
+                    "INSERT INTO tableinfo"
+                    "(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep)"
+                    " VALUES('ETannual','stddev',5,'Std Dev (in/day)','0.05',0,20,0.001);",
+                )
+                applied.append("tableInfo(ETannual,stddev): inserted row")
 
     # Report
     print("=== Migration 002 ===")
