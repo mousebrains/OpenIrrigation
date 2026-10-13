@@ -16,6 +16,13 @@ from SchedInterval import Interval
 ZERO = datetime.timedelta(0)
 
 
+def current_capacity(maxCurrent: Optional[float],
+                     baseCurrent: Optional[float]) -> Optional[float]:
+    """ Controller current left for valves (maxCurrent less the passive
+    draw of every decoder); None, i.e. no limit, when maxCurrent is NULL """
+    return None if maxCurrent is None else maxCurrent - (baseCurrent or 0)
+
+
 class Reservation:
     """ A single resource reservation over a time interval """
     __slots__ = ('interval', 'amount', 'limit', 'sensor_id',
@@ -321,7 +328,7 @@ class ResourceRegistry:
                                 **delays))
 
         # Controller current (capacity excludes baseCurrent — passive sensor draw)
-        ctl_current_cap = stn.maxCurrent - stn.baseCurrent
+        ctl_current_cap = current_capacity(stn.maxCurrent, stn.baseCurrent)
         tracker = self._get_tracker(self.ctl_current, stn.controller,
                                     ctl_current_cap)
         tracker.add(Reservation(interval, stn.current, ctl_current_cap,
@@ -358,6 +365,34 @@ class ResourceRegistry:
         # Sensor exclusion (a sensor can only run once at a time)
         tracker = self._get_tracker(self.sensor, stn.sensor, 1)
         tracker.add(Reservation(interval, 1, 1, stn.sensor, **delays))
+
+    def record_master_valve(self, mv, tOn: datetime.datetime,
+                            tOff: datetime.datetime) -> None:
+        """
+        Record a master valve action, i.e. a "POC off" period.
+
+        `mv` is a SchedSensor.MasterValve.  The valve is a decoder like any
+        other, so it counts against its controller's stations and current.
+        On its POC it is a zero-limit reservation: no station there fits
+        while the water is shut off.
+        """
+        interval = Interval(tOn, tOff)
+        delays = dict(ctl_delay=mv.ctlDelay, delay_on=mv.delayOn,
+                      delay_off=mv.delayOff)
+
+        tracker = self._get_tracker(self.ctl_stations, mv.controller,
+                                    mv.ctlMaxStations)
+        tracker.add(Reservation(interval, 1, mv.ctlMaxStations, mv.id,
+                                **delays))
+
+        ctl_current_cap = current_capacity(mv.maxCurrent, mv.baseCurrent)
+        tracker = self._get_tracker(self.ctl_current, mv.controller,
+                                    ctl_current_cap)
+        tracker.add(Reservation(interval, mv.current, ctl_current_cap,
+                                mv.id, **delays))
+
+        tracker = self._get_tracker(self.poc_stations, mv.poc)
+        tracker.add(Reservation(interval, 0, 0, mv.id, **delays))
 
     def build_resource_set(self, stn) -> ResourceSet:
         """

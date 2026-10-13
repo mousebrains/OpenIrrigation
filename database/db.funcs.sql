@@ -82,8 +82,16 @@ BEGIN
 END;
 $$;
 
--- Turn on master valve (No program, nor pgmstn, nor station)
+-- Turn a POC off for dt minutes by turning on its master valve
+-- (No program, nor pgmstn, nor station)
 -- N.B. See note on poc_on for normally open/closed
+--
+-- Only the station actions which would overlap the off period are dropped:
+-- the ones on now are turned off and the pending ones are deleted.  Later
+-- actions stand.  The scheduler, which treats a master valve action as
+-- blocking its POC, is told to re-place the dropped run time after the off
+-- period.  If the POC is already off, its off period is re-timed to end dt
+-- minutes from now.
 
 DROP FUNCTION IF EXISTS poc_off;
 CREATE OR REPLACE FUNCTION poc_off(
@@ -92,36 +100,49 @@ CREATE OR REPLACE FUNCTION poc_off(
 RETURNS VOID LANGUAGE plpgSQL AS $$
 DECLARE sensorID action.sensor%TYPE; -- action.sensor and pocmv.sensor
 DECLARE pgmID action.program%TYPE; -- manual program id
+DECLARE actID action.id%TYPE; -- master valve action in progress
+DECLARE offID action.cmdOff%TYPE; -- and its off command
+DECLARE tStart action.tOn%TYPE := CURRENT_TIMESTAMP; -- off period
+DECLARE tEnd action.tOff%TYPE := CURRENT_TIMESTAMP + MAKE_INTERVAL(secs=>dt*60);
 BEGIN
-	-- Generate a table of all action rows for pocID
-	DROP TABLE IF EXISTS masterValveOps;
-	CREATE TEMPORARY TABLE masterValveOps AS
-	SELECT action.id,action.sensor,cmdOn
-		FROM action
-		INNER JOIN station ON station.sensor=action.sensor
-		WHERE station.poc=pocID;
-	-- Drop all rows in action for pocID which are not on
-	DELETE FROM action WHERE id IN (SELECT id FROM masterValveOps WHERE cmdOn IS NOT NULL);
-	-- Walk through on rows and turn them off
-	FOR sensorID IN SELECT sensor FROM masterValveOps WHERE cmdOn IS NULL LOOP
+	-- Drop the pending station actions on pocID which overlap the off period
+	DELETE FROM action USING station
+		WHERE station.sensor=action.sensor
+		AND station.poc=pocID
+		AND action.cmdOn IS NOT NULL
+		AND action.tOn < tEnd
+		AND action.tOff > tStart;
+	-- Turn off the stations on pocID which are on now
+	FOR sensorID IN SELECT DISTINCT action.sensor FROM action
+			INNER JOIN station ON station.sensor=action.sensor
+			WHERE station.poc=pocID AND action.cmdOn IS NULL LOOP
 		PERFORM(SELECT manual_off(sensorID));
 	END LOOP;
-	DROP TABLE masterValveOps; -- Clean up after myself
 
 	-- For each master valve associated with POC, turn it on
 	FOR sensorID IN SELECT sensor FROM pocMV WHERE poc=pocID LOOP
-		SELECT manual_program_id(sensorID) INTO pgmID; -- Program ID of manual program
-		PERFORM(SELECT action_onOff_insert(
-				CURRENT_TIMESTAMP, 
-				CURRENT_TIMESTAMP+MAKE_INTERVAL(secs=>dt*60),
-				sensorID, pgmID, NULL, CURRENT_DATE));
+		-- An off period not yet started is replaced
+		DELETE FROM action WHERE sensor=sensorID AND cmd=0 AND cmdOn IS NOT NULL;
+		actID := NULL;
+		SELECT id,cmdOff INTO actID,offID FROM action
+			WHERE sensor=sensorID AND cmd=0 AND cmdOn IS NULL
+			LIMIT 1;
+		IF actID IS NULL THEN
+			SELECT manual_program_id(sensorID) INTO pgmID; -- Program ID of manual program
+			PERFORM(SELECT action_onOff_insert(tStart, tEnd, sensorID, pgmID, NULL, CURRENT_DATE));
+		ELSE -- Already off, so end that off period at tEnd instead
+			UPDATE action SET tOff=tEnd WHERE id=actID;
+			UPDATE command SET timestamp=tEnd WHERE id=offID;
+		END IF;
 	END LOOP;
-	PERFORM(SELECT command_notify(CURRENT_TIMESTAMP));
+	PERFORM(SELECT command_notify(tStart));
+	-- Re-place the dropped station run time after the off period
+	PERFORM(SELECT scheduler_notify('POC off(' || pocID::text || ')'));
 END;
 $$;
 
--- Turn a POC on
--- N.B. This is not complete since for normally closed master valves 
+-- Turn a POC on, ending an off period now
+-- N.B. This is not complete since for normally closed master valves
 --      they should be turned on!!!!
 -- i.e. This only works for normally open master valves!
 
@@ -131,9 +152,11 @@ CREATE OR REPLACE FUNCTION poc_on(
 RETURNS VOID LANGUAGE plpgSQL AS $$
 DECLARE sensorID sensor.id%TYPE; -- pocmv.sensor
 BEGIN
-	-- For each master valve associated with POC, turn it on
+	-- For each master valve associated with POC, turn it off
 	FOR sensorID IN SELECT sensor FROM pocMV WHERE poc=pocID LOOP
-		PERFORM(SELECT manual_off(sensorID));
+		-- Drop an off period which has not started yet
+		DELETE FROM action WHERE sensor=sensorID AND cmd=0 AND cmdOn IS NOT NULL;
+		PERFORM(SELECT manual_off(sensorID)); -- End the one in progress
 	END LOOP;
 	-- tell the scheduler to run, no updates to program/pgmstn, so manual forcing
 	PERFORM(SELECT scheduler_notify('Master Valve Off'));

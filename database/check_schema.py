@@ -33,6 +33,7 @@ EXPECTED_TABLES = [
     "action", "historical", "command",
     "changelog", "filterreading", "filterstatus",  # db.changelog.sql, migrate_008
     "schemamigration",  # migrate_014
+    "shortfall",  # migrate_015
 ]
 
 # (table, column, expected_data_type)
@@ -285,6 +286,16 @@ def check(db):
             if (tbl, ref) not in ALLOWED_CASCADES:
                 errors.append(f"{tbl}.{conname} is ON DELETE CASCADE from {ref};"
                               " deleting config would erase history (migrate_014)")
+
+        # poc_off must hand its dropped run time back to the scheduler
+        cur.execute(
+            "SELECT prosrc FROM pg_catalog.pg_proc WHERE proname = 'poc_off';",
+        )
+        row = cur.fetchone()
+        if row is None:
+            errors.append("Missing function: poc_off")
+        elif "scheduler_notify" not in row[0]:
+            errors.append("poc_off does not notify the scheduler (run migrate_015.py)")
 
         # --- Unexpected constraints ---
         for tbl, conname in UNEXPECTED_CONSTRAINTS:

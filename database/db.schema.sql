@@ -25,7 +25,7 @@ CREATE TABLE schemaMigration( -- one row per applied database migration
 	);
 -- A fresh install already includes every migration up to this one; bump it
 -- whenever a migration is added
-INSERT INTO schemaMigration(num, source) VALUES (14, 'fresh install');
+INSERT INTO schemaMigration(num, source) VALUES (15, 'fresh install');
 
 -- Domains are data types with constraints
 
@@ -986,6 +986,18 @@ CREATE INDEX historical_toff_index ON historical(tOff);
 -- The scheduler's loadExisting query filters on pgmDate every run
 DROP INDEX IF EXISTS historical_pgmdate_index;
 CREATE INDEX historical_pgmdate_index ON historical(pgmDate);
+
+-- Run time the scheduler could not place; each rebuild rewrites its horizon's dates
+DROP TABLE IF EXISTS shortfall CASCADE;
+CREATE TABLE shortfall( -- program stations left short of their run time
+	id SERIAL PRIMARY KEY, -- unique record ID
+	pgmDate DATE NOT NULL, -- program date
+	program INTEGER REFERENCES program(id) ON DELETE CASCADE NOT NULL, -- program's id
+	station INTEGER REFERENCES station(id) ON DELETE CASCADE NOT NULL, -- station's id
+	requested FLOAT NOT NULL, -- requested run time (min)
+	placed FLOAT NOT NULL, -- run, running, and scheduled time (min)
+	UNIQUE (pgmDate, program, station)
+);
 
 -- Command queue (Generated/removed by insert/delete to/from action)
 DROP TABLE IF EXISTS command CASCADE;

@@ -710,3 +710,116 @@ class TestBuildScheduleBackward:
         assert td(minutes=59) <= placed_bwd <= td(minutes=61)
         assert max(a.tOff for a in bwd_acts) == dt(10)
         assert all(a.tOn >= dt(9) for a in bwd_acts)
+
+
+# ── Minimum cycle: no runt tails (S6c) ──────────────────────────────
+
+class TestNoRuntCycles:
+    def _stn(self, **kw):
+        args = dict(ident=1, sensor=42, program=10, controller=100, poc=200,
+                    runTime=td(minutes=15, seconds=40), maxCycleTime=td(minutes=15),
+                    soakTime=td(minutes=15),
+                    delayOn=td(seconds=0), delayOff=td(seconds=0))
+        args.update(kw)
+        stn = MockProgramStation(**args)
+        stn.minCycleTime = kw.get('minCycleTime', td(0))
+        return stn
+
+    def test_tail_is_rebalanced_not_a_40s_cycle(self, registry, cum_time, logger):
+        """15m40s with 15 minute cycles used to be 15m + 40s after a 15 minute
+        soak; now the last cycle is a full minute."""
+        acts = place_station(registry, self._stn(), cum_time,
+                             dt(0), dt(6), pgm_date(), logger)
+        lengths = [a.tOff - a.tOn for a in acts]
+        assert lengths == [td(minutes=14, seconds=40), td(minutes=1)]
+
+    def test_min_cycle_time_sets_the_floor(self, registry, cum_time, logger):
+        acts = place_station(registry, self._stn(minCycleTime=td(minutes=5)), cum_time,
+                             dt(0), dt(6), pgm_date(), logger)
+        assert [a.tOff - a.tOn for a in acts] == [td(minutes=10, seconds=40), td(minutes=5)]
+
+    def test_runt_left_by_history_is_a_shortfall(self, registry, cum_time, logger):
+        """40 s left over after what already ran is not worth a cycle."""
+        stn = self._stn(runTime=td(minutes=20))
+        cum_time.add(stn.id, pgm_date(), td(minutes=19, seconds=20))
+        shortfalls = []
+        pgm = MockProgram('P', [stn], dt(0), dt(6))
+        acts = place_program(registry, pgm, cum_time, pgm_date(), pgm_date(),
+                             dt(0), False, logger, shortfalls=shortfalls)
+        assert acts == []
+        assert len(shortfalls) == 1
+        assert shortfalls[0].requested - shortfalls[0].placed == td(seconds=40)
+
+    def test_whole_short_run_is_still_placed(self, registry, cum_time, logger):
+        """A deliberate 30 s manual run is placed as asked."""
+        stn = self._stn(runTime=td(seconds=30))
+        acts = place_station(registry, stn, cum_time, dt(0), dt(6), pgm_date(), logger)
+        assert [a.tOff - a.tOn for a in acts] == [td(seconds=30)]
+
+    def test_tiny_holes_are_skipped(self, registry, cum_time, logger):
+        """A 20 s gap between other stations no longer gets a 20 s cycle."""
+        for (ident, start, end) in ((2, dt(6), dt(6, 10)), (3, dt(6, 10, 20), dt(7))):
+            other = MockProgramStation(ident=ident, sensor=40 + ident, program=10,
+                                       controller=100, poc=200, pocMaxStations=1,
+                                       delayOn=td(seconds=0), delayOff=td(seconds=0))
+            registry.record_placement(other, start, end)
+        stn = self._stn(runTime=td(minutes=5), pocMaxStations=1)
+        acts = place_station(registry, stn, cum_time, dt(6), dt(8), pgm_date(), logger)
+        assert len(acts) == 1
+        assert acts[0].tOn >= dt(7)  # not in the 20 s hole at 06:10
+        assert acts[0].tOff - acts[0].tOn == td(minutes=5)
+
+
+# ── Shortfalls (S6a) and the past-window log level (S6e) ────────────
+
+class TestShortfalls:
+    def test_contention_shortfall_recorded(self, registry, cum_time, logger):
+        """Two solo stations, a window that only fits one and a half."""
+        stns = [MockProgramStation(ident=i, sensor=40 + i, name='S%d' % i, program=10,
+                                   controller=100, poc=200, pocMaxStations=1,
+                                   runTime=td(minutes=60), station=500 + i)
+                for i in (1, 2)]
+        for stn in stns:  # the mock coerces a zero delay to 1 s
+            stn.delayOn = stn.delayOff = td(0)
+        shortfalls = []
+        build_schedule(registry, [MockProgram('P', stns, dt(6), dt(7, 30))], cum_time,
+                       pgm_date(), pgm_date(), dt(0), False, logger, shortfalls=shortfalls)
+        assert [(sf.station, sf.requested, sf.placed) for sf in shortfalls] == \
+               [(502, td(minutes=60), td(minutes=30))]
+
+    def test_past_window_still_reports(self, registry, cum_time, logger, caplog):
+        """A rebuild after the window counts what ran; it logs at DEBUG,
+        not the ~245 WARNINGs a day it used to."""
+        stn = MockProgramStation(ident=1, runTime=td(minutes=30), station=501)
+        cum_time.add(1, pgm_date(), td(minutes=10))  # e.g. cut short by a POC off
+        shortfalls = []
+        with caplog.at_level(logging.DEBUG, logger='test_placer'):
+            acts = place_program(registry, MockProgram('P', [stn], dt(0, 10), dt(6)),
+                                 cum_time, pgm_date(), pgm_date(), dt(12), False, logger,
+                                 shortfalls=shortfalls)
+        assert acts == []
+        assert [(sf.requested, sf.placed) for sf in shortfalls] == \
+               [(td(minutes=30), td(minutes=10))]
+        records = [r for r in caplog.records if 'sTime>=eTime' in r.getMessage()]
+        assert records and all(r.levelno == logging.DEBUG for r in records)
+
+    def test_fully_placed_is_not_a_shortfall(self, registry, cum_time, logger):
+        shortfalls = []
+        build_schedule(registry, [MockProgram('P', [MockProgramStation()], dt(6), dt(7))],
+                       cum_time, pgm_date(), pgm_date(), dt(0), False, logger,
+                       shortfalls=shortfalls)
+        assert shortfalls == []
+
+    def test_bad_window_is_a_problem_not_a_crash(self, registry, cum_time, logger):
+        from SchedUtils import Problems
+
+        class Broken(MockProgram):
+            def mkTime(self, pgmDate):
+                raise ValueError('Sun never reaches dawn')
+        problems = Problems(logger)
+        acts = build_schedule(registry, [Broken('Polar', [], None, None),
+                                         MockProgram('P', [MockProgramStation()], dt(6), dt(7))],
+                              cum_time, pgm_date(), pgm_date(), dt(0), False, logger,
+                              problems=problems)
+        assert len(acts) == 1
+        assert problems == ['Program Polar is not scheduled: Sun never reaches dawn']
