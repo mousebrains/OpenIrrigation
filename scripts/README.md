@@ -10,7 +10,8 @@ These scripts run as systemd services (see `../service/`):
 - FlowSensorWatch.py -- Flow-sensor watchdog (OIFlowSensorWatch timer, every 2 minutes). Alarms when open valves should be drawing water but the POC flow sensor reads no flow (e.g. a stalled impeller; emails 'lowFlow' subscribers once per stall), when a lawn zone with a cleanFlow baseline runs well above it (a broken head; 'highFlow', once per run; gardens/drip are never judged). `--dry-run`, or `--at TIME` to evaluate a past moment.
 
 ## Utility Scripts
-- dumpDatabase.py -- Backs up the database schema and data using PostgreSQL COPY.
+- dumpDatabase.py -- Backs up the database: schema and configuration with pg_dump, the log and history tables as gzip'd CSV. Deletes nothing.
+- databaseMaintenance.py -- Retention (OIDatabaseMaintenance timer, daily). Archives rows past their retention to gzip'd CSV in the archive directory, then deletes exactly those rows; with no archive directory it deletes nothing.
 
 ## Library Modules
 

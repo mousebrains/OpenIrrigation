@@ -41,6 +41,8 @@ g.add_argument('--auditRetentionDays', type=int, default=730,
 g = parser.add_argument_group('Directory related options')
 g.add_argument('--prefix', type=str, default=prefix, help='Directory tree prefix')
 g.add_argument('--logdir', type=str, default='logs', help='Where to store log files')
+g.add_argument('--archiveDir', type=str, default='archive',
+        help='Where retention maintenance archives rows (gzip CSV) before deleting them')
 g.add_argument('--bindir', type=str, default='bin', help='Where to store scripts')
 g.add_argument('--webdir', type=str, default='public_html', help='Where to store web files')
 g.add_argument('--phpdir', type=str, default='public_html/php',
@@ -70,6 +72,7 @@ args.simulate = '--simulate' if args.simulate else ''
 
 args.prefix = os.path.expanduser(args.prefix)
 args.logdir = os.path.expanduser(os.path.join(args.prefix, args.logdir))
+args.archiveDir = os.path.expanduser(os.path.join(args.prefix, args.archiveDir))
 args.bindir = os.path.expanduser(os.path.join(args.prefix, args.bindir))
 args.webdir = os.path.expanduser(os.path.join(args.prefix, args.webdir))
 args.phpdir = os.path.expanduser(os.path.join(args.prefix, args.phpdir))

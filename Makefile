@@ -1,5 +1,8 @@
 .PHONY: all freshdb install uninstall clean start stop restart status enable disable reload cleanlogs php_lint
 
+# For LOGDIR; the sub-makes include it themselves
+-include Makefile.params
+
 all:
 
 Makefile.params: config
@@ -26,6 +29,7 @@ enable disable start stop restart status reload: Makefile.params
 	$(MAKE) -C service $@
 
 cleanlogs: Makefile.params
+	@ test -n "$(LOGDIR)" || { echo "LOGDIR is not set; run ./config first" >&2; exit 1; }
 	$(MAKE) stop
 	$(RM) $(LOGDIR)/*.log
 	$(MAKE) start
