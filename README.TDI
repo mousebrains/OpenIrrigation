@@ -164,6 +164,9 @@
 #                AAAA Pre on mAmps
 #                BBBB Peak on mAmps
 #                CCCC Post on mAmps
+#        Verified 2026-10-14 on the production TDI: 0T08 -> 1T0800002302610033,
+#        i.e. station 08, status 00, pre 35, peak 609, post 51 mAmps.  The test
+#        turns the valve on momentarily.  Results go to the teeLog table.
 #   U -- Current
 #        Returns XXXXYYYY
 #                XXXX volts * 10

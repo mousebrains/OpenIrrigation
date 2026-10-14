@@ -179,19 +179,22 @@ class TestCmdTest:
         assert reply.startswith(b'1T')
         addr = int(reply[2:4].decode('ascii'), 16)
         assert addr == 0x0A
+        assert len(reply) == 18  # 1TXXYYAAAABBBBCCCC, as the real TDI answers
+        assert reply[4:6] == b'00'  # status
         # pre, peak, post should be from valveInfo
-        pre = int(reply[4:8].decode('ascii'), 16)
-        peak = int(reply[8:12].decode('ascii'), 16)
-        assert int(reply[12:16].decode('ascii'), 16) > pre  # post > pre
+        pre = int(reply[6:10].decode('ascii'), 16)
+        peak = int(reply[10:14].decode('ascii'), 16)
+        assert int(reply[14:18].decode('ascii'), 16) > pre  # post > pre
         assert peak > pre  # Peak always bigger than pre
 
     def test_test_unknown_valve(self, sim):
         """Testing a valve not in valveInfo returns zeros."""
         (dt0, dt1, reply) = sim.cmdTest(b'0T', b'0A')
         assert reply.startswith(b'1T')
-        pre = int(reply[4:8].decode('ascii'), 16)
-        peak = int(reply[8:12].decode('ascii'), 16)
-        post = int(reply[12:16].decode('ascii'), 16)
+        assert len(reply) == 18
+        pre = int(reply[6:10].decode('ascii'), 16)
+        peak = int(reply[10:14].decode('ascii'), 16)
+        post = int(reply[14:18].decode('ascii'), 16)
         assert pre == 0
         assert peak == 0
         assert post == 0
