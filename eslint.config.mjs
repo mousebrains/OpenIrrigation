@@ -9,6 +9,7 @@ const browserGlobals = {
   EventSource: "readonly",
   $: "readonly",
   Chart: "readonly",
+  L: "readonly",
 };
 
 const irrigationGlobals = {

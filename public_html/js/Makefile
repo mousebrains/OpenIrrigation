@@ -14,6 +14,7 @@ SRC+= tableEditor.js
 SRC+= flowGraph.js
 SRC+= et.js
 SRC+= processState.js
+SRC+= map.js
 
 DEST = $(SRC:%=$(JSDIR)/%)
 

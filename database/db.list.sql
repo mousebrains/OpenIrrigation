@@ -41,4 +41,14 @@ INSERT INTO webList (sortOrder,grp,key,label) VALUES
 	(5,'reports','systemd', 'Systemd Alerts'),
 	(6,'reports','filter', 'Filter Alerts');
 
+-- What a site map feature is (mapFeature.kind, map.php styles by key)
+INSERT INTO webList (sortOrder,grp,key,label) VALUES
+	(0,'mapKind','valveBox', 'Valve box'),
+	(1,'mapKind','equipment', 'Controller equipment'),
+	(2,'mapKind','shutoff', 'Shutoff'),
+	(3,'mapKind','backflow', 'Backflow preventer'),
+	(4,'mapKind','drain', 'Drain'),
+	(5,'mapKind','hoseBib', 'Hose bib'),
+	(6,'mapKind','other', 'Other');
+
  

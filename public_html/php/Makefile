@@ -5,9 +5,13 @@
 
 include ../../Makefile.params
 
+# Makefile.params from before ./config knew --tileDir: use its default
+TILEDIR ?= $(PREFIX)/tiles
+
 SRC= CSRF.php
 SRC+= DB1.php
 SRC+= config.php
+SRC+= mapTiles.php
 SRC+= navBar.php
 SRC+= version.php
 
@@ -18,7 +22,7 @@ DEST = $(SRC:%=$(PHPDIR)/%)
 all: $(SRC)
 
 config.php: config.php.in ../../Makefile.params
-	sed -e 's?__DBNAME__?$(DBNAME)?g' <$< >$@
+	sed -e 's?__DBNAME__?$(DBNAME)?g' -e 's?__TILEDIR__?$(TILEDIR)?g' <$< >$@
 
 install: $(SRC)
 	$(INSTALL) --mode=0644 --target-directory=$(PHPDIR) $(SRC)

@@ -1,3 +1,5 @@
 <?php
 // Generated from config.php.in by make — do not edit
 define('OI_DBNAME', '__DBNAME__');
+// Aerial imagery tiles for map.php, written by fetchMapTiles.py
+define('OI_TILEDIR', '__TILEDIR__');

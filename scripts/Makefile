@@ -17,6 +17,7 @@ BIN+= dailyReport.py databaseMaintenance.py
 BIN+= FilterMonitor.py filterBaseline.py
 BIN+= FlowSensorWatch.py
 BIN+= notifyFailure.py
+BIN+= fetchMapTiles.py
 
 DEST = $(LIB:%=$(BINDIR)/%) $(BIN:%=$(BINDIR)/%)
 

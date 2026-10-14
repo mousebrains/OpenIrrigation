@@ -50,6 +50,8 @@ class Info:
         self.sites = KeyValue(db, 'SELECT id,name FROM site;')
         self.ctls = KeyValue(db, 'SELECT id,name FROM controller;')
         self.ctl2site = KeyValue(db, 'SELECT id,site FROM controller;')
+        self.mapFeatures = KeyValue(db, 'SELECT id,name FROM mapFeature;')
+        self.map2site = KeyValue(db, 'SELECT id,site FROM mapFeature;')
         self.sensors = KeyValue(db, 'SELECT id,name FROM sensor;')
         self.sens2ctl = KeyValue(db, 'SELECT id,controller FROM sensor;')
         self.pocs = KeyValue(db, 'SELECT id,name FROM poc;')
@@ -83,6 +85,10 @@ class Info:
     def ctl(self, id):
         return "(SELECT id FROM controller WHERE name={} AND site={})".format(
                 self.ctls[id], self.site(self.ctl2site[id].id()))
+
+    def mapFeature(self, id):
+        return "(SELECT id FROM mapFeature WHERE name={} AND site={})".format(
+                self.mapFeatures[id], self.site(self.map2site[id].id()))
 
     def sensor(self, id):
         return "(SELECT id FROM sensor WHERE name={} AND controller={})".format(
@@ -194,8 +200,14 @@ def getController(db, info):
     getSpecial(db, sFields, 'SELECT * FROM controller ORDER BY name;',
             'controller information', 'controller')
 
+def getMapFeature(db, info):
+    sFields = OrderedDict([('site', info.site), ('kind', info.list)])
+    getSpecial(db, sFields, 'SELECT * FROM mapFeature ORDER BY site,name;',
+            'site map features', 'mapFeature')
+
 def getSensor(db, info):
-    sFields = OrderedDict([('controller', info.ctl), ('devtype', info.list)])
+    sFields = OrderedDict([('controller', info.ctl), ('devtype', info.list),
+        ('mapfeature', info.mapFeature)])
     getSpecial(db, sFields, 'SELECT * FROM sensor ORDER BY addr;',
             'sensor information', 'sensor')
 
@@ -273,6 +285,7 @@ with psycopg.connect(dbname=args.db) as db:
     getEMailReports(db, info)
     getSite(db)
     getController(db, info)
+    getMapFeature(db, info)
     getSensor(db, info)
     getPOC(db, info)
     getPOCFlow(db, info)

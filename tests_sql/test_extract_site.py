@@ -19,6 +19,12 @@ INSERT INTO controller(site, name, maxStations) VALUES ((SELECT id FROM site), '
 INSERT INTO sensor(controller, name, addr, devType)
     SELECT (SELECT id FROM controller), n, a, (SELECT id FROM webList WHERE grp='sensor' AND key=k)
     FROM (VALUES ('Lawn', 10, 'solenoid'), ('Drip', 11, 'solenoid'), ('Flow', 0, 'flow')) AS v(n, a, k);
+INSERT INTO mapFeature(site, name, kind, latitude, longitude, notes) VALUES
+    ((SELECT id FROM site), 'East box', (SELECT id FROM webList WHERE grp='mapKind' AND key='valveBox'),
+     51.4779300, -0.0014700, 'Four valves'),
+    ((SELECT id FROM site), 'Hose bib', NULL, 51.4779400, -0.0014600, NULL);
+UPDATE sensor SET mapFeature=(SELECT id FROM mapFeature WHERE name='East box'),
+    mapPosition='North end', mapOrder=1, latitude=51.4779300, longitude=-0.0014700 WHERE name='Lawn';
 INSERT INTO poc(site, name) VALUES ((SELECT id FROM site), 'POC1');
 INSERT INTO pocFlow(poc, sensor, name, K) VALUES
     ((SELECT id FROM poc), (SELECT id FROM sensor WHERE name='Flow'), 'Meter', 0.25);
@@ -58,6 +64,10 @@ COMPARE = [
     " JOIN crop c ON c.id=e.crop;",
     "SELECT name, MAD FROM crop ORDER BY name;",
     "SELECT name, addr, controller IS NOT NULL FROM sensor ORDER BY name;",
+    "SELECT f.name, s.name, w.key, f.latitude, f.longitude, f.notes FROM mapFeature f"
+    " JOIN site s ON s.id=f.site LEFT JOIN webList w ON w.id=f.kind ORDER BY f.name;",
+    "SELECT s.name, f.name, s.mapPosition, s.mapOrder, s.latitude, s.longitude FROM sensor s"
+    " JOIN mapFeature f ON f.id=s.mapFeature;",
     "SELECT f.name, f.K, s.name FROM pocFlow f JOIN sensor s ON s.id=f.sensor;",
     "SELECT u.name, e.email, count(*) FROM email e JOIN usr u ON u.id=e.usr"
     " JOIN emailReports r ON r.email=e.id GROUP BY 1, 2;",

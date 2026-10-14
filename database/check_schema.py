@@ -34,6 +34,7 @@ EXPECTED_TABLES = [
     "changelog", "filterreading", "filterstatus",  # db.changelog.sql, migrate_008
     "schemamigration",  # migrate_014
     "shortfall",  # migrate_015
+    "mapfeature",  # migrate_017
 ]
 
 # (table, column, expected_data_type)
@@ -49,6 +50,9 @@ CRITICAL_COLUMNS = [
     ("station", "qfiltersensor", "boolean"),  # migrate_008
     ("filterstatus", "gallonssinceclean", "double precision"),  # migrate_009
     ("filterstatus", "notified", "timestamp with time zone"),  # migrate_016
+    ("sensor", "mapfeature", "integer"),  # migrate_017
+    ("sensor", "mapposition", "text"),
+    ("sensor", "maporder", "smallint"),
 ]
 
 # (index_name, table_name)
@@ -104,6 +108,8 @@ EXPECTED_PARAMS = [
 # (grp, key) rows in webList
 EXPECTED_WEBLIST = [
     ("reports", "filter"),  # migrate_008
+    ("mapKind", "valveBox"), ("mapKind", "equipment"), ("mapKind", "shutoff"),  # migrate_017
+    ("mapKind", "backflow"), ("mapKind", "drain"), ("mapKind", "hoseBib"), ("mapKind", "other"),
 ]
 
 # (tbl, col, {column: expected value}) rows in tableInfo; tbl is matched
@@ -121,6 +127,13 @@ EXPECTED_TABLEINFO = [
     ("program", "qbackward", {}),  # migrate_010
     ("crop", "mad", {"valmin": 0, "valmax": 1}),  # migrate_014
     ("etstation", "fracadjust", {"valmin": 1, "valmax": 400}),  # migrate_014
+    ("mapfeature", "name", {}),  # migrate_017
+    ("mapfeature", "kind", {}),
+    ("mapfeature", "latitude", {}),
+    ("mapfeature", "longitude", {}),
+    ("sensor", "mapfeature", {}),
+    ("sensor", "mapposition", {}),
+    ("sensor", "maporder", {}),
 ]
 
 # History and telemetry: no foreign key from these may cascade a config delete
