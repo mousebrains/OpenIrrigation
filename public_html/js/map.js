@@ -32,8 +32,12 @@ function mapStorage(key, val) { // localStorage can be missing or throw
 
 function mapTime(epoch) {
 	if (epoch === null || epoch === undefined) {return '&mdash;';}
-	return escapeHTML(new Date(epoch * 1000).toLocaleString([],
-		{month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'}));
+	const when = new Date(epoch * 1000);
+	const opts = {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit'};
+	if (when.getFullYear() !== new Date().getFullYear()) {
+		opts.year = 'numeric'; // a run last December is not next December
+	}
+	return escapeHTML(when.toLocaleString([], opts));
 }
 
 // The label on the decoder: TDI station addresses are numbered from 1 on the
