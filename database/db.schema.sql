@@ -26,7 +26,7 @@ CREATE TABLE schemaMigration( -- one row per applied database migration
 -- A fresh install already includes every migration up to the newest; bump the
 -- upper bound whenever a migration is added
 INSERT INTO schemaMigration(num, source)
-	SELECT n, 'fresh install' FROM generate_series(14, 16) AS n;
+	SELECT n, 'fresh install' FROM generate_series(14, 17) AS n;
 
 -- Domains are data types with constraints
 
@@ -297,6 +297,32 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valSt
 INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,placeholder) VALUES
 	('controller', 'notes', 11, 'Notes', 'textarea', 'Notes');
 
+-- Things on the site map: valve boxes, shutoffs, hose bibs, ... (map.php)
+DROP TABLE IF EXISTS mapFeature CASCADE;
+CREATE TABLE mapFeature( -- site map features
+	id SERIAL PRIMARY KEY, -- id
+	site INTEGER NOT NULL REFERENCES site(id) ON DELETE RESTRICT, -- site's id
+	name TEXT NOT NULL, -- descriptive name
+	kind INTEGER REFERENCES webList(id) ON DELETE SET NULL, -- webList grp='mapKind'
+	latitude LATITUDE NOT NULL, -- latitude in decimal degrees
+	longitude LONGITUDE NOT NULL, -- longitude in decimal degrees
+	notes TEXT, -- Extra information
+	UNIQUE (site, name)
+	);
+INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
+	('mapFeature','site',   1, 'Site', 'site');
+INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,inputType,placeholder) VALUES
+	('mapFeature', 'name',   0,True, 'Name', 'text', 'North valve box');
+INSERT INTO tableInfo(tbl,col,displayOrder,label,
+			refTable,refLabel,refCriteria,refOrderBy) VALUES
+	('mapFeature', 'kind', 2, 'Kind',
+		'webList', 'label', 'grp=''mapKind''', 'sortOrder,label');
+INSERT INTO tableInfo(tbl,col,displayOrder,qRequired,label,placeholder,valMin,valMax,valStep) VALUES
+	('mapFeature', 'latitude',3,True,'Latitude (deg)', '-56.75', -90, 90, 1e-7),
+	('mapFeature', 'longitude',4,True,'Longitude (deg)', '125.66', -180, 180, 1e-7);
+INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,placeholder) VALUES
+	('mapFeature', 'notes', 5, 'Notes', 'textarea', 'Notes');
+
 -- sensors/valves
 DROP TABLE IF EXISTS sensor CASCADE;
 CREATE TABLE sensor( -- hardware information about decoders/sensors
@@ -315,6 +341,9 @@ CREATE TABLE sensor( -- hardware information about decoders/sensors
 	model TEXT, -- model
 	installed DATE, -- date installed in UTC
 	notes TEXT, -- Extra information
+	mapFeature INTEGER REFERENCES mapFeature(id) ON DELETE RESTRICT, -- valve box it is in
+	mapPosition TEXT, -- where in that box, e.g. 'North row, 2nd from west'
+	mapOrder SMALLINT, -- display order within that box
 	UNIQUE (controller,name),
 	UNIQUE (controller,devType,addr)
 	);
@@ -339,6 +368,12 @@ INSERT INTO tableInfo(tbl,col,displayOrder,label,
 		'webList', 'label', 'grp=''sensor''', 'sortOrder,label');
 INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,placeholder) VALUES
 	('sensor', 'notes', 13, 'Notes', 'textarea', 'Notes');
+INSERT INTO tableInfo(tbl,col,displayOrder,label,refTable) VALUES
+	('sensor', 'mapfeature', 14, 'Map box', 'mapFeature');
+INSERT INTO tableInfo(tbl,col,displayOrder,label,inputType,placeholder) VALUES
+	('sensor', 'mapposition', 15, 'Position in box', 'text', 'North row, 2nd from west');
+INSERT INTO tableInfo(tbl,col,displayOrder,label,placeholder,valMin,valMax,valStep) VALUES
+	('sensor', 'maporder', 16, 'Order in box', '1', 0, 99, 1);
 
 -- Point of connect
 DROP TABLE IF EXISTS poc CASCADE;

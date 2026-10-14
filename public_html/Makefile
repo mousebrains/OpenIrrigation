@@ -5,6 +5,9 @@
 
 include ../Makefile.params
 
+# Makefile.params from before ./config knew --tileDir: use its default
+TILEDIR ?= $(PREFIX)/tiles
+
 SRC = favicon.png
 SRC+= index.php indexProcess.php indexStatus.php
 SRC+= status.php csrfToken.php
@@ -19,6 +22,7 @@ SRC+= ET.php etAnnual.php
 SRC+= systemctl.php
 SRC+= processState.php processStatus.php
 SRC+= runScheduler.php
+SRC+= map.php mapData.php mapTile.php
 
 DEST = $(SRC:%=$(WEBDIR)/%)
 
@@ -33,6 +37,9 @@ install::
 	$(INSTALL) --target-directory=$(WEBDIR) $(SRC)
 	$(RM) $(OBSOLETE:%=$(WEBDIR)/%)
 	chown -R $(USER):$(GROUP) $(WEBDIR)
+	@# fetchMapTiles.py fills it as $(USER); php-fpm ($(WEBUSER)) only reads it
+	$(INSTALL) --directory --mode=0755 $(TILEDIR)
+	chown $(USER):$(GROUP) $(TILEDIR)
 
 clean::
 

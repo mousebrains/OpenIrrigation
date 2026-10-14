@@ -21,6 +21,7 @@ if (!is_string($csrfToken)) {
       <a href='tableEditor.php?tbl=pgmStn'>Program Station</a>
       <a href='tableEditor.php?tbl=station&orderby=name'>Station</a>
       <a href='flowGraph.php'>Flow Graph</a>
+      <a href='map.php'>Site Map</a>
       <a href='ET.php'>ET Daily</a>
       <a href='tableEditor.php?tbl=site&orderby=name'>Site</a>
       <a href='tableEditor.php?tbl=ETStation&orderby=station'>ET Stations</a>
@@ -28,6 +29,7 @@ if (!is_string($csrfToken)) {
       <a href='tableEditor.php?tbl=email&orderby=email'>email</a>
       <a href='tableEditor.php?tbl=controller&orderby=name'>Controller</a>
       <a href='tableEditor.php?tbl=sensor&orderby=name'>Sensor</a>
+      <a href='tableEditor.php?tbl=mapFeature&orderby=name'>Map Features</a>
       <a href='tableEditor.php?tbl=poc&orderby=name'>Point-of-connect</a>
       <a href='tableEditor.php?tbl=pocFlow&orderby=name'>Point-of-connect Flow</a>
       <a href='tableEditor.php?tbl=filterReading&orderby=timestamp'>Filter Log</a>

@@ -42,3 +42,14 @@ I do this as my non-irrigation user, i.e. foo above or whatever you call it. It 
 - sudo make enable start # Enable and start the services
 - make status # Will show you the status of the services.
 - If a service fails look in /var/log/syslog and ~irrigation/logs/*
+---
+## Site map (optional)
+map.php ("Site Map" in the menu) shows aerial imagery with your valve boxes, shutoffs and hose bibs on top; a valve box's popup lists the decoders in it, their stations, programs and last/next runs.
+- Needs migrate_017.py, and a Makefile.params from a ./config that knows --tileDir (default <prefix>/tiles; rerun ./config with your original options, then sudo make install, which creates the directory)
+- Add the features under "Map Features" (name, kind, latitude, longitude, notes), then on each "Sensor" set its "Map box", "Position in box" and "Order in box"
+- Cache the imagery, as the install user, so the map works without the imagery server; a rerun only fetches missing tiles:
+  - sudo -u irrigation ~irrigation/bin/fetchMapTiles.py --db irrigation --preset osip2024
+  - Presets are Oregon's 1-ft statewide imagery (osip2024, osip2022). Its server's TLS certificate expired 2026-09-26; add --insecure until it is renewed (the tiles are public imagery)
+  - Elsewhere, any ArcGIS ImageServer or MapServer: --layer NAME --url URL --label TEXT --attribution TEXT
+  - The area is the map features plus --margin meters (default 150), zooms --zmin..--zmax (15..20, about 300 tiles and a few MB for a house lot); --dry-run counts the tiles
+- Without cached imagery the map falls back to OpenStreetMap, which needs the internet

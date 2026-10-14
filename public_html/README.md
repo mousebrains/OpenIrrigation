@@ -8,6 +8,7 @@
 - **ET.php** -- Evapotranspiration data viewer (data from etAnnual.php).
 - **systemctl.php** -- Shows the status of the OITDI and OISched services (read-only).
 - **processState.php** -- View running process states.
+- **map.php** -- Site map: cached aerial imagery with the valve boxes, shutoffs and hose bibs from the mapFeature table on top. A valve box's popup lists its valves (decoder label, station, programs, last and next run); a box with a valve on now pulses. See INSTALL.md, "Site map".
 
 ## Server-Sent Events (SSE) endpoints
 - **status.php** -- Streams system status (service states, flow, current, station counts).
@@ -30,11 +31,14 @@
 ## Other endpoints
 - **flowGraphData.php**, **etAnnual.php** -- JSON data for the flow and ET graphs.
 - **csrfToken.php** -- the session's CSRF token, so an open page can retry a POST after its session expired.
+- **mapData.php** -- JSON for map.js: map features, the decoders in each box with their stations' state, and the cached imagery layers (read-only).
+- **mapTile.php** -- One cached imagery tile, `mapTile.php?layer=…&z=…&x=…&y=…`, from the tile directory (`./config --tileDir`).
 
 ## Shared PHP
 - **php/DB1.php** -- PDO database wrapper with transaction and prepared statement support.
 - **php/CSRF.php** -- session and CSRF token handling for the POST endpoints.
 - **php/navBar.php** -- Navigation bar included by all pages.
+- **php/mapTiles.php** -- The tile directory and its layers, for mapData.php and mapTile.php.
 
 ## JavaScript (`js/`)
 - **irrigation.js** -- Core utilities (escapeHTML, SSE helpers, common functions).
@@ -45,6 +49,7 @@
 - **reportDaily.js** -- Daily report page logic.
 - **processState.js** -- Process state page logic.
 - **et.js** -- ET data visualization with Chart.js.
+- **map.js** -- Site map with Leaflet.
 
 ## CSS (`css/`)
 - **irrigation.css** -- Main application styles.
@@ -57,3 +62,4 @@
 - Chart.js
 - jQuery TableSorter
 - Moment.js
+- Leaflet 1.9.4 (BSD-2-Clause; `leaflet-1.9.4/`, with its license): leaflet.js goes to js/, leaflet.css and its images/ to css/
