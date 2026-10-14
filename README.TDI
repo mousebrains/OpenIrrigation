@@ -164,6 +164,14 @@
 #                AAAA Pre on mAmps
 #                BBBB Peak on mAmps
 #                CCCC Post on mAmps
+#        Verified 2026-10-14 on the production TDI: 0T08 -> 1T0800002302610033,
+#        i.e. station 08, status 00, pre 35, peak 609, post 51 mAmps.  Results
+#        go to the teeLog table.  Caution: on 2026-10-14 repeated tests of a
+#        station returned identical currents, to the mAmp, and stations not
+#        turned on in weeks returned 0005/02A8/001E (5/680/30 mAmps), the same
+#        triple 0A has returned on such a station's first on.  So the reply
+#        looks like the controller's stored currents, not a fresh measurement
+#        (unverified).
 #   U -- Current
 #        Returns XXXXYYYY
 #                XXXX volts * 10

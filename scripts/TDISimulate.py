@@ -326,7 +326,8 @@ class TDISimul(MyBaseThread):
             (pre, peak, post) = (0, 0, 0)
         return (0.05 * (0.5 + random.random()),
                 0.15 * (0.5 + random.random()),
-                b'1T' + '{:02X}{:04X}{:04X}{:04X}'.format(XX, pre, peak, post).encode('ascii'))
+                # XX, status 00, then pre/peak/post, as the real TDI answers
+                b'1T' + '{:02X}{:02X}{:04X}{:04X}{:04X}'.format(XX, 0, pre, peak, post).encode('ascii'))
 
     def cmdU(self, codigo, body): # Current draw of system
         a = self.chkLength(0, codigo, body)

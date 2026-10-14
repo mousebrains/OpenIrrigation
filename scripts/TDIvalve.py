@@ -115,7 +115,7 @@ class ValveOps(MyBaseThread):
         self.listen = DB.Listen(self.dbName, self.listenName, logger)
         self.msgOn   = TDICodec(logger, '0A', (1,1), (1,1,2,2,2))
         self.msgOff  = TDICodec(logger, '0D', (1,), (1,1))
-        self.msgTest = TDICodec(logger, '0T', (1,), (1,2,2,2))
+        self.msgTest = TDICodec(logger, '0T', (1,), (1,1,2,2,2)) # 1TXXYYAAAABBBBCCCC
         self.db = DB.DB(args.db, logger)
         self.controller = None
         self.dbDownSince: float | None = None # When the database first went away
@@ -592,12 +592,14 @@ class ValveOps(MyBaseThread):
             logger.warning('No reply to %s', msg)
             self.dbExec(cur, sqlFail, (cmdID, ERR_TEST_NO_REPLY))
             return False
-        if not self.dbExec(cur, sqlOkay, (cmdID, t, 0, args[1], args[2], args[3])):
+        (status, pre, peak, post) = args[1:5]
+        if not self.dbExec(cur, sqlOkay, (cmdID, t, status, pre, peak, post)):
             logger.info('ValveTest Failed')
             self.dbExec(cur, sqlFail, (cmdID, ERR_TEST_DB_FAIL))
             return False
-        logger.info('ValveTest passed %s(%s), pre=%s peak=%s post=%s',
-                name, addr, args[1], args[2], args[3])
+        logger.log(logging.INFO if status == 0 else logging.WARNING,
+                'ValveTest %s(%s) status=%s, pre=%s peak=%s post=%s',
+                name, addr, status, pre, peak, post)
         return True
 
     def onInfo(self, cur:psycopg.Cursor, addr:int) -> tuple:

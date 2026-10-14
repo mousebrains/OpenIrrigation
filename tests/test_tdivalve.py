@@ -387,9 +387,29 @@ class TestValveOff:
 
 class TestValveTest:
     def test_valve_test_success(self, logger):
-        ops = make_valve_ops(logger, replies={b'0T0A': b'1T0A001A02BC003D'})
+        ops = make_valve_ops(logger, replies={b'0T0A': b'1T0A00001A02BC003D'})
         assert ops.valveTest(1, 0x0A, 'Station1', ops.db.cursor()) is True
-        assert len(ops.db.calls('command_tee_done')) == 1
+        [(cmdID, _t, status, pre, peak, post)] = ops.db.calls('command_tee_done')
+        assert (cmdID, status, pre, peak, post) == (1, 0, 0x1A, 0x2BC, 0x3D)
+
+    def test_valve_test_real_reply(self, logger):
+        """The production TDI's 2026-10-14 answer to 0T08 carries a status byte."""
+        ops = make_valve_ops(logger, replies={b'0T08': b'1T0800002302610033'})
+        assert ops.valveTest(1, 0x08, 'Huerto E/fresas', ops.db.cursor()) is True
+        [(_cmdID, _t, status, pre, peak, post)] = ops.db.calls('command_tee_done')
+        assert (status, pre, peak, post) == (0, 35, 609, 51)
+
+    def test_valve_test_nonzero_status_is_recorded(self, logger):
+        ops = make_valve_ops(logger, replies={b'0T0A': b'1T0A08001A02BC003D'})
+        assert ops.valveTest(1, 0x0A, 'Station1', ops.db.cursor()) is True
+        [(_cmdID, _t, status, _pre, _peak, _post)] = ops.db.calls('command_tee_done')
+        assert status == 8
+
+    def test_valve_test_reply_without_status_is_rejected(self, logger):
+        """The old, wrong 16-character form is not a valid reply."""
+        ops = make_valve_ops(logger, replies={b'0T0A': b'1T0A001A02BC003D'})
+        assert ops.valveTest(1, 0x0A, 'Station1', ops.db.cursor()) is False
+        assert ops.db.calls('command_tee_failed') == [(1, ERR_TEST_NO_REPLY)]
 
     def test_valve_test_already_on(self, logger):
         now = datetime.datetime.now(datetime.timezone.utc)

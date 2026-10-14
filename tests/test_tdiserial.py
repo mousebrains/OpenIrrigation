@@ -103,7 +103,7 @@ class TestIsReplyTo:
         assert not isReplyTo(b'0D23', b'1D2200')
         assert not isReplyTo(b'0A23', b'1A2200001A02BC003D')
         assert isReplyTo(b'0A23', b'1A2300001A02BC003D')
-        assert isReplyTo(b'0T05', b'1T05001A02BC003D')
+        assert isReplyTo(b'0T05', b'1T0500001A02BC003D')
         assert isReplyTo(b'0S00', b'1S00040064')
         assert not isReplyTo(b'0S01', b'1S00040064')
 
